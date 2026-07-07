@@ -1,0 +1,228 @@
+# KIRO HANDOFF — NexusMods.App Linux-First Hard Fork
+
+> Written 2026-07-06 for Kiro IDE to read and analyze. Self-contained: covers the project,
+> everything done in the bootstrap sessions, the exact working-tree state, and **two
+> directives for future work** (§6 and §7). Companion docs in this repo:
+> - `LINUX-FORK-CONTEXT.md` — the original fork rationale, architecture map, milestones.
+> - `BASELINE-CACHYOS.md` — first-build/first-run findings on CachyOS, with root causes.
+
+---
+
+## 1. Project in one paragraph
+
+Brian (GitHub **Jeagermeister**, CachyOS/Arch, stack: C#/.NET, Rust, Go, C++, Python, TS, SQL)
+is hard-forking the **archived** `Nexus-Mods/NexusMods.App` (C#/.NET 9, Avalonia,
+GPL-3.0) into an **independent, Linux-first mod manager**. Nexus abandoned it Jan 2026 for
+business reasons; the architecture (MnemonicDB event-sourced datastore, git-like versioned
+Loadouts, 3-way-merge deployment engine) is the best in the modding space and sits
+uncontested. Upstream is frozen at commit `48284f38c` (~Nov 2025). Every fix and feature
+from here on is ours.
+
+## 2. Environment & commands
+
+- Repo: `~/Source/candidates/modding/NexusMods.App`, branch `main`, no fork remote yet.
+- .NET SDK 9.0.118 (installed; target is net9.0). SDK 10 also present.
+- **First-time setup:** `git submodule update --init --recursive` (SMAPI + docs — build fails without).
+- Build: `dotnet build NexusMods.App.sln` (96 projects, 0 errors, ~20s warm).
+- Run UI: `dotnet run --project src/NexusMods.App`. CLI: `src/NexusMods.App.Cli`.
+- App data: `~/.local/share/NexusMods.App/`; logs: `~/.local/state/NexusMods.App/Logs/`.
+
+## 3. Working-tree state (IMPORTANT — uncommitted work)
+
+No commits have been made. The working tree contains:
+
+| File | Change |
+| --- | --- |
+| `src/NexusMods.Networking.NexusWebApi/V1Interop/LocalMappingCache.cs` | **Patch 1:** removed a `Debug.Assert` that crashed every Debug-build launch (see §4.2); replaced with a warning log. |
+| `src/NexusMods.Abstractions.Loadouts.Synchronizers/ALoadoutSynchronizer.cs` | **Patch 2:** `MaximumBackupSize` 5GB → 100GB with corrected doc comment (see §4.3). **Superseded by directive §6** — re-do per that spec. |
+| `LINUX-FORK-CONTEXT.md`, `BASELINE-CACHYOS.md`, `KIRO-HANDOFF.md` | Untracked docs (this handoff set). |
+
+First git task: create a fork branch, commit patches + docs, add own remote. Fork
+name/brand still undecided.
+
+## 4. What happened in the bootstrap sessions (2026-07-06)
+
+### 4.1 Baseline achieved
+Full solution builds clean; app launches on Wayland; Nexus **login works**; UI navigation
+works; nxm:// handler + .desktop registration succeeded out of the box; Steam locator found
+both Steam libraries and detected **Mount & Blade II: Bannerlord** and **Stardew Valley**
+installed (second drive, `/mnt/17b46faa-.../SteamLibrary`).
+
+### 4.2 Bug 1 — startup crash from Nexus's live data (FIXED, uncommitted)
+`games.json` (game id ↔ domain map) is downloaded **from Nexus's live CDN at build time**
+(`NexusMods.Networking.NexusWebApi.csproj`). Live data now contains domain collisions the
+frozen code never saw (id 8703 "Neverwinter" vs id 180 "Neverwinter Nights" → `neverwinter`;
+id 9193 "WRC 5" vs id 2892 → `wrc5`). A `Debug.Assert` in
+`LocalMappingCache.TryParseJsonFile` assumed 1:1 and killed the process.
+**Follow-up:** vendor a snapshot of games.json instead of build-time download.
+
+### 4.3 Bug 2 — "Cannot backup 9560 files / 30GB > 5GB" managing Bannerlord (root-caused)
+The file-hashes DB (identifies vanilla game files) comes from GitHub releases of
+`Nexus-Mods/game-hashes` — **last release 2025-09-30, frozen forever**. Bannerlord has been
+patched since → its Steam manifest IDs are unknown → `Unable to find game version` → the
+synchronizer can't classify ANY file as a known game file → all 30.2GB flagged
+`BackupFile` → tripped the 5GB fuse (`ALoadoutSynchronizer.cs`, `MaximumBackupSize`).
+Interim patch raised the fuse to 100GB; **§6 replaces that with the intended behavior**.
+
+**STRATEGIC CONSEQUENCE (biggest finding): the fork must own a game-hashes pipeline.**
+Until we generate hash-DB releases for current game versions (Steam depot manifests via
+`NexusMods.Networking.Steam` are the natural source), every game patched after Sept 2025
+looks 100%-modified. Theme: **cut all umbilicals to Nexus's dead infrastructure**
+(games.json at build time, game-hashes releases, `data.nexusmods.com` at runtime).
+
+### 4.4 Vortex migration executed
+Brian's Linux Vortex fork (source at `~/Source/Vortex`, runs from source; data at
+`~/.config/@vortex/main/`) had deployed 11 mods into Bannerlord via **symlinks**
+(manifest: `vortex.deployment.json`, 537 files). We purged them cleanly (symlinks removed,
+Vortex `.__folder_managed_by_vortex` markers deleted, 3 runtime-generated BetterBanditsPlus
+XMLs stashed to `~/.config/@vortex/main/mountandblade2bannerlord/purge-leftovers-2026-07-06/`).
+Game dir is now vanilla + `FastMode` (a manual, non-Vortex install Brian chose to keep).
+Mod archives live at `~/.config/@vortex/main/downloads/mountandblade2bannerlord/` (10
+archives; Harmony's is missing → re-download via nxm). A `baldursgate3` staging dir also
+exists → BG3 (Larian family, supported by the app) is migration candidate #2.
+
+**Feature idea logged: "Import from Vortex" wizard** (parse Vortex staging + deployment
+manifests + downloads → auto-populate Library and a loadout). Killer adoption feature;
+Brian owns a Vortex fork and knows its formats.
+
+### 4.5 Misc findings
+- `protontricks` is only needed when the app itself executes a Windows .exe inside a
+  game's Proton prefix: Bannerlord launch-via-BLSE (`BannerlordRunGameTool` →
+  `GameToolRunner`) and Cyberpunk RedMod deploy. Deploying mods needs no Wine. Candidate:
+  replace protontricks with `umu-launcher`/direct Proton invocation and drop the dependency.
+- Bannerlord's `MissingProtontricksEmitter` calls `CreateMissingProtontricksForRedMod`
+  (upstream copy-paste bug — message names the wrong game).
+- Non-fatal warts: `df --output=source` fails on not-yet-created Archives dir
+  (`LinuxInterop.GetFileSystemMount`); sporadic R3 `ObjectDisposedException` on UI teardown.
+
+---
+
+## 5. Architecture quick map (see LINUX-FORK-CONTEXT.md for the full table)
+
+| Concern | Path |
+| --- | --- |
+| Event-sourced datastore (CROWN JEWEL — do not rewrite) | `NexusMods.MnemonicDB.*` |
+| Loadouts / deployment engine (3-way sync) | `src/NexusMods.Abstractions.Loadouts[.Synchronizers]/` |
+| Library (downloaded/local archives) | `src/NexusMods.Library/`, `src/NexusMods.Abstractions.Library/` |
+| Nexus API + games.json mapping | `src/NexusMods.Networking.NexusWebApi/` |
+| File-hashes DB client (frozen upstream feed) | `src/NexusMods.Games.FileHashes/` |
+| Steam depots/manifests (future hash source) | `src/NexusMods.Networking.Steam/` |
+| Linux interop (nxm, mounts, xdg) | `src/NexusMods.Backend/OS/LinuxInterop*.cs` |
+| Proton/Wine tooling | `src/NexusMods.Games.Generic/` (GameToolRunner, protontricks deps) |
+| Installer engines | `src/NexusMods.Games.FOMOD/`, `src/NexusMods.Games.AdvancedInstaller/` |
+| Game modules (pattern to copy for new games) | `src/NexusMods.Games.StardewValley/`, `.../MountAndBlade2Bannerlord/` |
+
+---
+
+## 6. DIRECTIVE 1 — Backup policy: silent skip instead of error
+
+**Requirement (Brian, 2026-07-06):** revert `MaximumBackupSize` from the interim 100GB back
+to **5GB**, and when the computed backup total exceeds it, **do not throw and do not nag** —
+quietly skip the backup and continue the operation (loadout creation / sync proceeds).
+
+**Where:** `src/NexusMods.Abstractions.Loadouts.Synchronizers/ALoadoutSynchronizer.cs`
+- `MaximumBackupSize` property (currently patched to `Size.GB * 100` — revert to `* 5`).
+- `ActionBackupNewFiles(...)`: the `if (totalSize > MaximumBackupSize)` block currently
+  logs an error and `throw`s. Replace with: skip `_fileStore.BackupFiles(...)` (and the
+  `GameBackedUpFile` pinning transaction) for the oversized batch and return normally.
+  A single `LogInformation`/`LogDebug` line for forensics is acceptable; no user-facing
+  diagnostic, no exception.
+
+**Engineering notes for the implementer (analyze before coding):**
+- Consequence to accept knowingly: files that never got backed up cannot be restored by the
+  app ("remove all mods" / undo / restore-to-vanilla for overwritten game files). For Steam
+  games this is recoverable out-of-band (Steam "Verify integrity"); for GOG/Epic less so.
+  This tradeoff is accepted because the oversized case today = "unknown game version due to
+  frozen hash DB", where the backup would be a redundant 30GB copy of Steam-restorable data.
+- Consider skip granularity: the spec is batch-level skip (matches current structure).
+  A refinement — back up files *up to* the cap (smallest-first) so small genuinely-modified
+  files still get protected — is allowed if it stays silent.
+- Check call sites of `ActionBackupNewFiles` for assumptions that backup succeeded
+  (`RunActions` / ingest paths); ensure skipping doesn't corrupt sync state. The
+  `GameBackedUpFile` pins exist to protect archives from GC — skipping both together is
+  consistent.
+- The long-term fix that makes this near-moot is the **own game-hashes pipeline** (§4.3);
+  once versions are recognized, backup batches return to being small.
+
+## 7. DIRECTIVE 2 — Unify into ONE complete mod platform
+
+**Vision (Brian, 2026-07-06):** this fork should become a **complete, single mod
+application** — not just Nexus-sourced game mods. Concretely, absorb the roles of:
+
+1. **Nexus Mods manager** — already the core (Library, nxm://, FOMOD, loadouts).
+2. **A Minecraft mod launcher** — the role filled today by CurseForge app / Modrinth app /
+   Prism Launcher: manage Minecraft instances, mod loaders (Fabric/Forge/NeoForge/Quilt),
+   download mods/modpacks from Modrinth + CurseForge, and launch the game.
+3. **r2modman** (Thunderstore ecosystem) — mod manager for Risk of Rain 2, Lethal Company,
+   Valheim, and ~every BepInEx-based Thunderstore game; profile-based, one-click installs
+   from thunderstore.io.
+
+**Why the architecture can carry this:** the app's core abstractions are already
+source-agnostic in the right places — `ILibraryService` (archives in, whatever the origin),
+Loadouts (versioned per-game state), `ILibraryItemInstaller` per game, `IGame` modules,
+`IJob` downloads. "A mod source" is the missing abstraction: today Nexus is privileged
+(`NexusModsLibrary`, nxm handling, collections). The unification work is roughly:
+
+- **Mod-source abstraction layer:** generalize download/metadata/updates so
+  Thunderstore API (`thunderstore.io/api/`), Modrinth API (documented, API-key-free),
+  and CurseForge API (requires key, ToS constraints on redistribution) sit beside the
+  Nexus API as peers. Each source brings: search/browse, version metadata, dependency
+  resolution (Thunderstore and Modrinth both have real dependency graphs — richer than
+  Nexus), download, update checking, and protocol handlers (`ror2mm://` for Thunderstore
+  one-click, Modrinth's `modrinth://`).
+- **BepInEx as a first-class framework:** r2modman games are overwhelmingly
+  BepInEx+Unity. A generic "BepInEx game" module (install loader, deploy plugins to
+  `BepInEx/plugins`, per-loadout profiles) covers dozens of games in one stroke — and
+  directly reuses the planned **Subnautica/BepInEx** work from the Vortex fork
+  (see LINUX-FORK-CONTEXT.md §additive). This is the natural bridge between the Nexus
+  world and the Thunderstore world.
+- **Minecraft is the biggest scope jump:** it's not "mods for an installed game" but
+  *instance management + game launching* (MS account auth, version manifests, asset
+  downloads, JVM management, loader installation). Two viable strategies to analyze:
+  (a) implement instances natively (Prism Launcher, ATLauncher — both GPL, both studied
+  easily — as references; meta data from Mojang version manifests + Fabric/Forge maven);
+  (b) integrate/steer an existing launcher and own only the mod-management half.
+  Loadout-per-instance maps beautifully to MnemonicDB (versioned, diffable modpacks).
+- **Identity note:** GPL-3.0 across the board (Vortex GPL-3, r2modman GPL-3 — code and
+  format knowledge can legally flow in). CurseForge's API/ToS is the only licensing
+  minefield — Modrinth-first is the safer default, exactly what Prism does.
+
+**Suggested phasing (for analysis, not gospel):**
+1. Mod-source abstraction + **Thunderstore/BepInEx** support (cheapest win, huge game
+   coverage, proves the abstraction).
+2. Generic BepInEx game family + Subnautica (bridges existing roadmap).
+3. Modrinth support for Minecraft mods on existing instances.
+4. Full Minecraft instance management + launching (the big one — separate design doc
+   before committing).
+5. "Import from …" wizards (Vortex, r2modman profiles, Prism instances) as adoption
+   features.
+
+**North star:** one Linux-first app where a user manages Skyrim, Lethal Company, and a
+Minecraft modpack with the same Library, the same loadout/undo model, and the same UI.
+Nobody has this. That's the fork's identity and moat.
+
+---
+
+## 8. Roadmap synthesis (updated)
+
+1. ~~Baseline build/launch on CachyOS~~ ✅ (2026-07-06)
+2. Commit patches; re-home fork (branch, remote, name/brand, Linux CI, README narrative).
+3. Implement §6 (silent backup skip @ 5GB).
+4. Finish Bannerlord end-to-end: manage → import Vortex archives → load order → Apply →
+   launch (BLSE via protontricks or umu). Stardew as the low-friction second game.
+5. **Own game-hashes pipeline** (§4.3) + vendor games.json — cut Nexus umbilicals.
+6. Begin §7 phase 1 (mod-source abstraction, Thunderstore).
+7. Subnautica/BepInEx game module (bridges §7 phase 2).
+8. CachyOS/Arch diagnostics; protontricks→umu evaluation.
+9. Community seeding (publish, architecture story, contributors).
+
+## 9. Local reference paths
+
+| What | Where |
+| --- | --- |
+| This fork | `~/Source/candidates/modding/NexusMods.App` |
+| Brian's Vortex fork (source-run, formats reference) | `~/Source/Vortex` |
+| Vortex live data (staging/downloads per game) | `~/.config/@vortex/main/` |
+| nxmproxy (Rust nxm router, Linux port on `linux-port`, uncommitted) | `~/Source/candidates/modding/nxmproxy` |
+| Candidate index | `~/Source/candidates/CANDIDATES.md` |
+| App data / logs | `~/.local/share/NexusMods.App/` / `~/.local/state/NexusMods.App/Logs/` |
