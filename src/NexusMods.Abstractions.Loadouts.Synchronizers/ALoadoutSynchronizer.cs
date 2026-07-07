@@ -37,8 +37,13 @@ using DiskState = Entities<DiskStateEntry.ReadOnly>;
 public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 {
     /// <summary>
-    /// We'll limit backups to 2GB, for now we should never see much more than this
-    /// of modified game files. s
+    /// Threshold beyond which the new-file backup for a sync batch is skipped entirely.
+    /// When the game version is unknown to the file-hashes DB, every game file is treated as
+    /// modified and would be backed up in full; rather than failing the operation, we silently
+    /// skip the oversized backup and let the sync proceed (see <see cref="ActionBackupNewFiles"/>).
+    /// Files skipped this way are not restorable by the app (e.g. "remove all mods" / undo for
+    /// overwritten game files); for Steam titles this is recoverable via "Verify integrity of
+    /// game files".
     /// </summary>
     private static Size MaximumBackupSize => Size.GB * 5;
     
@@ -1186,26 +1191,20 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var totalSize = archivedFiles.Sum(static x => x.Size);
         if (totalSize > MaximumBackupSize)
         {
-            var nodeSignatures = files
-                .Where(static x => x.Value.Actions.HasFlag(Actions.BackupFile))
-                .Select(static x => x.Value.Signature)
-                .GroupBy(signature => signature)
-                .Select(static grp => new {Signature = grp.Key, FileCount = grp.Count()})
-                .ToList();
-            
-            Logger.LogError(
-                """
-                Cannot backup {FileCount} files with total size {TotalSize}, which exceeds maximum of {MaximumSize}. 
-                Node signatures: 
-                {Signatures}
-                """,
+            // Backing up this batch would exceed the safety cap. Rather than failing the
+            // operation (which would block loadout creation / sync), silently skip the backup
+            // and continue. The common trigger is an unknown game version (frozen file-hashes
+            // DB) where every game file gets flagged for backup and the data is Steam-restorable
+            // anyway. Skipped files are not restorable by the app; that tradeoff is accepted.
+            // We skip the file copy and the GameBackedUpFile pins together: the pins only exist
+            // to protect backed-up archives from GC, so pinning nothing is the consistent choice.
+            Logger.LogInformation(
+                "Skipping backup of {FileCount} files ({TotalSize}); exceeds maximum backup size of {MaximumSize}. Sync will continue; these files will not be restorable by the app",
                 archivedFiles.Count,
                 totalSize,
-                MaximumBackupSize,
-                string.Join(Environment.NewLine, nodeSignatures.Select(sig => $"  - {sig.Signature}: {sig.FileCount} files"))
+                MaximumBackupSize
             );
-            
-            throw new Exception($"Cannot backup files, total size is {totalSize}, which is larger than the maximum of {MaximumBackupSize}");
+            return;
         }
         
         // PERFORMANCE: We deduplicate above with the HaveFile call.
