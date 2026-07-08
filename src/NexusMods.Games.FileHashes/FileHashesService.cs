@@ -14,6 +14,7 @@ using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Games.FileHashes.DTOs;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.MnemonicDB.Storage;
 using NexusMods.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
@@ -117,25 +118,43 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// across runs at <c>{HashDatabaseLocation}/local-overlay</c>. It uses the same prefix and query
     /// engine as the read-only databases so the FileHashes model attributes align.
     /// </summary>
+    private readonly object _overlayOpenLock = new();
+
     private OverlayDb EnsureOverlayOpen()
     {
-        if (_overlayDb is not null)
-            return _overlayDb;
-
-        var overlayPath = _hashDatabaseLocation / "local-overlay";
-        overlayPath.CreateDirectory();
-
-        _logger.LogInformation("Opening writable local hash overlay at {Path}", overlayPath);
-        var backend = new Backend();
-        var settings = new DatomStoreSettings
+        // Callers are not all serialized by _lock (StartAsync races with early writers), and a
+        // half-opened DatomStore holds the RocksDB LOCK file for the rest of the session, so this
+        // must be locked and must clean up on partial failure.
+        lock (_overlayOpenLock)
         {
-            Path = overlayPath,
-        };
-        var store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
-        var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], prefix: "hashes", queryEngine: _queryEngine);
+            if (_overlayDb is not null)
+                return _overlayDb;
 
-        _overlayDb = new OverlayDb(connection, store, backend);
-        return _overlayDb;
+            var overlayPath = _hashDatabaseLocation / "local-overlay";
+            overlayPath.CreateDirectory();
+
+            _logger.LogInformation("Opening writable local hash overlay at {Path}", overlayPath);
+            var backend = new Backend();
+            var settings = new DatomStoreSettings
+            {
+                Path = overlayPath,
+            };
+            DatomStore? store = null;
+            try
+            {
+                store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
+                var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], prefix: "hashes", queryEngine: _queryEngine);
+
+                _overlayDb = new OverlayDb(connection, store, backend);
+                return _overlayDb;
+            }
+            catch
+            {
+                store?.Dispose();
+                backend.Dispose();
+                throw;
+            }
+        }
     }
 
     /// <summary>
@@ -212,7 +231,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         // back to the embedded snapshot shipped with the build. See FileHashesServiceSettings.EnableRemoteUpdates.
         if (!_settings.EnableRemoteUpdates)
         {
-            if (!forceUpdate && ExistingDBs().TryGetFirst(out var localLatest))
+            // A local database only wins if it is at least as new as the embedded snapshot;
+            // otherwise an app upgrade carrying a refreshed snapshot would never be adopted.
+            // (In Debug builds the embedded creation time is UnixEpoch, so a previously
+            // extracted database always wins — use forceUpdate to re-extract during dev.)
+            var embeddedCreationTime = ApplicationConstants.IsDebug ? DateTimeOffset.UnixEpoch : ApplicationConstants.BuildDate;
+            if (!forceUpdate && ExistingDBs().TryGetFirst(out var localLatest)
+                             && localLatest.CreationTime >= embeddedCreationTime)
             {
                 _currentDb = OpenDb(localLatest);
                 return;
@@ -787,13 +812,22 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         CancellationToken cancellationToken = default)
     {
         using var _ = await _lock.LockAsync();
+        cancellationToken.ThrowIfCancellationRequested();
 
         var overlay = EnsureOverlayOpen();
+        var overlayDb = overlay.Connection.Db;
+        var manifestIdString = manifestId.Value.ToString();
 
-        // Idempotency: a Steam manifest id uniquely identifies a specific depot content snapshot, so if
-        // it is already present in the overlay the recorded data is identical. Skip to avoid stacking
-        // duplicate manifests (and duplicate version definitions) on repeated recognition runs.
-        if (SteamManifest.FindByManifestId(overlay.Connection.Db, manifestId).Any())
+        // Idempotency: a Steam manifest id uniquely identifies a specific depot content snapshot, so
+        // if it is already present in the overlay the recorded file data is identical and is not
+        // rewritten. The version definition is checked separately: the manifest may have been
+        // recorded without a game id (e.g. via `steam local-index`), in which case a later call that
+        // does carry one must still create the definition, or the game would stay "unknown version".
+        var haveManifest = SteamManifest.FindByManifestId(overlayDb, manifestId).TryGetFirst(out var existingManifest);
+        var needDefinition = gameId.HasValue && !VersionDefinition.All(overlayDb)
+            .Any(v => v.GameId == gameId.Value && v.Steam.Contains(manifestIdString));
+
+        if (haveManifest && !needDefinition)
         {
             _logger.LogInformation("Local Steam manifest {ManifestId} is already recorded in the overlay; skipping", manifestId.Value);
             return;
@@ -801,58 +835,120 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
         using var tx = overlay.Connection.BeginTransaction();
 
-        // Each verified file becomes a self-contained hash relation + path relation in the overlay, so
-        // the overlay does not depend on entity ids from the shipped database.
-        var pathIds = new List<EntityId>(verifiedFiles.Count);
-        foreach (var (path, hash) in verifiedFiles)
+        EntityId manifestEntityId;
+        var fileCount = 0;
+        if (haveManifest)
         {
-            var hashRelation = new HashRelation.New(tx)
+            manifestEntityId = existingManifest.Id;
+        }
+        else
+        {
+            // Each verified file becomes a self-contained hash relation + path relation in the overlay,
+            // so the overlay does not depend on entity ids from the shipped database.
+            var pathIds = new List<EntityId>(verifiedFiles.Count);
+            foreach (var (path, hash) in verifiedFiles)
             {
-                XxHash3 = hash.XxHash3,
-                XxHash64 = hash.XxHash64,
-                MinimalHash = hash.MinimalHash,
-                Md5 = hash.Md5,
-                Sha1 = hash.Sha1,
-                Crc32 = hash.Crc32,
-                Size = hash.Size,
-            };
+                var hashRelation = new HashRelation.New(tx)
+                {
+                    XxHash3 = hash.XxHash3,
+                    XxHash64 = hash.XxHash64,
+                    MinimalHash = hash.MinimalHash,
+                    Md5 = hash.Md5,
+                    Sha1 = hash.Sha1,
+                    Crc32 = hash.Crc32,
+                    Size = hash.Size,
+                };
 
-            var pathRelation = new PathHashRelation.New(tx)
+                var pathRelation = new PathHashRelation.New(tx)
+                {
+                    Path = path,
+                    HashId = hashRelation,
+                };
+                pathIds.Add(pathRelation.Id);
+            }
+
+            var manifest = new SteamManifest.New(tx)
             {
-                Path = path,
-                HashId = hashRelation,
+                AppId = appId,
+                DepotId = depotId,
+                ManifestId = manifestId,
+                Name = versionName,
+                FilesIds = pathIds,
             };
-            pathIds.Add(pathRelation.Id);
+            manifestEntityId = manifest.Id;
+            fileCount = pathIds.Count;
         }
 
-        var manifest = new SteamManifest.New(tx)
+        if (needDefinition)
         {
-            AppId = appId,
-            DepotId = depotId,
-            ManifestId = manifestId,
-            Name = versionName,
-            FilesIds = pathIds,
-        };
+            // Supersede any previous same-name definition for this game: after a game update,
+            // re-recognition writes a fresh definition, and keeping the old one would make
+            // name-based lookups (vanity versions / locator ids) resolve to stale manifest ids.
+            // The old SteamManifest file data is left in place; it remains valid hash data.
+            foreach (var stale in VersionDefinition.All(overlayDb).Where(v => v.GameId == gameId!.Value && v.Name == versionName))
+            {
+                _logger.LogInformation("Superseding stale local version definition '{Name}' in the overlay", stale.Name);
+                tx.Delete(stale.Id, recursive: false);
+            }
 
-        if (gameId.HasValue)
-        {
             var versionDefinition = new VersionDefinition.New(tx)
             {
                 Name = versionName,
                 OperatingSystem = operatingSystem,
-                GameId = gameId.Value,
+                GameId = gameId!.Value,
                 GOG = [],
-                Steam = [manifestId.Value.ToString()],
+                Steam = [manifestIdString],
                 EpicBuildIds = [],
             };
-            tx.Add(versionDefinition, VersionDefinition.SteamManifestsIds, manifest.Id);
+            tx.Add(versionDefinition, VersionDefinition.SteamManifestsIds, manifestEntityId);
         }
 
         await tx.Commit();
 
-        _logger.LogInformation(
-            "Recorded local Steam version '{Version}' (app {AppId}, depot {DepotId}, manifest {ManifestId}) with {FileCount} verified files into the local hash overlay",
-            versionName, appId.Value, depotId.Value, manifestId.Value, pathIds.Count);
+        if (haveManifest)
+        {
+            _logger.LogInformation(
+                "Added local version definition '{Version}' for already-recorded Steam manifest {ManifestId}",
+                versionName, manifestId.Value);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Recorded local Steam version '{Version}' (app {AppId}, depot {DepotId}, manifest {ManifestId}) with {FileCount} verified files into the local hash overlay",
+                versionName, appId.Value, depotId.Value, manifestId.Value, fileCount);
+        }
+    }
+
+    /// <inheritdoc />
+    public bool TryGetLocalSteamManifestStatus(ManifestId manifestId, NexusModsGameId? gameId, out bool hasVersionDefinition)
+    {
+        hasVersionDefinition = false;
+
+        OverlayDb overlay;
+        try
+        {
+            overlay = EnsureOverlayOpen();
+        }
+        catch (Exception e)
+        {
+            // No overlay means nothing is recorded; the caller will hash and the subsequent write
+            // will surface the underlying problem.
+            _logger.LogWarning(e, "Could not open the local hash overlay to check manifest {ManifestId}", manifestId.Value);
+            return false;
+        }
+
+        var db = overlay.Connection.Db;
+        if (!SteamManifest.FindByManifestId(db, manifestId).Any())
+            return false;
+
+        if (gameId.HasValue)
+        {
+            var manifestIdString = manifestId.Value.ToString();
+            hasVersionDefinition = VersionDefinition.All(db)
+                .Any(v => v.GameId == gameId.Value && v.Steam.Contains(manifestIdString));
+        }
+
+        return true;
     }
 
     /// <inheritdoc/>

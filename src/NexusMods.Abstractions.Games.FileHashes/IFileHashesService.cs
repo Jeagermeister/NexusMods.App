@@ -91,6 +91,15 @@ public interface IFileHashesService
         OperatingSystem operatingSystem,
         IReadOnlyList<(RelativePath Path, MultiHash Hash)> verifiedFiles,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks whether the local overlay already contains a Steam manifest with the given id, and —
+    /// when <paramref name="gameId"/> is provided — whether a <see cref="VersionDefinition"/> for
+    /// that game references it. Lets recognition skip re-hashing depots that are already recorded.
+    /// </summary>
+    /// <remarks>Linux fork: query side of the local recognition pipeline.</remarks>
+    /// <returns>True when the manifest is recorded in the overlay.</returns>
+    public bool TryGetLocalSteamManifestStatus(ManifestId manifestId, NexusModsGameId? gameId, out bool hasVersionDefinition);
 }
 
 /// <summary>
