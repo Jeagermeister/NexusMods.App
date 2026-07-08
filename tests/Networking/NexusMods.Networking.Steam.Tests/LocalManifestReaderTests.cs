@@ -62,6 +62,51 @@ public class LocalManifestReaderTests(IFileSystem fileSystem)
     }
 
     [Fact]
+    public void TryFindManifestFile_DoesNotMatch_ManifestIdSuffixWithoutUnderscore()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            // "999_9123.manifest" ends in "9123.manifest" but NOT in "_123.manifest" — the underscore
+            // in the suffix is what prevents manifest id 123 from matching it.
+            Touch(dir / "999_9123.manifest");
+
+            LocalManifestReader.TryFindManifestFile(
+                    dir,
+                    ManifestId.From(123UL),
+                    out _,
+                    out _)
+                .Should().BeFalse();
+        }
+        finally
+        {
+            dir.DeleteDirectory(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TryFindManifestFile_ReturnsFalse_WhenDepotPrefixIsNotNumeric()
+    {
+        var dir = CreateTempDir();
+        try
+        {
+            Touch(dir / "abc_123.manifest");
+            Touch(dir / "_123.manifest");
+
+            LocalManifestReader.TryFindManifestFile(
+                    dir,
+                    ManifestId.From(123UL),
+                    out _,
+                    out _)
+                .Should().BeFalse();
+        }
+        finally
+        {
+            dir.DeleteDirectory(recursive: true);
+        }
+    }
+
+    [Fact]
     public void TryFindManifestFile_ReturnsFalse_WhenDirectoryMissing()
     {
         var dir = CreateTempDir();

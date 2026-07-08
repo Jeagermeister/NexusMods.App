@@ -38,6 +38,11 @@ public static class Verbs
         [Option("a", "app", "The Steam app id of the installed game to recognise")] long app,
         [Injected] CancellationToken token)
     {
+        if (app is <= 0 or > uint.MaxValue)
+        {
+            await renderer.TextLine("Invalid app id '{0}': must be a positive 32-bit unsigned integer.", app);
+            return 1;
+        }
         var appId = (uint)app;
 
         var installations = gameRegistry.LocateGameInstallations()
@@ -51,6 +56,7 @@ public static class Verbs
             return 1;
         }
 
+        var anyRecognized = false;
         foreach (var installation in installations)
         {
             if (!recognizer.CanRecognize(installation))
@@ -65,9 +71,12 @@ public static class Verbs
             await renderer.TextLine(
                 "  {0} depots recorded, {1} without cached manifests; {2} verified files, {3} missing, {4} modified.",
                 result.DepotsRecognized, result.DepotsSkippedNoManifest, result.TotalVerifiedFiles, result.TotalMissingFiles, result.TotalModifiedFiles);
+
+            anyRecognized |= result.DepotsRecognized > 0;
         }
 
-        return 0;
+        // Non-zero when nothing was recorded, so scripts can detect a run that did no work.
+        return anyRecognized ? 0 : 1;
     }
 
     [Verb("steam local-index", "Recognises an installed Steam game version locally by verifying its files against the on-disk depot manifest (no login or download), then records it in the local hash overlay so the app stops treating the install as fully modified")]
@@ -86,6 +95,22 @@ public static class Verbs
         [Option("s", "os", "Operating system for the version definition: Windows|MacOS|Linux (optional; defaults to the host OS)", true)] string? os,
         [Injected] CancellationToken token)
     {
+        if (depot is <= 0 or > uint.MaxValue)
+        {
+            await renderer.TextLine("Invalid depot id '{0}': must be a positive 32-bit unsigned integer.", depot);
+            return 1;
+        }
+        if (app is < 0 or > uint.MaxValue)
+        {
+            await renderer.TextLine("Invalid app id '{0}': must be a 32-bit unsigned integer.", app);
+            return 1;
+        }
+        if (gameId is < 0 or > uint.MaxValue)
+        {
+            await renderer.TextLine("Invalid Nexus Mods game id '{0}': must be a 32-bit unsigned integer.", gameId);
+            return 1;
+        }
+
         var depotId = DepotId.From((uint)depot);
         var appId = AppId.From((uint)app);
 
@@ -107,8 +132,8 @@ public static class Verbs
         await renderer.TextLine("Hashing and verifying installed files under {0} (this reads every game file; large games take a while)...", game);
         var result = await fileHasher.VerifyAndHashAsync(game, parsedManifest, progress: null, token);
 
-        await renderer.TextLine("Verification: {0}/{1} files matched, {2} missing, {3} modified (fully verified: {4})",
-            result.MatchedCount, result.TotalFiles, result.MissingCount, result.MismatchCount, result.IsFullyVerified);
+        await renderer.TextLine("Verification: {0}/{1} files matched, {2} missing, {3} modified, {4} unreadable (fully verified: {5})",
+            result.MatchedCount, result.TotalFiles, result.MissingCount, result.MismatchCount, result.UnreadableCount, result.IsFullyVerified);
 
         if (result.MatchedCount == 0)
         {
