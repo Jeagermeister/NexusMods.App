@@ -226,3 +226,48 @@ Nobody has this. That's the fork's identity and moat.
 | nxmproxy (Rust nxm router, Linux port on `linux-port`, uncommitted) | `~/Source/candidates/modding/nxmproxy` |
 | Candidate index | `~/Source/candidates/CANDIDATES.md` |
 | App data / logs | `~/.local/share/NexusMods.App/` / `~/.local/state/NexusMods.App/Logs/` |
+
+---
+
+## 10. Session log — 2026-07-07 (Kiro)
+
+### 10.0 Repo location correction
+The **live fork** is now `~/Source/NexusMods.App`, branch **`linux-fork`**, remotes
+`origin` → `github.com/Jeagermeister/NexusMods.App`, `upstream` → `Nexus-Mods/NexusMods.App`.
+The `~/Source/candidates/modding/NexusMods.App` path referenced in §2/§9 is the original
+bootstrap clone and is now **stale** (still on frozen `main` with the patches uncommitted).
+Work continues in the `linux-fork` copy. Directives §6 and the two bootstrap patches are
+already **committed** there (`c0e9e1be2`, `1c23f625e`).
+
+### 10.1 Cut the Nexus umbilicals (roadmap step 5, "vendor" half — DONE)
+Severed the fork's build-time and runtime dependencies on Nexus's dead infrastructure:
+
+- **games.json** — was downloaded from `data.nexusmods.com` at build time. Now vendored at
+  `src/NexusMods.Networking.NexusWebApi/Assets/games.json` (1.5 MB snapshot) and embedded
+  directly; the `DownloadGamesJson`/`EmbedOutput` MSBuild targets were removed.
+- **game-hashes DB** — was downloaded from `github.com/Nexus-Mods/game-hashes` (frozen
+  2025-09-30) at build time. Now vendored at
+  `src/NexusMods.Games.FileHashes/Assets/game_hashes_db.zip` (~21.7 MB, snapshot of release
+  tag `vc2e27b8bf8632dca`) via **git-lfs**, embedded directly; the `DownloadHashesDatabase`/
+  `EmbedOutput` targets were removed. `manifest.json` (127 B) is vendored alongside for
+  reference. `.gitattributes` now LFS-tracks that zip path.
+- **Runtime polling** — `FileHashesService` used to poll the frozen Nexus feed forever.
+  Added `FileHashesServiceSettings.EnableRemoteUpdates` (**default `false`**). When off,
+  `CheckForUpdateCore` uses the newest local DB or the embedded snapshot and makes **zero
+  calls to Nexus infrastructure** at runtime.
+
+Verified: `dotnet build` of both affected projects → 0 errors (43 pre-existing warnings).
+Embed confirmed by output DLL sizes (FileHashes.dll ~22 MB, NexusWebApi.dll ~2.3 MB).
+
+### 10.2 ⚠️ REMINDER — re-enable remote hash-DB updates once our pipeline is live
+Per Brian's decision (2026-07-07), remote updates were disabled **on the condition we turn
+them back on once settled**. When the fork's own game-hashes pipeline/feed exists
+(roadmap step 5 "own game-hashes pipeline" + step 6):
+1. Flip `FileHashesServiceSettings.EnableRemoteUpdates` default to `true`.
+2. Repoint `GithubManifestUrl` / `GameHashesDbUrl` from `Nexus-Mods/game-hashes` to the
+   fork-owned feed. (Both carry `TODO(linux-fork)` markers in the source.)
+
+### 10.3 Environment / tooling notes
+- git-lfs 3.7.1 installed on the CachyOS box (`git lfs install --local` run in this repo).
+- Kiro terminal shell-integration currently doesn't return stdout (commands execute, exit
+  codes correct); workaround is redirect-to-file + read. Not blocking.

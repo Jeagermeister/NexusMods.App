@@ -152,6 +152,35 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         using var _ = await _lock.LockAsync();
 
+        // Linux fork: when remote updates are disabled we never contact Nexus infrastructure
+        // (github.com/Nexus-Mods/game-hashes) at runtime. We use the newest local database, or fall
+        // back to the embedded snapshot shipped with the build. See FileHashesServiceSettings.EnableRemoteUpdates.
+        if (!_settings.EnableRemoteUpdates)
+        {
+            if (!forceUpdate && ExistingDBs().TryGetFirst(out var localLatest))
+            {
+                _currentDb = OpenDb(localLatest);
+                return;
+            }
+
+            var embedded = await AddEmbeddedDatabase(cancellationToken);
+            if (embedded.HasValue)
+            {
+                _currentDb = OpenDb(embedded.Value);
+                return;
+            }
+
+            // As a last resort, try any local database we may already have.
+            if (ExistingDBs().TryGetFirst(out var fallback))
+            {
+                _currentDb = OpenDb(fallback);
+                return;
+            }
+
+            _logger.LogError("Remote hash-database updates are disabled and no local or embedded database is available; game hashes functionality will be unavailable");
+            return;
+        }
+
         var existingDatabases = ExistingDBs().ToArray();
         var shouldCheckForUpdate = forceUpdate || existingDatabases.Length == 0 || ShouldCheckForUpdate();
 

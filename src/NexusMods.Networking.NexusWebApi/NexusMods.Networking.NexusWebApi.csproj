@@ -23,25 +23,16 @@
         <ProjectReference Include="..\NexusMods.Networking.ModUpdates\NexusMods.Networking.ModUpdates.csproj" />
     </ItemGroup>
 
-    <PropertyGroup>
-        <GamesJsonInput>https://data.nexusmods.com/file/nexus-data/games.json</GamesJsonInput>
-        <GamesJsonOutput>$(BaseIntermediateOutputPath)games.json</GamesJsonOutput>
-    </PropertyGroup>
-
-    <!-- NOTE(erri120): Downloading the games.json file at build time if it doesn't exist -->
-    <Target Name="DownloadGamesJson" BeforeTargets="BeforeBuild" Condition="!Exists('$(GamesJsonOutput)')">
-        <MakeDir Directories="$(BaseIntermediateOutputPath)" />
-        <Exec Condition="'$(OS)' != 'Windows_NT'" Command="curl -sSL -o $(GamesJsonOutput) $(GamesJsonInput)"  />
-        <Exec Condition="'$(OS)' == 'Windows_NT'" Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Invoke-WebRequest -Uri '$(GamesJsonInput)' -OutFile '$(GamesJsonOutput)'&quot;" />
-    </Target>
-
-    <Target Name="EmbedOutput" AfterTargets="DownloadGamesJson">
-        <Error Condition="!Exists('$(GamesJsonOutput)')" Text="Failed to embed file $(GamesJsonOutput)" />
-
-        <ItemGroup>
-            <EmbeddedResource Include="$(GamesJsonOutput)" LogicalName="games.json" />
-        </ItemGroup>
-    </Target>
+    <!--
+      Linux fork: games.json is vendored into the repo at Assets/games.json and embedded directly,
+      rather than downloaded from data.nexusmods.com at build time. This severs the build-time
+      dependency on Nexus infrastructure so clean builds work fully offline.
+      To refresh the snapshot, re-download from
+      https://data.nexusmods.com/file/nexus-data/games.json into Assets/games.json and commit it.
+    -->
+    <ItemGroup>
+        <EmbeddedResource Include="Assets/games.json" LogicalName="games.json" />
+    </ItemGroup>
 
     <ItemGroup>
       <Compile Update="V1Interop\GameMetadata.cs">

@@ -15,6 +15,20 @@ public record FileHashesServiceSettings : ISettings
     public ConfigurablePath HashDatabaseLocation { get; init; }
     
     /// <summary>
+    /// When <c>true</c>, the service polls a remote feed (<see cref="GithubManifestUrl"/> /
+    /// <see cref="GameHashesDbUrl"/>) for an updated hashes database at runtime.
+    /// </summary>
+    /// <remarks>
+    /// Linux fork: disabled by default. The upstream feed (github.com/Nexus-Mods/game-hashes) is
+    /// frozen and unmaintained, so polling it only produces error-log noise and never yields
+    /// updates. With this off, the app relies solely on the local database or the embedded
+    /// snapshot shipped with the build, and makes zero calls to Nexus infrastructure at runtime.
+    /// TODO(linux-fork): re-enable and repoint <see cref="GithubManifestUrl"/> /
+    /// <see cref="GameHashesDbUrl"/> at the fork's own hash pipeline once it is live.
+    /// </remarks>
+    public bool EnableRemoteUpdates { get; init; } = false;
+
+    /// <summary>
     /// Only checks GitHub for updates this often, in order to avoid API rate limits.
     /// </summary>
     public TimeSpan HashDatabaseUpdateInterval { get; init; } = TimeSpan.FromMinutes(30);
