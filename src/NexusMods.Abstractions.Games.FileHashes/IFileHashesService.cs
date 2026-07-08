@@ -1,11 +1,15 @@
 using DynamicData.Kernel;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.Games.FileHashes.Models;
+using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.NexusModsApi;
+using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
 namespace NexusMods.Abstractions.Games.FileHashes;
 
@@ -59,6 +63,34 @@ public interface IFileHashesService
     /// Suggest version data for a given game installation and files.
     /// </summary>
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files);
+
+    /// <summary>
+    /// Records a locally-recognised Steam game version in the writable local overlay database, so that
+    /// subsequent lookups (<see cref="GetGameFiles"/>, version resolution) recognise an installed game
+    /// whose version is not present in the shipped/embedded hash database.
+    /// </summary>
+    /// <remarks>
+    /// Linux fork: this is the write side of the login-free, download-free local recognition pipeline.
+    /// The overlay is unioned into all read paths, and the shipped database remains read-only. Only files
+    /// whose contents were verified against the Steam depot manifest (SHA1 match) should be passed here.
+    /// </remarks>
+    /// <param name="appId">The Steam app id the manifest belongs to.</param>
+    /// <param name="depotId">The Steam depot id of the manifest.</param>
+    /// <param name="manifestId">The Steam manifest id; this is the locator id the synchronizer matches against.</param>
+    /// <param name="versionName">A human-friendly version name (used for the manifest branch and the version definition).</param>
+    /// <param name="gameId">When provided, a <see cref="VersionDefinition"/> for this game is also written and anchored to the manifest.</param>
+    /// <param name="operatingSystem">The operating system the version definition applies to.</param>
+    /// <param name="verifiedFiles">The verified-vanilla files (relative path + full hash set) to record.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task AddLocalSteamVersionAsync(
+        AppId appId,
+        DepotId depotId,
+        ManifestId manifestId,
+        string versionName,
+        NexusModsGameId? gameId,
+        OperatingSystem operatingSystem,
+        IReadOnlyList<(RelativePath Path, MultiHash Hash)> verifiedFiles,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

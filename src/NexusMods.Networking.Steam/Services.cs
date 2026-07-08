@@ -14,6 +14,10 @@ public static class Services
     public static IServiceCollection AddSteam(this IServiceCollection services)
     {
         services.AddSingleton<ISteamSession, Session>();
+        // Linux fork: login-free local recognition helpers (read on-disk depot manifests + hash the
+        // installed game files) used by the `steam local-index` verb and future in-app recognition.
+        services.AddSingleton<Local.LocalManifestReader>();
+        services.AddSingleton<Local.LocalFileHasher>();
         return services;
     }
     

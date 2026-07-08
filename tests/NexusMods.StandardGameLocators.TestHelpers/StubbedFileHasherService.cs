@@ -215,4 +215,19 @@ public class StubbedFileHasherService : IFileHashesService
             .Select(t => t.VersionData)
             .FirstOrOptional(_ => true);
     }
+
+    public Task AddLocalSteamVersionAsync(
+        NexusMods.Abstractions.Steam.Values.AppId appId,
+        NexusMods.Abstractions.Steam.Values.DepotId depotId,
+        NexusMods.Abstractions.Steam.Values.ManifestId manifestId,
+        string versionName,
+        NexusModsGameId? gameId,
+        NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem operatingSystem,
+        IReadOnlyList<(RelativePath Path, MultiHash Hash)> verifiedFiles,
+        CancellationToken cancellationToken = default)
+    {
+        // The stub does not maintain a writable overlay; local recognition is exercised by integration
+        // tests against the real FileHashesService instead.
+        return Task.CompletedTask;
+    }
 }

@@ -19,11 +19,13 @@ using NexusMods.MnemonicDB.Storage.RocksDbBackend;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.NexusModsApi;
 using BuildId = NexusMods.Abstractions.GOG.Values.BuildId;
 using Connection = NexusMods.MnemonicDB.Connection;
+using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
 namespace NexusMods.Games.FileHashes;
 
@@ -45,10 +47,20 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// </summary>
     private ConnectedDb? _currentDb;
 
+    /// <summary>
+    /// Linux fork: a writable overlay database holding locally-recognised game versions. It is kept
+    /// separate from the read-only shipped/embedded database and unioned into every read path. New
+    /// versions are written here by <see cref="AddLocalSteamVersionAsync"/> (login-free local
+    /// recognition). Reads always observe the latest committed state via <see cref="Connection.Db"/>.
+    /// </summary>
+    private OverlayDb? _overlayDb;
+
     private readonly ILogger<FileHashesService> _logger;
     private readonly IQueryEngine _queryEngine;
 
     private record ConnectedDb(IDb Db, DatomStore Store, Backend Backend, DatabaseInfo DatabaseInfo);
+
+    private sealed record OverlayDb(Connection Connection, DatomStore Store, Backend Backend);
 
     public FileHashesService(
         ILogger<FileHashesService> logger,
@@ -99,6 +111,47 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
     }
 
+    /// <summary>
+    /// Linux fork: opens (or reuses) the writable local overlay database. Unlike the shipped database
+    /// this is opened read-write so locally-recognised versions can be appended to it, and it persists
+    /// across runs at <c>{HashDatabaseLocation}/local-overlay</c>. It uses the same prefix and query
+    /// engine as the read-only databases so the FileHashes model attributes align.
+    /// </summary>
+    private OverlayDb EnsureOverlayOpen()
+    {
+        if (_overlayDb is not null)
+            return _overlayDb;
+
+        var overlayPath = _hashDatabaseLocation / "local-overlay";
+        overlayPath.CreateDirectory();
+
+        _logger.LogInformation("Opening writable local hash overlay at {Path}", overlayPath);
+        var backend = new Backend();
+        var settings = new DatomStoreSettings
+        {
+            Path = overlayPath,
+        };
+        var store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
+        var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], prefix: "hashes", queryEngine: _queryEngine);
+
+        _overlayDb = new OverlayDb(connection, store, backend);
+        return _overlayDb;
+    }
+
+    /// <summary>
+    /// Linux fork: the set of databases that read paths query, in priority order. The shipped/embedded
+    /// database is queried first, then the writable local overlay (if opened). Each returned <see cref="IDb"/>
+    /// is a self-contained snapshot; entity ids are only valid within their own database, so callers must
+    /// keep cross-entity matching within a single db.
+    /// </summary>
+    private IEnumerable<IDb> ReadDbs()
+    {
+        if (_currentDb is not null)
+            yield return _currentDb.Db;
+        if (_overlayDb is not null)
+            yield return _overlayDb.Connection.Db;
+    }
+
     private record struct DatabaseInfo(AbsolutePath Path, DateTimeOffset CreationTime);
 
     private IEnumerable<DatabaseInfo> ExistingDBs()
@@ -134,7 +187,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     private List<VersionDefinition.ReadOnly> GetVersionDefinitions(NexusModsGameId nexusModsGameId)
     {
-        return VersionDefinition.All(Current)
+        // Linux fork: union the shipped database with the writable local overlay.
+        return ReadDbs()
+            .SelectMany(db => VersionDefinition.All(db))
             .Where(v => v.GameId == nexusModsGameId)
             .ToList();
     }
@@ -353,61 +408,18 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
 
+        // Linux fork: results are unioned across the shipped database and the writable local overlay.
+        // For per-id stores (Steam/EGS) each locator id is resolved in the first database that contains
+        // it (shipped preferred), which avoids yielding the same file twice when both databases know a
+        // version. GOG resolution is stateful (collects builds/products across ids), so it is run once
+        // per database; the overlay currently only ever holds Steam data, so it contributes nothing there.
         if (gameStore == GameStore.GOG)
         {
-            HashSet<GogBuild.ReadOnly> gogBuilds = [];
-            HashSet<ProductId> gogProducts = [];
-            Dictionary<EntityId, GogManifest.ReadOnly> gogManifests = [];
-            
-            // So first we find all the valid build Ids, and then assume that everything else is a product Id
-            foreach (var id in locatorIds)
+            foreach (var db in ReadDbs())
             {
-                if (!ulong.TryParse(id.Value, out var parsedId))
-                    continue;
-
-                var gogId = BuildId.From(parsedId);
-
-                if (GogBuild.FindByBuildId(Current, gogId).TryGetFirst(out var firstBuild))
-                {
-                    gogBuilds.Add(firstBuild);
-                    continue;
-                }
-                
-                var productId = ProductId.From(parsedId);
-                gogProducts.Add(productId);
+                foreach (var record in GetGogGameFiles(db, locatorIds))
+                    yield return record;
             }
-            
-            // Now we emit all the files from the build products, and then also from any secondary products
-            foreach (var build in gogBuilds)
-            {
-                foreach (var depot in build.Depots)
-                {
-                    // We only care about the productId of the build, and the productIds of the secondary products
-                    if (!(depot.ProductId == build.ProductId || gogProducts.Contains(depot.ProductId)))
-                        continue;
-                    
-                    // If there is a language setting for the files, they have to be the same as the default language
-                    if (!(depot.Languages.Count == 0 || depot.Languages.Contains(DefaultLanguage)))
-                        continue;
-
-                    gogManifests[depot.Manifest.Id] = depot.Manifest;
-                }
-            }
-
-            foreach (var (_ , manifest) in gogManifests)
-            {
-                foreach (var file in manifest.Files)
-                {
-                    yield return new GameFileRecord
-                    {
-                        Path = (LocationId.Game, file.Path),
-                        Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
-                    };
-                }
-            }
-            
         }
         else if (gameStore == GameStore.Steam)
         {
@@ -415,51 +427,124 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             {
                 if (!ulong.TryParse(id.Value, out var parsedId))
                     continue;
-                
+
                 var manifestId = ManifestId.From(parsedId);
 
-                if (!SteamManifest.FindByManifestId(Current, manifestId).TryGetFirst(out var firstManifest))
-                    continue;
-
-                foreach (var file in firstManifest.Files)
+                foreach (var db in ReadDbs())
                 {
-                    yield return new GameFileRecord
+                    if (!SteamManifest.FindByManifestId(db, manifestId).TryGetFirst(out var firstManifest))
+                        continue;
+
+                    foreach (var file in firstManifest.Files)
                     {
-                        Path = (LocationId.Game, file.Path),
-                        Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
-                    };
+                        yield return new GameFileRecord
+                        {
+                            Path = (LocationId.Game, file.Path),
+                            Size = file.Hash.Size,
+                            MinimalHash = file.Hash.MinimalHash,
+                            Hash = file.Hash.XxHash3,
+                        };
+                    }
+
+                    // Resolved in this database; don't duplicate from lower-priority databases.
+                    break;
                 }
             }
         }
         else if (gameStore == GameStore.EGS)
         {
-            foreach (var manifestId in locatorIds)
+            foreach (var locatorId in locatorIds)
             {
-                var egManifestId = ManifestHash.FromUnsanitized(manifestId.Value);
-                
-                if (!EpicGameStoreBuild.FindByManifestHash(Current, egManifestId).TryGetFirst(out var firstManifest))
+                var egManifestId = ManifestHash.FromUnsanitized(locatorId.Value);
+
+                var found = false;
+                foreach (var db in ReadDbs())
                 {
-                    _logger.LogWarning("No EGS manifest found for {ManifestId}", egManifestId.Value);
-                    continue;
-                }
-                
-                foreach (var file in firstManifest.Files)
-                {
-                    yield return new GameFileRecord
+                    if (!EpicGameStoreBuild.FindByManifestHash(db, egManifestId).TryGetFirst(out var firstManifest))
+                        continue;
+
+                    found = true;
+                    foreach (var file in firstManifest.Files)
                     {
-                        Path = (LocationId.Game, file.Path),
-                        Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
-                    };
+                        yield return new GameFileRecord
+                        {
+                            Path = (LocationId.Game, file.Path),
+                            Size = file.Hash.Size,
+                            MinimalHash = file.Hash.MinimalHash,
+                            Hash = file.Hash.XxHash3,
+                        };
+                    }
+
+                    break;
                 }
+
+                if (!found)
+                    _logger.LogWarning("No EGS manifest found for {ManifestId}", egManifestId.Value);
             }
         }
         else
         {
             throw new NotSupportedException("No way to get game files for: " + gameStore);
+        }
+    }
+
+    /// <summary>
+    /// GOG file resolution for a single database. Extracted so it can be run against both the shipped
+    /// database and the local overlay (see <see cref="GetGameFiles"/>).
+    /// </summary>
+    private IEnumerable<GameFileRecord> GetGogGameFiles(IDb db, IEnumerable<LocatorId> locatorIds)
+    {
+        HashSet<GogBuild.ReadOnly> gogBuilds = [];
+        HashSet<ProductId> gogProducts = [];
+        Dictionary<EntityId, GogManifest.ReadOnly> gogManifests = [];
+
+        // So first we find all the valid build Ids, and then assume that everything else is a product Id
+        foreach (var id in locatorIds)
+        {
+            if (!ulong.TryParse(id.Value, out var parsedId))
+                continue;
+
+            var gogId = BuildId.From(parsedId);
+
+            if (GogBuild.FindByBuildId(db, gogId).TryGetFirst(out var firstBuild))
+            {
+                gogBuilds.Add(firstBuild);
+                continue;
+            }
+
+            var productId = ProductId.From(parsedId);
+            gogProducts.Add(productId);
+        }
+
+        // Now we emit all the files from the build products, and then also from any secondary products
+        foreach (var build in gogBuilds)
+        {
+            foreach (var depot in build.Depots)
+            {
+                // We only care about the productId of the build, and the productIds of the secondary products
+                if (!(depot.ProductId == build.ProductId || gogProducts.Contains(depot.ProductId)))
+                    continue;
+
+                // If there is a language setting for the files, they have to be the same as the default language
+                if (!(depot.Languages.Count == 0 || depot.Languages.Contains(DefaultLanguage)))
+                    continue;
+
+                gogManifests[depot.Manifest.Id] = depot.Manifest;
+            }
+        }
+
+        foreach (var (_, manifest) in gogManifests)
+        {
+            foreach (var file in manifest.Files)
+            {
+                yield return new GameFileRecord
+                {
+                    Path = (LocationId.Game, file.Path),
+                    Size = file.Hash.Size,
+                    MinimalHash = file.Hash.MinimalHash,
+                    Hash = file.Hash.XxHash3,
+                };
+            }
         }
     }
 
@@ -483,9 +568,37 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         LocatorIdsWithGameStore locatorIdsWithGameStore,
         out VersionDefinition.ReadOnly versionDefinition)
     {
+        // Linux fork: evaluate the shipped database and the writable local overlay, keeping the best
+        // match. Version<->manifest/build matching relies on entity ids that are only valid within a
+        // single database, so each database is evaluated independently and the highest-scoring match
+        // wins (the shipped database is preferred on ties because it is enumerated first).
+        versionDefinition = default(VersionDefinition.ReadOnly);
+        var found = false;
+        var bestScore = int.MinValue;
+
+        foreach (var db in ReadDbs())
+        {
+            if (TryGetGameVersionDefinitionInDb(db, locatorIdsWithGameStore, out var candidate, out var score) && score > bestScore)
+            {
+                versionDefinition = candidate;
+                bestScore = score;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    private bool TryGetGameVersionDefinitionInDb(
+        IDb db,
+        LocatorIdsWithGameStore locatorIdsWithGameStore,
+        out VersionDefinition.ReadOnly versionDefinition,
+        out int score)
+    {
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
 
         versionDefinition = default(VersionDefinition.ReadOnly);
+        score = 0;
         if (gameStore == GameStore.GOG)
         {
             List<GogBuild.ReadOnly> gogBuilds = [];
@@ -498,7 +611,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return false;
                 }
 
-                var hasBuild = GogBuild.FindByBuildId(Current, BuildId.From(parsedId)).TryGetFirst(out var gogBuild);
+                var hasBuild = GogBuild.FindByBuildId(db, BuildId.From(parsedId)).TryGetFirst(out var gogBuild);
                 if (hasBuild) gogBuilds.Add(gogBuild);
             }
 
@@ -508,7 +621,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
 
-            var hasVersionDefinition = VersionDefinition.All(_currentDb!.Db)
+            var hasVersionDefinition = VersionDefinition.All(db)
                 .Select(version =>
                 {
                     var matchingIdCount = gogBuilds.Count(g => version.GogBuildsIds.Contains(g));
@@ -516,14 +629,16 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 })
                 .Where(row => row.matchingIdCount > 0)
                 .OrderByDescending(row => row.matchingIdCount)
-                .Select(t => t.version)
-                .TryGetFirst(out versionDefinition);
+                .TryGetFirst(out var best);
 
             if (!hasVersionDefinition)
             {
                 _logger.LogDebug("No matching version definition found");
                 return false;
             }
+
+            versionDefinition = best.version;
+            score = best.matchingIdCount;
         }
         else if (gameStore == GameStore.Steam)
         {
@@ -537,7 +652,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                     return false;
                 }
 
-                var hasManifest = SteamManifest.FindByManifestId(Current, ManifestId.From(parsedId)).TryGetFirst(out var steamManifest);
+                var hasManifest = SteamManifest.FindByManifestId(db, ManifestId.From(parsedId)).TryGetFirst(out var steamManifest);
                 if (hasManifest) steamManifests.Add(steamManifest);
             }
 
@@ -547,7 +662,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
             
-            var wasFound = VersionDefinition.All(_currentDb!.Db)
+            var wasFound = VersionDefinition.All(db)
                 .Select(version =>
                 {
                     var matchingIdCount = steamManifests.Count(g => version.SteamManifestsIds.Contains(g));
@@ -555,18 +670,20 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 })
                 .Where(row => row.matchingIdCount > 0)
                 .OrderByDescending(row => row.matchingIdCount)
-                .Select(t => t.version)
-                .TryGetFirst(out versionDefinition);
+                .TryGetFirst(out var best);
 
             if (!wasFound)
             {
                 _logger.LogDebug("No version found for locator metadata");
                 return false;
             }
+
+            versionDefinition = best.version;
+            score = best.matchingIdCount;
         }
         else if (gameStore == GameStore.EGS)
         {
-            var versionsByManifestHash = VersionDefinition.All(_currentDb!.Db)
+            var versionsByManifestHash = VersionDefinition.All(db)
                 .SelectMany(version =>
                     {
                         if (VersionDefinition.EpicGameStoreBuildsIds.IsIn(version)) 
@@ -583,6 +700,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             if (builds.TryGetFirst(out var build))
             {
                 versionDefinition = build.Version;
+                score = 1;
                 return true;
             }
 
@@ -600,14 +718,19 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc />
     public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] commonIds)
     {
-        if (!VersionDefinition.FindByName(Current, version.Value).TryGetFirst(out var versionDef))
+        // Linux fork: search the shipped database first, then the writable local overlay. The returned
+        // version definition is navigated within its own database, so resolving locator ids stays valid.
+        foreach (var db in ReadDbs())
         {
-            commonIds = [];
-            return false;
+            if (VersionDefinition.FindByName(db, version.Value).TryGetFirst(out var versionDef))
+            {
+                commonIds = GetLocatorIdsForVersionDefinition(gameStore, versionDef);
+                return true;
+            }
         }
 
-        commonIds = GetLocatorIdsForVersionDefinition(gameStore, versionDef);
-        return true;
+        commonIds = [];
+        return false;
     }
 
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition)
@@ -652,6 +775,76 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             .FirstOrOptional(_ => true);
     }
 
+    /// <inheritdoc />
+    public async Task AddLocalSteamVersionAsync(
+        AppId appId,
+        DepotId depotId,
+        ManifestId manifestId,
+        string versionName,
+        NexusModsGameId? gameId,
+        OperatingSystem operatingSystem,
+        IReadOnlyList<(RelativePath Path, MultiHash Hash)> verifiedFiles,
+        CancellationToken cancellationToken = default)
+    {
+        using var _ = await _lock.LockAsync();
+
+        var overlay = EnsureOverlayOpen();
+        using var tx = overlay.Connection.BeginTransaction();
+
+        // Each verified file becomes a self-contained hash relation + path relation in the overlay, so
+        // the overlay does not depend on entity ids from the shipped database.
+        var pathIds = new List<EntityId>(verifiedFiles.Count);
+        foreach (var (path, hash) in verifiedFiles)
+        {
+            var hashRelation = new HashRelation.New(tx)
+            {
+                XxHash3 = hash.XxHash3,
+                XxHash64 = hash.XxHash64,
+                MinimalHash = hash.MinimalHash,
+                Md5 = hash.Md5,
+                Sha1 = hash.Sha1,
+                Crc32 = hash.Crc32,
+                Size = hash.Size,
+            };
+
+            var pathRelation = new PathHashRelation.New(tx)
+            {
+                Path = path,
+                HashId = hashRelation,
+            };
+            pathIds.Add(pathRelation.Id);
+        }
+
+        var manifest = new SteamManifest.New(tx)
+        {
+            AppId = appId,
+            DepotId = depotId,
+            ManifestId = manifestId,
+            Name = versionName,
+            FilesIds = pathIds,
+        };
+
+        if (gameId.HasValue)
+        {
+            var versionDefinition = new VersionDefinition.New(tx)
+            {
+                Name = versionName,
+                OperatingSystem = operatingSystem,
+                GameId = gameId.Value,
+                GOG = [],
+                Steam = [manifestId.Value.ToString()],
+                EpicBuildIds = [],
+            };
+            tx.Add(versionDefinition, VersionDefinition.SteamManifestsIds, manifest.Id);
+        }
+
+        await tx.Commit();
+
+        _logger.LogInformation(
+            "Recorded local Steam version '{Version}' (app {AppId}, depot {DepotId}, manifest {ManifestId}) with {FileCount} verified files into the local hash overlay",
+            versionName, appId.Value, depotId.Value, manifestId.Value, pathIds.Count);
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
@@ -659,6 +852,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         {
             connection.Backend.Dispose();
             connection.Store.Dispose();
+        }
+
+        if (_overlayDb is not null)
+        {
+            _overlayDb.Store.Dispose();
+            _overlayDb.Backend.Dispose();
+            _overlayDb = null;
         }
     }
 
@@ -687,6 +887,17 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
 
         await CheckForUpdateCore(forceUpdate: forceUpdate, cancellationToken);
+
+        // Linux fork: open the writable local overlay so locally-recognised versions are unioned into
+        // read paths. Failure to open it must not prevent the shipped database from being used.
+        try
+        {
+            EnsureOverlayOpen();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to open the writable local hash overlay; locally-recognised versions will be unavailable this session");
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
