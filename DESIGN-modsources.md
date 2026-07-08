@@ -364,3 +364,22 @@ Order matters: A is verifiable headless immediately; B/C/D each land on a proven
    the fork-wide rename is a re-branding decision, not a Phase 1 one).
 5. **Design approved; PR A (plumbing) green-lit** — purely additive, behind tests, on
    branch `feature/thunderstore-source`.
+
+## 15. Cross-source games and mods (Brian, 2026-07-08 — design principle for Phase 1.5+)
+
+Many games exist on BOTH Nexus Mods and Thunderstore (RoR2, Valheim, Lethal Company…), and
+the storefronts genuinely diverge: a mod may exist on only one of them, or exist on both with
+different versions/update cadences. Standing requirements this creates:
+
+1. **Mods from multiple sources must coexist in one loadout** — structurally already true
+   (any library item installs through the game's installers into the same loadout, whatever
+   its source). PR D's pilot must NOT accidentally break this: RoR2 keeps its
+   `NexusModsGameId` so nxm downloads keep working beside Thunderstore packages.
+2. **Per-game discovery should acknowledge both storefronts** — e.g. the Library page's
+   empty-state/"get mods" CTAs for a game with a Thunderstore community should offer both
+   sites, not just Nexus.
+3. **Cross-source mod identity is explicitly OUT of scope for now** — recognizing that a
+   Nexus mod page and a Thunderstore package are "the same mod" has no shared ID and would
+   need fuzzy name/author matching. Revisit only when update checking (Phase 1.5) is real;
+   then "newest version" could optionally consider both sources for dual-published mods.
+   Until then: a mod's identity is (source, source-native id) — never merged.
