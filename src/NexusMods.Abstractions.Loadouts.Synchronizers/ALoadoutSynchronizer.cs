@@ -37,13 +37,13 @@ using DiskState = Entities<DiskStateEntry.ReadOnly>;
 public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 {
     /// <summary>
-    /// Threshold beyond which the new-file backup for a sync batch is skipped entirely.
-    /// When the game version is unknown to the file-hashes DB, every game file is treated as
-    /// modified and would be backed up in full; rather than failing the operation, we silently
-    /// skip the oversized backup and let the sync proceed (see <see cref="ActionBackupNewFiles"/>).
+    /// Cap on the new-file backup for a sync batch. When the game version is unknown to the
+    /// file-hashes DB, every game file is treated as modified and would be backed up in full;
+    /// rather than failing the operation, we back up the smallest files up to this cap and
+    /// skip the rest, letting the sync proceed (see <see cref="ActionBackupNewFiles"/>).
     /// Files skipped this way are not restorable by the app (e.g. "remove all mods" / undo for
-    /// overwritten game files); for Steam titles this is recoverable via "Verify integrity of
-    /// game files".
+    /// overwritten game files) — pure deletions of such files are downgraded to leaving them
+    /// on disk; for Steam titles the content is recoverable via "Verify integrity of game files".
     /// </summary>
     private static Size MaximumBackupSize => Size.GB * 5;
     
@@ -1158,8 +1158,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         // TODO: This may be slow for very large games when other games/mods already exist.
         // Backup the files that are new or changed
-        var archivedFiles = new ConcurrentBag<ArchivedFileEntry>();
-        var pinnedFileHashes = new ConcurrentBag<Hash>();
+        var backupCandidates = new ConcurrentBag<(GamePath GamePath, ArchivedFileEntry Entry)>();
         await Parallel.ForEachAsync(files, async (item, _) =>
             {
                 var (gamePath, node) = item;
@@ -1168,10 +1167,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
                 var path = installation.Locations.ToAbsolutePath(gamePath);
                 Debug.Assert(node.HaveDisk, "Node must have a disk entry to backup");
-                
+
                 if (await _fileStore.HaveFile(node.Disk.Hash))
                     return;
-                
+
                 var archivedFile = new ArchivedFileEntry
                 {
                     Size = node.Disk.Size,
@@ -1179,40 +1178,79 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     StreamFactory = new NativeFileStreamFactory(path),
                 };
 
-                archivedFiles.Add(archivedFile);
-                
-                // TODO: We should only pin game files, not override files as well.
-                // This check does not work as intended because the winning files is going to be a Loadout one, not a game one.
-                // if (node.SourceItemType == LoadoutSourceItemType.Game)
-                pinnedFileHashes.Add(archivedFile.Hash);
+                backupCandidates.Add((gamePath, archivedFile));
             }
         );
 
-        var totalSize = archivedFiles.Sum(static x => x.Size);
+        var toBackup = backupCandidates.ToList();
+        var totalSize = toBackup.Sum(static x => x.Entry.Size);
         if (totalSize > MaximumBackupSize)
         {
-            // Backing up this batch would exceed the safety cap. Rather than failing the
-            // operation (which would block loadout creation / sync), silently skip the backup
-            // and continue. The common trigger is an unknown game version (frozen file-hashes
-            // DB) where every game file gets flagged for backup and the data is Steam-restorable
-            // anyway. Skipped files are not restorable by the app; that tradeoff is accepted.
-            // We skip the file copy and the GameBackedUpFile pins together: the pins only exist
-            // to protect backed-up archives from GC, so pinning nothing is the consistent choice.
-            Logger.LogInformation(
-                "Skipping backup of {FileCount} files ({TotalSize}); exceeds maximum backup size of {MaximumSize}. Sync will continue; these files will not be restorable by the app",
-                archivedFiles.Count,
+            // The batch exceeds the safety cap. Rather than failing the operation (which would
+            // block loadout creation / sync), back up as much as fits — smallest files first, so
+            // small genuinely-modified files (configs, edited inis) stay protected — and skip the
+            // rest. The common trigger is an unknown game version (frozen file-hashes DB) where
+            // every game file gets flagged for backup and the data is Steam-restorable anyway.
+            toBackup.Sort(static (a, b) => a.Entry.Size.CompareTo(b.Entry.Size));
+            var cumulative = Size.Zero;
+            var cutoff = 0;
+            foreach (var candidate in toBackup)
+            {
+                var next = cumulative + candidate.Entry.Size;
+                if (next > MaximumBackupSize)
+                    break;
+                cumulative = next;
+                cutoff++;
+            }
+
+            var skipped = toBackup.GetRange(cutoff, toBackup.Count - cutoff);
+            toBackup.RemoveRange(cutoff, toBackup.Count - cutoff);
+
+            // A skipped file was neither previously archived nor backed up now, so the app can
+            // never restore it. Downgrade pure deletions (DeleteFromDisk without a replacement
+            // being extracted) to "leave on disk": without this, deactivating/unmanaging an
+            // unknown-version game would delete the entire game folder unrecoverably. Files that
+            // are overwritten by an extract proceed as normal — losing their original content is
+            // the accepted tradeoff of skipping the oversized backup.
+            var backedUpHashes = toBackup.Select(static x => x.Entry.Hash).ToHashSet();
+            var preservedCount = 0;
+            foreach (var (gamePath, entry) in skipped)
+            {
+                if (backedUpHashes.Contains(entry.Hash))
+                    continue;
+
+                var node = files[gamePath];
+                if (node.Actions.HasFlag(Actions.DeleteFromDisk) && !node.Actions.HasFlag(Actions.ExtractToDisk))
+                {
+                    node.Actions &= ~Actions.DeleteFromDisk;
+                    files[gamePath] = node;
+                    preservedCount++;
+                }
+            }
+
+            Logger.LogWarning(
+                "Backup batch is {TotalSize}, over the {MaximumSize} cap: backed up the {BackedUpCount} smallest files ({BackedUpSize}), skipped {SkippedCount}. {PreservedCount} unrestorable files scheduled for deletion were left on disk instead",
                 totalSize,
-                MaximumBackupSize
+                MaximumBackupSize,
+                toBackup.Count,
+                cumulative,
+                skipped.Count,
+                preservedCount
             );
-            return;
         }
-        
+
+        if (toBackup.Count == 0)
+            return;
+
         // PERFORMANCE: We deduplicate above with the HaveFile call.
-        await _fileStore.BackupFiles(archivedFiles, deduplicate: false);
+        await _fileStore.BackupFiles(toBackup.Select(static x => x.Entry), deduplicate: false);
 
         // Pin the files to avoid garbage collection.
+        // TODO: We should only pin game files, not override files as well.
+        // This check does not work as intended because the winning files is going to be a Loadout one, not a game one.
+        // if (node.SourceItemType == LoadoutSourceItemType.Game)
         using var tx = Connection.BeginTransaction();
-        foreach (var hash in pinnedFileHashes)
+        foreach (var hash in toBackup.Select(static x => x.Entry.Hash).Distinct())
         {
             _ = new GameBackedUpFile.New(tx)
             {

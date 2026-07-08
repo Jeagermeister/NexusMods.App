@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Steam.DTOs;
 using NexusMods.Paths;
@@ -35,6 +36,9 @@ public sealed record ManifestVerificationResult
     /// <summary>Number of manifest files present but whose contents differ from the manifest (modified).</summary>
     public required int MismatchCount { get; init; }
 
+    /// <summary>Number of manifest files that could not be read (permissions, dangling symlinks, I/O errors).</summary>
+    public required int UnreadableCount { get; init; }
+
     /// <summary>Total number of real (non-directory) files in the manifest.</summary>
     public required int TotalFiles { get; init; }
 
@@ -42,7 +46,7 @@ public sealed record ManifestVerificationResult
     public int MatchedCount => VerifiedFiles.Count;
 
     /// <summary>True when every real file in the manifest was found and matched (a pristine vanilla install).</summary>
-    public bool IsFullyVerified => MissingCount == 0 && MismatchCount == 0 && TotalFiles > 0;
+    public bool IsFullyVerified => MissingCount == 0 && MismatchCount == 0 && UnreadableCount == 0 && TotalFiles > 0;
 }
 
 /// <summary>
@@ -58,6 +62,11 @@ public sealed record ManifestVerificationResult
 public class LocalFileHasher
 {
     private readonly ILogger<LocalFileHasher> _logger;
+
+    // Hashing is disk-bound and MultiHasher reads in small chunks, so a large read buffer plus a
+    // few files in flight makes a substantial difference on SSDs without drowning spinning disks.
+    private const int ReadBufferSize = 1 << 20;
+    private static readonly int MaxConcurrentFiles = Math.Min(Environment.ProcessorCount, 8);
 
     public LocalFileHasher(ILogger<LocalFileHasher> logger)
     {
@@ -81,58 +90,109 @@ public class LocalFileHasher
         // Real files only; directory entries in Steam manifests have no chunks.
         var realFiles = manifest.Files.Where(f => f.Chunks.Length > 0).ToArray();
         var totalBytes = realFiles.Aggregate(0UL, (sum, f) => sum + f.Size.Value);
-        var processedBytes = 0UL;
 
-        var verified = new List<VerifiedFile>(capacity: realFiles.Length);
+        var verified = new ConcurrentBag<VerifiedFile>();
         var missing = 0;
         var mismatch = 0;
+        var unreadable = 0;
+        var processedBytes = 0UL;
+        var reportedBytes = 0UL;
+        var progressLock = new object();
 
-        foreach (var file in realFiles)
+        void ReportFileProcessed(ulong fileSize)
         {
-            token.ThrowIfCancellationRequested();
-
-            // Sanitize the manifest path (Windows depots use backslashes) so it resolves on this OS.
-            var relativePath = RelativePath.FromUnsanitizedInput(file.Path.ToString());
-            var filePath = gameDirectory / relativePath;
-
-            if (!filePath.FileExists)
+            var newTotal = Interlocked.Add(ref processedBytes, fileSize);
+            if (progress is null)
+                return;
+            lock (progressLock)
             {
-                missing++;
-                _logger.LogDebug("Manifest file not found on disk: {Path}", relativePath);
-                progress?.Report(totalBytes == 0 ? 0 : (double)(processedBytes += file.Size.Value) / totalBytes);
-                continue;
+                // Completions from parallel files can report out of order; only ever move forward.
+                if (newTotal < reportedBytes)
+                    return;
+                reportedBytes = newTotal;
+                progress.Report(totalBytes == 0 ? 1 : (double)newTotal / totalBytes);
             }
-
-            MultiHash hash;
-            await using (var stream = filePath.Read())
-            {
-                hash = await MultiHasher.HashStream(stream, token);
-            }
-
-            if (!hash.Sha1.Equals(file.Hash))
-            {
-                mismatch++;
-                _logger.LogDebug("SHA1 mismatch (modified file), skipping: {Path}", relativePath);
-            }
-            else
-            {
-                verified.Add(new VerifiedFile { Path = relativePath, Hash = hash });
-            }
-
-            processedBytes += file.Size.Value;
-            progress?.Report(totalBytes == 0 ? 1 : (double)processedBytes / totalBytes);
         }
 
+        await Parallel.ForEachAsync(
+            realFiles,
+            new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentFiles, CancellationToken = token },
+            async (file, ct) =>
+            {
+                // Sanitize the manifest path (Windows depots use backslashes) so it resolves on this OS.
+                var relativePath = RelativePath.FromUnsanitizedInput(file.Path.ToString());
+
+                try
+                {
+                    // Manifests are local trusted data, but a path that escapes the game directory
+                    // must never be followed.
+                    var pathString = relativePath.Path;
+                    if (pathString == ".." || pathString.StartsWith("../", StringComparison.Ordinal) || pathString.Contains("/../", StringComparison.Ordinal))
+                    {
+                        Interlocked.Increment(ref unreadable);
+                        _logger.LogWarning("Manifest path escapes the game directory, skipping: {Path}", relativePath);
+                        return;
+                    }
+
+                    var filePath = gameDirectory / relativePath;
+
+                    if (!filePath.FileExists)
+                    {
+                        Interlocked.Increment(ref missing);
+                        _logger.LogDebug("Manifest file not found on disk: {Path}", relativePath);
+                        return;
+                    }
+
+                    // A file whose size differs from the manifest cannot be vanilla; skip hashing
+                    // it entirely. On modded installs this avoids reading most changed content.
+                    if (filePath.FileInfo.Size.Value != file.Size.Value)
+                    {
+                        Interlocked.Increment(ref mismatch);
+                        _logger.LogDebug("Size differs from manifest (modified file), skipping: {Path}", relativePath);
+                        return;
+                    }
+
+                    MultiHash hash;
+                    await using (var stream = filePath.Read())
+                    await using (var buffered = new BufferedStream(stream, ReadBufferSize))
+                    {
+                        hash = await MultiHasher.HashStream(buffered, ct);
+                    }
+
+                    if (!hash.Sha1.Equals(file.Hash))
+                    {
+                        Interlocked.Increment(ref mismatch);
+                        _logger.LogDebug("SHA1 mismatch (modified file), skipping: {Path}", relativePath);
+                    }
+                    else
+                    {
+                        verified.Add(new VerifiedFile { Path = relativePath, Hash = hash });
+                    }
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // One unreadable file (permission-denied leftover, dangling symlink, transient
+                    // I/O error) must not abort the whole recognition run; count it and move on.
+                    Interlocked.Increment(ref unreadable);
+                    _logger.LogWarning(e, "Could not read file, skipping: {Path}", relativePath);
+                }
+                finally
+                {
+                    ReportFileProcessed(file.Size.Value);
+                }
+            });
+
         _logger.LogInformation(
-            "Verified manifest {ManifestId} (depot {DepotId}): {Matched}/{Total} files matched, {Missing} missing, {Mismatch} modified",
-            manifest.ManifestId.Value, manifest.DepotId.Value, verified.Count, realFiles.Length, missing, mismatch);
+            "Verified manifest {ManifestId} (depot {DepotId}): {Matched}/{Total} files matched, {Missing} missing, {Mismatch} modified, {Unreadable} unreadable",
+            manifest.ManifestId.Value, manifest.DepotId.Value, verified.Count, realFiles.Length, missing, mismatch, unreadable);
 
         return new ManifestVerificationResult
         {
             Manifest = manifest,
-            VerifiedFiles = verified,
+            VerifiedFiles = verified.OrderBy(static f => f.Path.Path, StringComparer.Ordinal).ToList(),
             MissingCount = missing,
             MismatchCount = mismatch,
+            UnreadableCount = unreadable,
             TotalFiles = realFiles.Length,
         };
     }

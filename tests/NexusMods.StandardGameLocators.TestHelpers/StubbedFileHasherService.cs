@@ -230,4 +230,14 @@ public class StubbedFileHasherService : IFileHashesService
         // tests against the real FileHashesService instead.
         return Task.CompletedTask;
     }
+
+    public bool TryGetLocalSteamManifestStatus(
+        NexusMods.Abstractions.Steam.Values.ManifestId manifestId,
+        NexusModsGameId? gameId,
+        out bool hasVersionDefinition)
+    {
+        // No writable overlay in the stub, so nothing is ever recorded locally.
+        hasVersionDefinition = false;
+        return false;
+    }
 }

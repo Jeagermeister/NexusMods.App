@@ -612,3 +612,83 @@ existing, already-registered/rendered `ApplyControl` in the loadout footer:
 - Optional: a determinate progress bar (the recognizer already reports `IProgress<double>`; currently only an
   indeterminate spinner is shown).
 - Manual runtime verification of the button on a real unknown-version Steam game.
+
+---
+
+## 15. Session log — 2026-07-08 (Claude Code / Fable 5) — Review-driven hardening pass
+
+> A four-agent adversarial review of the full fork delta (upstream `48284f38c`..`linux-fork`) was run,
+> then the confirmed findings were fixed on branch `fix/review-findings`. Full solution builds with
+> 0 errors; synchronizer (12), DataModel (232), and Steam (11+2 new suites) tests all pass.
+
+### 15.1 CRITICAL — backup skip no longer allows deletion of unrestorable files
+The §6 silent backup skip had a traced data-loss path: manage an unknown-version game >5GB (backup
+skipped) → deactivate/unmanage → desired state is empty (unknown version = no known game files) →
+every file maps to `BackupFile|DeleteFromDisk` → backup skips again but the deletes still ran, wiping
+the whole game folder unrecoverably. `ActionBackupNewFiles` now (a) backs up the **smallest files
+first up to the 5GB cap** (protecting small genuinely-modified configs, an option §6 explicitly
+allowed) instead of all-or-nothing, and (b) **downgrades pure deletions** (DeleteFromDisk without
+ExtractToDisk) of files it could not back up to "leave on disk", by clearing the action flag before
+`ActionDeleteFromDisk` runs. Overwrites (delete+extract) proceed — that loss is the accepted §6
+tradeoff. Log raised to Warning.
+
+### 15.2 Recognition correctness fixes (FileHashesService + recognizer)
+- **Idempotency guard no longer drops the VersionDefinition.** If a manifest was first recorded
+  without a game id (`steam local-index` without `-i`), a later call with a game id now creates the
+  missing definition anchored to the existing manifest instead of silently skipping — previously the
+  UI toasted success while the game stayed "unknown version".
+- **Stale definitions are superseded.** Writing a definition retracts any previous overlay definition
+  with the same GameId+Name, so re-recognition after a game update can't leave name-based lookups
+  (`TryGetLocatorIdsForVanityVersion`, vanity version lists) resolving to stale manifest ids. The old
+  manifest file data stays (still valid hash data).
+- **Newer embedded DB is adopted after an app upgrade.** With `EnableRemoteUpdates=false`, a local DB
+  now only wins over the embedded snapshot if it is at least as new (`ApplicationConstants.BuildDate`);
+  previously a refreshed vendored `game_hashes_db.zip` was never extracted for existing installs.
+  (Debug builds: embedded time is UnixEpoch, so local always wins in dev; `forceUpdate` re-extracts.)
+- **`EnsureOverlayOpen` is now locked** (StartAsync raced writers) and disposes the half-opened
+  store/backend on failure (previously a partial open held the RocksDB LOCK for the session).
+- New query `IFileHashesService.TryGetLocalSteamManifestStatus(manifestId, gameId, out hasDefinition)`
+  lets callers check the overlay without writing. Stub updated.
+
+### 15.3 Recognition robustness + performance (LocalFileHasher / recognizer)
+- **One unreadable file no longer aborts a whole run** (was: 40 min of hashing discarded on a single
+  permission-denied file). Per-file IO errors are caught and counted in the new
+  `ManifestVerificationResult.UnreadableCount`; `IsFullyVerified` accounts for it.
+- **Hashing is now parallel (min(cores,8)) with 1MiB buffered reads** (MultiHasher reads 8KiB chunks),
+  and files whose **on-disk size differs from the manifest are skipped without hashing** — a large win
+  on modded installs. Progress reporting is monotonic under parallelism.
+- **Already-recorded depots skip before hashing, not after** (re-running `recognize-game` on an
+  indexed game is now sub-second instead of a full re-hash; verified live on Stardew). Progress across
+  depots is **byte-weighted** (was depot-count-weighted: a 60GB depot sat at 0% while language depots
+  each counted the same), via a synchronous inline IProgress (Progress<T> posts async and could move
+  the bar backwards).
+- Manifest paths that escape the game directory (`..`) are rejected; CLI ids are range-validated
+  (silent `(uint)` wrap fixed); `recognize-game` exits non-zero when nothing was recorded.
+
+### 15.4 UI fixes (ApplyControl)
+- **`IsVersionUnknown` is now computed in `WhenActivated` after `GetFileHashesDb()`** — previously it
+  was computed in the constructor before the DB loaded, so the button appeared for known games (a
+  lookup on an unloaded DB reports everything unknown), and it was never re-evaluated on activation
+  (stale after CLI/other-loadout recognition).
+- Recognition is cancellable: closing the loadout view cancels the run (CTS wired via WhenActivated).
+- Failures are logged (previously swallowed with only a toast); "Recognise/Recognize" spelling unified.
+
+### 15.5 Build guard
+`NexusMods.Games.FileHashes.csproj` now fails fast (incremental target) if `Assets/game_hashes_db.zip`
+is a git-lfs pointer file instead of the real database — previously a clone without git-lfs built
+fine and died only at runtime. Verified both directions (real zip passes, pointer errors).
+
+### 15.6 New tests
+`LocalFileHasherTests` (6): matched/modified/missing classification + backslash sanitization, size
+pre-check, unreadable-file containment, `..` traversal rejection, monotonic progress ending at 1.0,
+empty manifest. `LocalManifestReaderTests` (+2): suffix near-miss (`999_9123` must not match id 123),
+non-numeric depot prefixes.
+
+### 15.7 Review findings NOT fixed this session (deliberate)
+- Overlay extraction into a `LocalHashOverlay` collaborator (worthwhile refactor; the locking fix
+  landed without it).
+- GOG overlay union has no dedup (harmless until GOG data can be written; revisit with the
+  store-agnostic recognizer).
+- UI strings still not localized; spinner still indeterminate (byte-weighted IProgress now makes a
+  determinate bar easy).
+- `Dispose` vs in-flight readers race (pre-existing upstream flaw, mirrored by the overlay).
