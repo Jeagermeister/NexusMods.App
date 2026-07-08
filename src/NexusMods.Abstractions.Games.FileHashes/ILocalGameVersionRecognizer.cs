@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Jobs;
 
 namespace NexusMods.Abstractions.Games.FileHashes;
 
@@ -53,7 +54,16 @@ public interface ILocalGameVersionRecognizer
     /// <summary>
     /// Recognise the installed version of <paramref name="installation"/> across all of its installed
     /// depots, recording verified files in the local hash overlay. Idempotent: depots already recorded
-    /// are skipped. <paramref name="progress"/> reports the overall fraction (0..1) processed.
+    /// are skipped, and the game's version definition is only written once the whole run has completed,
+    /// so a cancelled run never marks the version known while depots are still unrecorded (re-running
+    /// resumes cheaply). <paramref name="progress"/> reports the overall fraction (0..1) processed.
     /// </summary>
     Task<LocalRecognitionResult> RecognizeAsync(GameInstallation installation, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Run <see cref="RecognizeAsync"/> as a <see cref="RecognizeGameVersionJob"/> via the job monitor:
+    /// the run survives UI navigation, reports progress through the job, and a second call for the same
+    /// installation while one is running returns the in-flight job instead of starting a duplicate.
+    /// </summary>
+    IJobTask<RecognizeGameVersionJob, LocalRecognitionResult> RecognizeInBackground(GameInstallation installation);
 }
