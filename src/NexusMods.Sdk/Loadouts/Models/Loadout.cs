@@ -4,6 +4,7 @@ using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Sdk.Library;
+using NexusMods.Sdk.NexusModsApi;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
 using NexusMods.Sdk.Games;
@@ -75,8 +76,14 @@ public partial class Loadout : IModelDefinition
             get
             {
                 var gameId = Installation.GameId;
-                var games = Db.Connection.ServiceProvider.GetServices<IGameData>();
-                return games.First(game => game.NexusModsGameId == gameId);
+                var games = Db.Connection.ServiceProvider.GetServices<IGameData>().ToArray();
+                if (gameId != default(NexusModsGameId))
+                    return games.First(game => game.NexusModsGameId == gameId);
+
+                // Zero sentinel: games without a Nexus Mods id (e.g. Thunderstore-only games)
+                // are resolved by the metadata's display name instead.
+                var name = Installation.Name;
+                return games.First(game => !game.NexusModsGameId.HasValue && game.DisplayName == name);
             }
         }
 

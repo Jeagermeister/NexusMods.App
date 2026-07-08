@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using GameFinder.StoreHandlers.Steam;
+using GameFinder.StoreHandlers.Steam.Models;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
@@ -48,6 +49,15 @@ internal class SteamLocator : IGameLocator
 
             if (!_registeredGames.TryGetValue(storeIdentifier, out var game)) continue;
 
+            // Linux fork: skip installs Steam doesn't consider fully installed (e.g. a stale
+            // "update started" manifest left behind by a failed install or a library move) —
+            // managing such a ghost folder deploys mods into nothing and the game can't launch.
+            if (!gameFinderGame.AppManifest.StateFlags.HasFlag(StateFlags.FullyInstalled))
+            {
+                _logger.LogWarning("Skipping '{GameName}': Steam reports it is not fully installed (StateFlags={StateFlags})", gameFinderGame.Name, gameFinderGame.AppManifest.StateFlags);
+                continue;
+            }
+
             var path = gameFinderGame.Path;
 
             var locatorIds = gameFinderGame.AppManifest.InstalledDepots
@@ -72,6 +82,7 @@ internal class SteamLocator : IGameLocator
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,
+                LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
                 SteamDepotCachePath = depotCachePath,
             };
         }

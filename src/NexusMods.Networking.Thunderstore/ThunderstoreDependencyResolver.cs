@@ -56,12 +56,37 @@ public class ThunderstoreDependencyResolver
     {
         var chosen = new Dictionary<PackageRef, ResolvedPackage>();
         var errors = new List<string>();
-        var queue = new Queue<PackageVersionRef>();
-        queue.Enqueue(root);
+        var latestCache = new Dictionary<PackageRef, PackageVersionDto?>();
+        var queue = new Queue<(PackageVersionRef Ref, bool IsRoot)>();
+        queue.Enqueue((root, true));
 
-        while (queue.TryDequeue(out var current))
+        while (queue.TryDequeue(out var item))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            var current = item.Ref;
+            PackageVersionDto? dto = null;
+
+            if (!item.IsRoot)
+            {
+                // Ecosystem parity (r2modman): dependency pins are FLOORS, not exact versions.
+                // Mod authors rarely bump their pins, so honoring them literally installs
+                // builds that predate game updates (e.g. RoR2 mods pinning pre-SotS R2API
+                // that references assemblies the game no longer ships). Resolve every
+                // dependency to its latest published version; only the root the user asked
+                // for stays exact.
+                if (!latestCache.TryGetValue(current.Package, out var latest))
+                {
+                    latest = (await _apiClient.GetPackage(current.Package, cancellationToken))?.Latest;
+                    latestCache[current.Package] = latest;
+                }
+
+                if (latest is not null && PackageVersionRef.CompareVersions(latest.VersionNumber, current.Version) > 0)
+                {
+                    current = latest.VersionRef;
+                    dto = latest;
+                }
+            }
 
             if (chosen.TryGetValue(current.Package, out var already) &&
                 PackageVersionRef.CompareVersions(already.Version.Version, current.Version) >= 0)
@@ -73,7 +98,7 @@ public class ThunderstoreDependencyResolver
                 break;
             }
 
-            var dto = await _apiClient.GetVersion(current, cancellationToken);
+            dto ??= await _apiClient.GetVersion(current, cancellationToken);
             if (dto is null)
             {
                 errors.Add($"Package version `{current}` was not found on Thunderstore");
@@ -88,7 +113,7 @@ public class ThunderstoreDependencyResolver
             {
                 if (PackageVersionRef.TryParse(dependencyString, out var dependency))
                 {
-                    queue.Enqueue(dependency);
+                    queue.Enqueue((dependency, false));
                 }
                 else
                 {

@@ -257,7 +257,10 @@ Thunderstore-only; `StoreIdentifiers.SteamAppIds` so the Steam locator finds it)
 
 **Pilot game: Risk of Rain 2** (decided by Brian, 2026-07-08 — owned on this box; the
 original r2modman game; standard BepInExPack). Steam AppId 632360; Thunderstore community
-`riskofrain2`; has a Nexus presence too (so §9.4 doesn't bite in Phase 1).
+`riskofrain2`. **Correction discovered during PR D: RoR2 has NO Nexus presence at all**
+(no `riskofrain2` domain in games.json — modding is Thunderstore-exclusive). This made it
+an even better pilot (the first game this app supports that upstream never could) but meant
+§9.4 DID bite: PR D includes the Nexus-less-game generalization (see §9.4 update).
 
 ## 9. The cross-cutting generalizations (the only non-additive edits)
 
@@ -296,11 +299,18 @@ surfaced through the same `ILibraryDataProvider` version-column components Nexus
 generalize `IModUpdateService` yet — wait for this second concrete implementation to show the
 right shape (same rule as the store-agnostic recognizer in FABLE5-TASKS §4).
 
-### 9.4 `GameRegistry.TryGetMetadata` NexusModsGameId dependence
-Blocks nothing in Phase 1 for a pilot game with a `NexusModsGameId` (Valheim/RoR2/Subnautica
-all have Nexus presence too — even Lethal Company does). Fix the in-code TODO (key
-`GameInstallMetadata` on `GameId`) as an independent small PR if the pilot turns out to hit
-it; otherwise leave for Phase 2 where Thunderstore-only games are the point.
+### 9.4 `GameRegistry.TryGetMetadata` NexusModsGameId dependence — HIT; fixed in PR D
+RoR2 turned out to be Thunderstore-exclusive (no Nexus id), so PR D shipped the
+generalization: `GameInstallMetadata.GameId` keeps its persisted Nexus-id meaning (no
+migration), Nexus-less games write a **zero sentinel** and are matched by **install Path +
+Store** (Path is already indexed). Touched: `GameRegistry.TryGetMetadata` /
+`TryGetGameInstallation`, `LoadoutManager.ManageInstallation`, `Loadout.ReadOnly.Game`
+(sentinel → resolve by display name among Nexus-less games), plus crash guards at every
+unguarded `NexusModsGameId.Value` site a Nexus-less game can reach (`ManuallyAddedLocator`,
+`MyGamesViewModel` collections, `LibraryViewModel` Nexus CTAs — the CTA carries a
+`TODO(design §15)` to offer the Thunderstore community instead, `FileHashesService.
+SuggestVersionData`). The full rekey of `GameInstallMetadata` onto our `GameId` (with data
+migration) remains the eventual clean fix — deferred until a real need.
 
 ## 10. Proton note (for the record, affects Phase 2 not Phase 1)
 

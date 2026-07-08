@@ -955,3 +955,131 @@ makes it worthwhile.
 ### 19.7 Next
 PR D: RoR2 pilot game module + BepInEx loader/plugin installers + missing-loader diagnostic
 (gives Thunderstore items a game association → Game column, GetAllFiles, install targeting).
+
+---
+
+## 20. Session log — 2026-07-08 (cont.) — Risk of Rain 2 + BepInEx installers (PR D)
+
+> PR #8 merged → `linux-fork` @ `a4f24b66e`. Branch `feature/ror2-bepinex` carries PR D — the
+> final Phase 1 slice: a real game module so Thunderstore downloads become installable.
+
+### 20.1 The big discovery: RoR2 is not on Nexus Mods at all
+No `riskofrain2` domain exists in games.json — RoR2 modding is Thunderstore-exclusive. The
+module ships `NexusModsGameId = None`, making RoR2 the first game this app supports that
+upstream never could — and forcing the §9.4 generalization (design doc updated):
+
+### 20.2 Nexus-less-game support (the §9.4 fix, kept migration-free)
+`GameInstallMetadata.GameId` keeps its persisted Nexus-id meaning; Nexus-less games write a
+**zero sentinel** and are matched by **install Path + Store** (Path already indexed):
+- `GameRegistry.TryGetMetadata` (Path+Store fallback branch) and `TryGetGameInstallation`
+  (sentinel + path disambiguation); `LoadoutManager.ManageInstallation` (sentinel instead of
+  `.Value` throw); `Loadout.ReadOnly.Game` (sentinel → resolve among Nexus-less games by
+  display name — this was crashing every loadout operation in tests until fixed).
+- Crash guards at every `.NexusModsGameId.Value` site a Nexus-less game reaches:
+  `ManuallyAddedLocator` (was: startup crash with ANY Nexus-less game registered!),
+  `MyGamesViewModel` collections count, `LibraryViewModel` Nexus CTAs (no-op; carries
+  `TODO(design §15)` to offer Thunderstore instead), `FileHashesService.SuggestVersionData`.
+- `LocalGameVersionRecognizer.CanRecognize` now declines Nexus-less games (version
+  definitions are keyed on the Nexus id, so the Recognize button would show but never
+  succeed; RoR2 is ~4GB < the 5GB backup fuse, so managing it backs up normally).
+
+### 20.3 The game module — `src/NexusMods.Games.RiskOfRain2/`
+- `RiskOfRain2Game : IGame, IGameData<RiskOfRain2Game>` — GameId "RiskOfRain2", Steam
+  632360, `DefaultSynchronizer` (first module to use it — no game-specific sync rules),
+  zero sort-order varieties, `LocationId.Game` only, primary file `Risk of Rain 2.exe`
+  (Windows-only game, Proton on Linux — mirrors Cyberpunk's unconditional-path style).
+  Placeholder art (ImageMagick-generated 144×144 + 600×900 webp; real art = follow-up).
+- **`BepInExPackInstaller`** — detects a loader pack by the shallowest `winhttp.dll` with a
+  `BepInEx/` folder beside it; deploys the pack-root contents to the game root; skips
+  Thunderstore metadata; records `BepInExLoadoutItem` (version from Thunderstore metadata
+  when the archive came from Thunderstore).
+- **`BepInExPluginInstaller`** — r2modman routing: `plugins|patchers|monomod|core` categories
+  get a per-package subfolder (`BepInEx/plugins/{Namespace-Name}/…` — canonical name from the
+  ThunderstoreLibraryItem identity, archive-stem fallback), `config/` deploys shared (no
+  subfolder), explicit `BepInEx/` prefixes normalized, single wrapping folders stripped,
+  package metadata skipped; loose files land in the package's plugins folder. Records
+  `BepInExPluginLoadoutItem`.
+- **`MissingBepInExEmitter`** — warns (with a Thunderstore link) when a loadout has BepInEx
+  plugins but no loader pack.
+- NOT in `ExperimentalSettings.SupportedGames` — visible in debug builds via EnableAllGames
+  only, per the design's release-gating.
+
+### 20.4 Validation
+- Full solution **0 errors**. New `NexusMods.Games.RiskOfRain2.Tests`: **5/5** (pack routing +
+  metadata skip, loose-file plugins subfolder, category routing incl. shared config, wrapping-
+  folder strip + explicit BepInEx prefix, installer cross-gating) on the synthetic-zip harness
+  (`ALibraryArchiveInstallerTests` + `UniversalStubbedGameLocator`).
+- Regression: DataModel **232/232**, Synchronizer **12/12**, Library **3/3**, Thunderstore
+  **53/53**, Steam 11/12 (pre-existing skip).
+- RoR2 confirmed installed on this box (second Steam library) — Steam locator will find it.
+- ⚠️ NEEDS GUI VERIFICATION (Brian): My Games should show "Risk of Rain 2" (placeholder art)
+  → Add/manage it (first-ever manage of a Nexus-less game — exercises the whole §20.2 path,
+  ~4GB backup on first manage) → install BepInExPack + the ArtilleristMod closure from the
+  Library → check the missing-BepInEx diagnostic fires if the pack is skipped → Apply →
+  verify `winhttp.dll` + `BepInEx/plugins/...` in the game dir → set Steam launch options
+  `WINEDLLOVERRIDES="winhttp=n,b" %command%` (Proton needs the override; documented in design
+  §10 — automating this is Phase 2) → launch and see mods load.
+
+### 20.4b GUI test round 1 findings (Brian, same evening) — three fixes pushed to the PR branch
+1. **Play button crashed** — `LaunchButtonViewModel` requires a registered `IRunGameTool`
+   (`.First()` on an empty set); the module hadn't registered one. Fixed:
+   `RunRiskOfRain2Game : RunGameTool<RiskOfRain2Game>` (Steam installs launch via
+   `steam://run/632360`, so Steam's launch options apply).
+2. **The locator managed a GHOST install.** Steam's home library held a stale
+   `appmanifest_632360.acf` with `StateFlags=36` ("update started", not fully installed) and
+   a folder containing no game files; the real game was nowhere (Brian believed it was on
+   another drive — Steam disagreed). The app managed the ghost, "cleaned" it instantly,
+   deployed mods into it, and launch failed with "Missing game executable". Fixed in
+   `SteamLocator`: skip manifests without `StateFlags.FullyInstalled` (+ log). Bonus fix:
+   the locator built `LinuxCompatibilityDataProvider` but never assigned it to the
+   `GameLocatorResult` — now assigned (needed for fix 3, and likely an upstream bug).
+3. **Manual `WINEDLLOVERRIDES` launch options eliminated** (Brian: "as easy as can be").
+   `RunRiskOfRain2Game.Execute` now ensures the Proton prefix's `user.reg` has
+   `"winhttp"="native,builtin"` under `[Software\\Wine\\DllOverrides]` before every launch
+   (r2modman's mechanism; one-time `.bak` backup; never blocks the launch on failure; no-ops
+   when the prefix doesn't exist yet — Wine creates it on first run, override lands on the
+   next). Generalizing this to the BepInEx game family is Phase 2.
+
+Recovery on the box: ghost folder + stale manifest removed; RoR2 must be properly installed
+via Steam, then re-managed in the app (old ghost metadata/loadout stays dormant in the DB —
+harmless; Path+Store matching means it never reattaches to a different install path).
+
+### 20.5 Follow-ups
+Real game art; Thunderstore CTA on the Library page for Nexus-less games (design §15 rule 2);
+`config/` conflict semantics between packages; Proton WINEDLLOVERRIDES automation (pairs with
+§3.1 umu work); eventual clean rekey of GameInstallMetadata onto our GameId with migration.
+
+### 20.6 END-TO-END VERIFIED (Brian, 2026-07-08 evening) — Phase 1 complete
+After the fix rounds below, the full arc works on real hardware: thunderstore.io one-click →
+latest-version dependency resolution → Library → BepInEx pack/plugin installers → Apply →
+Play (steam://run with automatic user.reg winhttp override) → **modded characters visible
+in-game**. Verified twice (two different character mods).
+
+Fix rounds during GUI testing (all on the PR #9 branch):
+- Ghost-install saga: stale not-fully-installed Steam manifest → locator filter; ghost
+  loadout in DB crashed startup pipelines AND (fatally) a UI-thread reactive pipeline during
+  downloads → orphan-tolerance in MyGames/Spine/window-restore/MyLoadouts + new
+  **`loadouts delete-orphaned`** CLI recovery verb; ghost purged from Brian's DB.
+- Play button: needs a registered IRunGameTool (added RunRiskOfRain2Game).
+- WINEDLLOVERRIDES automated via user.reg patch at launch (r2modman mechanism).
+- **Dependency pins are FLOORS**: resolver now installs latest version of every dependency
+  (root stays exact) — honoring pins literally installed pre-SotS R2API referencing
+  Newtonsoft.Json 12 which the game no longer ships; every plugin failed. r2modman parity.
+
+### 20.7 Brian's design backlog from the first real session (roadmap items)
+1. **De-Nexus the app's own branding/icons** (ties into fork re-branding, roadmap step 2).
+2. **Real artwork everywhere**: pull game tile/icon art for Thunderstore-only games (RoR2
+   currently placeholder) AND mod thumbnails — Thunderstore package icons (IconUri is
+   already stored on ThunderstorePackageMetadata; needs a resource pipeline like Nexus's),
+   plus Brian reports missing thumbnail previews for Nexus mods in some views too.
+3. **Library page: visual "Installed" indicator** — the installed-state column should be
+   highlighted/badged, not plain text.
+4. **Multi-source accounts**: Thunderstore login support (note: its read/download API is
+   anonymous; login via OpenID exists mainly for ratings/submissions — value is smaller than
+   Nexus's premium-download case but fits the peer-source identity), presented as a
+   **source-account dropdown** replacing the single Nexus login button (Nexus / Thunderstore
+   / future Modrinth-Minecraft) showing per-source login state. Long-term §7 work.
+Also queued from this session: "not a clean install" dialog should not appear for games with
+zero known-vanilla data (and clean-folder is dangerous there); generalize local recognition
+to Nexus-less games (removes the External-Changes wart for RoR2); Library UX for multiple
+downloaded versions of one package (r2modman shows one row per package).

@@ -38,6 +38,7 @@ public static class LoadoutManagementVerbs
             .AddModule("loadout group", "Commands for managing a specific group of files in a loadout")
             .AddModule("loadout group items", "Commands for managing the items in a group of files in a loadout")
             .AddModule("loadout version", "Commands for managing the version of a loadout")
+            .AddVerb(() => DeleteOrphanedLoadouts)
             .AddVerb(() => SetVersion)
             .AddVerb(() => Synchronize)
             .AddVerb(() => InstallMod)
@@ -49,6 +50,35 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => DeleteGroupItems)
             .AddVerb(() => ListRevisions)
             .AddVerb(() => Revert);
+
+    [Verb("loadouts delete-orphaned", "Deletes loadouts whose game installation can no longer be located (uninstalled, moved, or a stale manage of a broken install); never touches game folders")]
+    private static async Task<int> DeleteOrphanedLoadouts(
+        [Injected] IRenderer renderer,
+        [Injected] ILoadoutManager loadoutManager,
+        [Injected] IGameRegistry gameRegistry,
+        [Injected] IConnection connection,
+        [Injected] CancellationToken token)
+    {
+        var orphans = Loadout.All(connection.Db)
+            .Where(loadout => loadout.IsVisible() && !gameRegistry.TryGetGameInstallation(loadout, out _))
+            .ToArray();
+
+        if (orphans.Length == 0)
+        {
+            await renderer.TextLine("No orphaned loadouts found.");
+            return 0;
+        }
+
+        foreach (var orphan in orphans)
+        {
+            await renderer.TextLine("Deleting orphaned loadout '{0}' ({1}).", orphan.Name, orphan.LoadoutId);
+            // deactivateIfActive: false — there is no installation to deactivate against.
+            await loadoutManager.DeleteLoadout(orphan.LoadoutId, deactivateIfActive: false, cancellationToken: token);
+        }
+
+        await renderer.TextLine("Deleted {0} orphaned loadout(s).", orphans.Length);
+        return 0;
+    }
 
     [Verb("loadout version set", "Sets the game version for a loadout")]
     private static async Task<int> SetVersion([Injected] IRenderer renderer,

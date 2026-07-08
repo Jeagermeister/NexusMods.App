@@ -39,7 +39,10 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
     /// <inheritdoc />
     public bool CanRecognize(GameInstallation installation)
         => installation.LocatorResult.Store == GameStore.Steam
-           && installation.LocatorResult.SteamDepotCachePath is not null;
+           && installation.LocatorResult.SteamDepotCachePath is not null
+           // Version definitions are keyed on the Nexus Mods game id, so recognition can
+           // never mark a Nexus-less game (e.g. Thunderstore-only) as a known version.
+           && installation.Game.NexusModsGameId.HasValue;
 
     /// <inheritdoc />
     public IJobTask<RecognizeGameVersionJob, LocalRecognitionResult> RecognizeInBackground(GameInstallation installation)
