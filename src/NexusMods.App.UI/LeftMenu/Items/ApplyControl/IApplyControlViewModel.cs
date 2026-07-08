@@ -35,6 +35,9 @@ public interface IApplyControlViewModel : IViewModelInterface
     /// </summary>
     bool IsVersionUnknown { get; }
 
-    /// <summary>True while a local recognition run is in progress.</summary>
+    /// <summary>True while a local recognition run is in progress (for this game, from any view).</summary>
     bool IsRecognizingVersion { get; }
+
+    /// <summary>Status text for the in-progress recognition row, including the job's progress.</summary>
+    string RecognizingText { get; }
 }

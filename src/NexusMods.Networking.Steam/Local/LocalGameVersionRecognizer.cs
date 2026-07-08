@@ -2,7 +2,9 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Steam.DTOs;
 using NexusMods.Abstractions.Steam.Values;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.NexusModsApi;
 using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
@@ -15,23 +17,60 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
     private readonly LocalManifestReader _manifestReader;
     private readonly LocalFileHasher _fileHasher;
     private readonly IFileHashesService _fileHashesService;
+    private readonly IJobMonitor _jobMonitor;
+
+    private readonly object _runningJobsLock = new();
+    private readonly Dictionary<AbsolutePath, IJobTask<RecognizeGameVersionJob, LocalRecognitionResult>> _runningJobs = new();
 
     public LocalGameVersionRecognizer(
         ILogger<LocalGameVersionRecognizer> logger,
         LocalManifestReader manifestReader,
         LocalFileHasher fileHasher,
-        IFileHashesService fileHashesService)
+        IFileHashesService fileHashesService,
+        IJobMonitor jobMonitor)
     {
         _logger = logger;
         _manifestReader = manifestReader;
         _fileHasher = fileHasher;
         _fileHashesService = fileHashesService;
+        _jobMonitor = jobMonitor;
     }
 
     /// <inheritdoc />
     public bool CanRecognize(GameInstallation installation)
         => installation.LocatorResult.Store == GameStore.Steam
            && installation.LocatorResult.SteamDepotCachePath is not null;
+
+    /// <inheritdoc />
+    public IJobTask<RecognizeGameVersionJob, LocalRecognitionResult> RecognizeInBackground(GameInstallation installation)
+    {
+        // Keyed by install path: a second request for the same installation joins the in-flight
+        // run instead of hashing the same game twice.
+        var key = installation.LocatorResult.Path;
+        lock (_runningJobsLock)
+        {
+            if (_runningJobs.TryGetValue(key, out var existing))
+                return existing;
+
+            var task = _jobMonitor.Begin(new RecognizeGameVersionJob(installation), async ctx =>
+            {
+                try
+                {
+                    var progress = new InlineProgress(fraction => ctx.SetPercent(fraction, 1.0));
+                    return await RecognizeAsync(installation, progress, ctx.CancellationToken);
+                }
+                finally
+                {
+                    lock (_runningJobsLock)
+                    {
+                        _runningJobs.Remove(key);
+                    }
+                }
+            });
+            _runningJobs[key] = task;
+            return task;
+        }
+    }
 
     /// <inheritdoc />
     public async Task<LocalRecognitionResult> RecognizeAsync(GameInstallation installation, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
@@ -72,13 +111,12 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
         var totalVerified = 0;
         var totalMissing = 0;
         var totalModified = 0;
-        var versionDefinitionWritten = false;
+        var definitionExists = false;
+        (DepotId DepotId, ManifestId ManifestId)? firstRecordedManifest = null;
         var versionName = $"{installation.Game.DisplayName} (local)";
 
         // Pass 1: resolve which depots actually need hashing. Depots already recorded in the overlay
-        // are skipped without reading a byte; if one is recorded but the game has no local version
-        // definition yet (e.g. it was indexed via `steam local-index` without a game id), only the
-        // missing definition is created.
+        // are skipped without reading a byte.
         var toHash = new List<Manifest>();
         foreach (var manifestId in manifestIds)
         {
@@ -87,16 +125,14 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
             if (_fileHashesService.TryGetLocalSteamManifestStatus(manifestId, gameId, out var hasDefinition))
             {
                 if (hasDefinition)
-                {
-                    versionDefinitionWritten = true;
-                }
-                else if (!versionDefinitionWritten && gameId.HasValue)
+                    definitionExists = true;
+
+                if (firstRecordedManifest is null)
                 {
                     // The depot id is recovered from the cached file name when available; the service
                     // anchors to the already-recorded manifest by its id, so a missing file is fine.
                     LocalManifestReader.TryFindManifestFile(depotCache, manifestId, out _, out var recordedDepotId);
-                    await _fileHashesService.AddLocalSteamVersionAsync(appId, recordedDepotId, manifestId, versionName, gameId, operatingSystem, [], cancellationToken);
-                    versionDefinitionWritten = true;
+                    firstRecordedManifest = (recordedDepotId, manifestId);
                 }
 
                 depotsRecognized++;
@@ -115,8 +151,9 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
             toHash.Add(manifest);
         }
 
-        // Pass 2: hash and record. Progress is weighted by bytes, not depot count, so one huge depot
-        // doesn't leave the bar sitting at 0% while tiny language depots each count the same.
+        // Pass 2: hash and record the file manifests. Progress is weighted by bytes, not depot count,
+        // so one huge depot doesn't leave the bar sitting at 0% while tiny language depots each count
+        // the same. The version definition is NOT written here — see below.
         var totalBytes = toHash.Aggregate(0UL, static (sum, m) => sum + RealBytes(m));
         var completedBytes = 0UL;
 
@@ -147,24 +184,35 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
 
             var verifiedFiles = result.VerifiedFiles.Select(f => (f.Path, f.Hash)).ToArray();
 
-            // Write one version definition for the whole game (on the first recognised depot); the rest
-            // record only their file manifest, which is what GetGameFiles needs to stop flagging them modified.
-            var writeVersionDefinition = !versionDefinitionWritten && gameId.HasValue;
-
             await _fileHashesService.AddLocalSteamVersionAsync(
                 appId,
                 manifest.DepotId,
                 manifest.ManifestId,
-                writeVersionDefinition ? versionName : $"local-{manifest.ManifestId.Value}",
-                writeVersionDefinition ? gameId : null,
+                $"local-{manifest.ManifestId.Value}",
+                gameId: null,
                 operatingSystem,
                 verifiedFiles,
                 cancellationToken);
 
-            if (writeVersionDefinition)
-                versionDefinitionWritten = true;
-
+            firstRecordedManifest ??= (manifest.DepotId, manifest.ManifestId);
             depotsRecognized++;
+        }
+
+        // Write the game's version definition only now that the whole run has completed: a cancelled
+        // or failed run must never mark the version "known" while depots are still unrecorded (the
+        // version staying unknown is what lets the user re-run, and the pass-1 skip makes the re-run
+        // resume from where it stopped).
+        if (gameId.HasValue && !definitionExists && depotsRecognized > 0 && firstRecordedManifest is { } anchor)
+        {
+            await _fileHashesService.AddLocalSteamVersionAsync(
+                appId,
+                anchor.DepotId,
+                anchor.ManifestId,
+                versionName,
+                gameId,
+                operatingSystem,
+                verifiedFiles: [],
+                cancellationToken);
         }
 
         progress?.Report(1.0);

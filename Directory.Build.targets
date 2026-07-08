@@ -1,0 +1,15 @@
+<Project>
+    <!--
+      Linux fork: NexusMods.MnemonicDB.SourceGenerator transitively drags in the Weave 2.1.0
+      analyzer (NuGet ignores the nuspec's exclude="Analyzers" for transitive packages). Nothing
+      in this repo uses Weave (*.weave templates), and its GenerateWeaveSources generator crashes
+      on every compile with `CS8785 ... ArgumentNullException (Parameter 'path2')` because the
+      CompilerGeneratedFilesOutputPath property it unconditionally reads is only made compiler-
+      visible by Weave's own (excluded) build targets. Strip the analyzer entirely.
+    -->
+    <Target Name="_RemoveWeaveAnalyzer" AfterTargets="ResolveLockFileAnalyzers">
+        <ItemGroup>
+            <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Weave'" />
+        </ItemGroup>
+    </Target>
+</Project>
