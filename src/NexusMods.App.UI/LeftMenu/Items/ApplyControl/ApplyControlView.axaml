@@ -31,7 +31,7 @@
             <Button x:Name="RecognizeVersionButton"
                     HorizontalAlignment="Stretch"
                     IsVisible="False"
-                    ToolTip.Tip="Recognise this game's installed version locally (no login or download) so a vanilla install isn't treated as fully modified.">
+                    ToolTip.Tip="Recognize this game's installed version locally (no login or download) so a vanilla install isn't treated as fully modified.">
                 <TextBlock Text="Recognize installed version"
                            Theme="{StaticResource BodySMNormalTheme}"
                            TextWrapping="Wrap"

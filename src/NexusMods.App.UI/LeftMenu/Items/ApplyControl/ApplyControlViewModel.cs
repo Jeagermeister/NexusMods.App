@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Exceptions;
@@ -43,6 +44,8 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     private readonly ILocalGameVersionRecognizer? _recognizer;
     private readonly IFileHashesService _fileHashesService;
     private readonly GameInstallation _installation;
+    private readonly ILogger<ApplyControlViewModel> _logger;
+    private CancellationTokenSource? _recognizeCts;
 
     [Reactive] private bool CanApply { get; set; } = true;
     [Reactive] public bool IsApplying { get; private set; }
@@ -79,6 +82,7 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
         // Linux fork: recognizer is optional (only registered when the Steam module is present).
         _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
         _recognizer = serviceProvider.GetService<ILocalGameVersionRecognizer>();
+        _logger = serviceProvider.GetRequiredService<ILogger<ApplyControlViewModel>>();
 
         LaunchButtonViewModel = serviceProvider.GetRequiredService<ILaunchButtonViewModel>();
         LaunchButtonViewModel.LoadoutId = loadoutId;
@@ -89,8 +93,6 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
         RecognizeVersionCommand = ReactiveCommand.CreateFromTask(RecognizeVersionAsync,
             canExecute: this.WhenAnyValue(vm => vm.IsVersionUnknown, vm => vm.IsRecognizingVersion, (unknown, recognizing) => unknown && !recognizing));
 
-        UpdateVersionUnknown();
-        
         ShowApplyDiffCommand = ReactiveCommand.Create<NavigationInformation>(info =>
         {
             var pageData = new PageData
@@ -174,6 +176,23 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                     .OnUI()
                     .Subscribe(status => ProcessingText = status)
                     .DisposeWith(disposables);
+
+                // Linux fork: evaluate recognisability only after the hash database is loaded — a lookup
+                // against an unloaded database reports every version as unknown and would flash the button
+                // for perfectly known games. Re-evaluated on every activation so recognition done elsewhere
+                // (CLI, another loadout's footer for the same game) is picked up.
+                Observable.FromAsync(async () =>
+                        {
+                            await _fileHashesService.GetFileHashesDb();
+                            return ComputeVersionUnknown();
+                        })
+                    .OnUI()
+                    .Subscribe(unknown => IsVersionUnknown = unknown)
+                    .DisposeWith(disposables);
+
+                // Abandon an in-flight recognition run when the loadout view goes away.
+                System.Reactive.Disposables.Disposable.Create(() => _recognizeCts?.Cancel())
+                    .DisposeWith(disposables);
             }
         );
     }
@@ -197,14 +216,11 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     }
 
     /// <summary>
-    /// Linux fork: recompute whether the managed game's version is unknown-but-locally-recognisable, which
-    /// drives the visibility of the recognise action. Never throws.
+    /// Linux fork: whether the managed game's version is unknown-but-locally-recognisable, which drives
+    /// the visibility of the recognize action. Never throws. Only meaningful once the hash database is
+    /// loaded (see the activation block), since a lookup against an unloaded database reports every
+    /// version as unknown.
     /// </summary>
-    private void UpdateVersionUnknown()
-    {
-        IsVersionUnknown = ComputeVersionUnknown();
-    }
-
     private bool ComputeVersionUnknown()
     {
         if (_recognizer is null || !_recognizer.CanRecognize(_installation))
@@ -216,9 +232,10 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
             var isKnown = _fileHashesService.TryGetVanityVersion((_installation.LocatorResult.Store, locatorIds), out _);
             return !isKnown;
         }
-        catch
+        catch (Exception e)
         {
-            // Hash database not ready or lookup failed; don't surface the action rather than risk a broken button.
+            // Lookup failed; don't surface the action rather than risk a broken button.
+            _logger.LogWarning(e, "Failed to determine whether {Game}'s version is known", _installation.Game.DisplayName);
             return false;
         }
     }
@@ -227,33 +244,41 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     {
         if (_recognizer is null) return;
 
+        using var cts = new CancellationTokenSource();
+        _recognizeCts = cts;
         IsRecognizingVersion = true;
         try
         {
-            var result = await Task.Run(() => _recognizer.RecognizeAsync(_installation, progress: null, CancellationToken.None));
-            UpdateVersionUnknown();
+            var result = await Task.Run(() => _recognizer.RecognizeAsync(_installation, progress: null, cts.Token), cts.Token);
+            IsVersionUnknown = ComputeVersionUnknown();
 
             if (result.AnyRecognized)
             {
                 _notificationService.ShowToast(
-                    $"Recognised {_installation.Game.DisplayName}: {result.DepotsRecognized} depot(s), {result.TotalVerifiedFiles} verified files.",
+                    $"Recognized {_installation.Game.DisplayName}: {result.DepotsRecognized} depot(s), {result.TotalVerifiedFiles} verified files.",
                     ToastNotificationVariant.Success);
             }
             else
             {
                 _notificationService.ShowToast(
-                    $"Couldn't recognise {_installation.Game.DisplayName}. If the install is modified, verify its files in Steam and try again.",
+                    $"Couldn't recognize {_installation.Game.DisplayName}. If the install is modified, verify its files in Steam and try again.",
                     ToastNotificationVariant.Neutral);
             }
         }
-        catch (Exception)
+        catch (OperationCanceledException)
         {
+            // The loadout view was closed mid-run; nothing to report.
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to recognize {Game}'s installed version", _installation.Game.DisplayName);
             _notificationService.ShowToast(
-                $"Failed to recognise {_installation.Game.DisplayName}'s version.",
+                $"Failed to recognize {_installation.Game.DisplayName}'s version.",
                 ToastNotificationVariant.Failure);
         }
         finally
         {
+            _recognizeCts = null;
             IsRecognizingVersion = false;
         }
     }
