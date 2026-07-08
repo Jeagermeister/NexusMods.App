@@ -59,6 +59,10 @@ internal class SteamLocator : IGameLocator
 
             var platform = linuxCompatibilityDataProvider is null ? OSInformation.Shared.Platform : OSPlatform.Windows;
 
+            // Linux fork: the Steam client stores depot manifests globally at <SteamRoot>/depotcache
+            // (not per-library), so capture it here for login-free local version recognition.
+            var depotCachePath = gameFinderGame.SteamPath.Combine("depotcache");
+
             yield return new GameLocatorResult
             {
                 Game = game,
@@ -68,6 +72,7 @@ internal class SteamLocator : IGameLocator
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,
+                SteamDepotCachePath = depotCachePath,
             };
         }
     }
