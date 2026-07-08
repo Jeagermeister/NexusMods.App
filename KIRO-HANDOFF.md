@@ -271,3 +271,113 @@ them back on once settled**. When the fork's own game-hashes pipeline/feed exist
 - git-lfs 3.7.1 installed on the CachyOS box (`git lfs install --local` run in this repo).
 - Kiro terminal shell-integration currently doesn't return stdout (commands execute, exit
   codes correct); workaround is redirect-to-file + read. Not blocking.
+
+
+---
+
+## 11. Session log — 2026-07-07 (cont.) — Local game version recognition (WIP, Path B)
+
+> Resume pointer: **start at task 3 below.** Tasks 1–2 are done and build clean; the whole
+> approach is validated on real data. Nothing about this feature is wired into runtime yet.
+
+### 11.1 Why (recap of the decision)
+Roadmap step 5's "own game-hashes pipeline" was chosen to be **user-based (Path B), login-free,
+and easy for any user** (Brian's call, 2026-07-07). Instead of a central CI pipeline that
+re-downloads whole games from the Steam CDN, we recognise a user's *installed* game version
+locally by hashing the files already on disk and verifying them against Steam's on-disk depot
+manifests. No Steam login, no re-download. This fixes the "every game patched after Sept-2025
+looks 100% modified" problem (root cause: frozen upstream hash DB — see §4.3).
+
+### 11.2 The existing pipeline (already in-tree — DO NOT rebuild)
+Two-stage: **producer** `steam app index -a <appId> -o <folder>/json`
+(`src/NexusMods.Networking.Steam/CLI/Verbs.cs`) downloads+hashes files from the CDN and writes
+a JSON tree (`hashes/`, `stores/steam/{apps,manifests}`); **builder** `game-hashes-db build`
+(`src/NexusMods.Games.FileHashes/VerbImpls/BuildHashesDb.cs`) ingests that JSON tree +
+`contrib/version_aliases.yaml` into a temp MnemonicDB store and zips it to `game_hashes_db.zip`
++ `manifest.json`. At runtime `FileHashesService` resolves an installed game's locator IDs
+(Steam manifest IDs) to a `VersionDefinition`; no match ⇒ `GetGameFiles` returns nothing ⇒
+synchronizer flags every file modified. Our local approach reuses the parsing/hashing pieces
+but sources data from disk instead of the CDN.
+
+### 11.3 VALIDATED on real data (high confidence)
+- SteamKit2 **3.3.1** `DepotManifest.LoadFromFile(path)` (and `Deserialize(byte[]/Stream)`)
+  parse Steam's `depotcache/<depotId>_<manifestId>.manifest` files directly. Filenames are
+  stored **plaintext** (`FilenamesEncrypted == false`) — no depot key / login needed.
+- Correctness proof: hashing the installed **Stardew Valley** files and comparing SHA1 to the
+  cached manifest gave **3787/3787 real files matched, 0 mismatch, 0 missing** (27 directory
+  entries skipped). Directory entries have `Chunks.Count == 0` — skip them.
+
+### 11.4 Done (tasks 1–2) — built, 0 errors, but NOT yet referenced by anything
+- `src/NexusMods.Networking.Steam/Local/LocalManifestReader.cs`
+  `Manifest? TryReadManifest(AbsolutePath depotCacheDir, DepotId, ManifestId)` — finds
+  `<depot>_<manifest>.manifest`, `DepotManifest.LoadFromFile` → `ManifestParser.Parse` → app
+  `Manifest` DTO. Returns null if missing / filenames encrypted / parse fails.
+  Static helper `ManifestFileName(depotId, manifestId)`.
+- `src/NexusMods.Networking.Steam/Local/LocalFileHasher.cs`
+  `Task<ManifestVerificationResult> VerifyAndHashAsync(AbsolutePath gameDir, Manifest, IProgress<double>?, ct)`.
+  Skips dir entries, sanitizes paths via `RelativePath.FromUnsanitizedInput` (Windows-depot
+  backslashes), hashes each file with `MultiHasher.HashStream`, compares `.Sha1` to
+  `Manifest.FileData.Hash`. Returns `VerifiedFile{ RelativePath Path; MultiHash Hash }[]` +
+  `MissingCount`/`MismatchCount`/`TotalFiles`/`MatchedCount`/`IsFullyVerified`.
+
+### 11.5 REMAINING WORK — resume here
+
+**Task 3 (NEXT, the invasive core): writable overlay hash DB + union into `FileHashesService`.**
+Decision FINAL: **overlay-union**. Keep the shipped/embedded DB read-only (it has all upstream
+games). Add a separate *writable* MnemonicDB overlay at `_hashDatabaseLocation / "local-overlay"`
+that locally-recognised versions are written into, and union it into the read paths of
+`src/NexusMods.Games.FileHashes/FileHashesService.cs`:
+`GetGameFiles`, `TryGetGameVersionDefinition`, `GetVersionDefinitions`
+(`SuggestVersionData` / `GetKnownVanityVersions` / `TryGetLocatorIdsForVanityVersion` are covered
+transitively). Rejected "augment the embedded DB in place" (RocksDB read-only vs read-write lock
+conflict + additions lost on re-extract).
+- Connection setup references: `FileHashesService.OpenDb` (read-only: `new Connection(logger,
+  store, provider, [], readOnlyMode: true, prefix: "hashes", queryEngine: _queryEngine)`) and
+  `BuildHashesDb` ctor (writable: `new DatomStore(...RocksDbBackend.Backend())` + `new
+  Connection(logger, datomStore, provider, [])`). Overlay likely needs the SAME `prefix: "hashes"`
+  and the FileHashes query engine so model attributes align — VERIFY this.
+- Model write API (from `BuildHashesDb`): `HashRelation.New(tx){XxHash3,XxHash64,MinimalHash,Md5,
+  Sha1,Crc32,Size}`, `PathHashRelation.New(tx){Path,HashId}`, `SteamManifest.New(tx){AppId,DepotId,
+  ManifestId,Name,FilesIds}`, `VersionDefinition.New(tx){Name,OperatingSystem,GameId,GOG,Steam,
+  EpicBuildIds}` then `tx.Add(versionDef, VersionDefinition.SteamManifestsIds, manifest.Id)`.
+- After writing, `FileHashesService` needs to reload/reopen so the new datoms are visible
+  (it caches `_currentDb`). Add a reload path; watch the read-only handle vs the writable overlay.
+- Watch out: the app's DB is opened via `IHostedService.StartAsync`; overlay should be opened
+  alongside and disposed in `Dispose`.
+
+**Task 4: CLI verb to run indexer end-to-end + verify.** Reorder note: a CLI verify/report verb
+was going to be done before task 3 but we paused first — do it with task 3. Simplest: a verb in
+`NexusMods.Networking.Steam.CLI/Verbs.cs` taking explicit `--game <dir> --depotcache <dir>
+--depot <id> --manifest <id>` (avoids adding a GameFinder dependency to that project) that runs
+reader+hasher+overlay-writer and prints stats. Test with **Stardew (appid 413150, depot 413153,
+manifest 6005910083361727734, install `/mnt/17b46faa-30cb-4981-9c89-6428a12cd225/SteamLibrary/
+steamapps/common/Stardew Valley`)**, then **Bannerlord (appid 261550, depots 261551/261552)**.
+Confirm the game is no longer "100% modified" after indexing.
+
+**Task 5: in-app one-click "Recognize installed version" UX.** When a managed game's version is
+unknown, offer a one-click action that runs the local indexer with progress. The app already has
+the needed inputs via the Steam locator: `SteamLocator.cs` uses GameFinder `SteamHandler`,
+`gameFinderGame.AppManifest.InstalledDepots` → (depotId key, `x.Value.ManifestId`), `.Path`
+(install dir), `.SteamPath` (root → `SteamPath/depotcache`). `GameLocatorResult.LocatorIds`
+already carries the installed manifest IDs. Include Steam "Verify integrity" guidance for
+modified installs (SHA1 check protects correctness regardless).
+
+**Task 6: build-verify, update this doc, commit.**
+
+### 11.6 Key facts / gotchas
+- depotcache is GLOBAL at `<SteamRoot>/depotcache` (e.g. `/home/sirjeager/.local/share/Steam/
+  depotcache`), even for games installed on the `/mnt/17b46faa-...` library.
+- Manifest file name convention: `<depotId>_<manifestId>.manifest`.
+- `MultiHasher.HashStream(Stream)` (`NexusMods.Sdk.Hashes`) needs a seekable stream (sets
+  Position=0, reads Length). `AbsolutePath.Read()` returns an async-disposable seekable stream.
+  `Size.Value` is `ulong`.
+- Live fork: `~/Source/NexusMods.App`, branch `linux-fork`. `EnableRemoteUpdates=false` (§10.2)
+  so runtime never contacts Nexus; the local overlay is how versions get added now.
+- **Tool/environment quirks this session (may or may not persist):** the Kiro terminal did not
+  return stdout — every shell command had to redirect to a file which was then read. And the
+  multi-file `read_files` tool returned empty; single-file `read_file` worked. If these recur,
+  use the same workarounds.
+
+### 11.7 Git state at pause
+Foundation classes (11.4) + this doc committed as a WIP commit on `linux-fork`. Umbilical work
+(§10) is at `264dcd73c` and pushed to `origin` (Jeagermeister/NexusMods.App).
