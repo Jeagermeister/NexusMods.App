@@ -25,6 +25,7 @@ internal class ManuallyAddedLocator : IGameLocator
         _registeredGames = serviceProvider
             .GetServices<IGameData>()
             .Where(x => x.NexusModsGameId.HasValue)
+            .Where(x => x.NexusModsGameId.HasValue)
             .Select(x => new KeyValuePair<NexusModsGameId, IGameData>(x.NexusModsGameId.Value, x))
             .ToFrozenDictionary();
     }

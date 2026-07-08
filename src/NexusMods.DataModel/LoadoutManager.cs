@@ -61,7 +61,8 @@ internal partial class LoadoutManager : ILoadoutManager
             {
                 Store = installation.LocatorResult.Store,
                 Path = installation.Locations[LocationId.Game].Path.ToString(),
-                GameId = installation.Game.NexusModsGameId.Value,
+                // Zero sentinel for games without a Nexus Mods id (matched by Path+Store instead)
+                GameId = installation.Game.NexusModsGameId.HasValue ? installation.Game.NexusModsGameId.Value : default,
                 Name = installation.Game.DisplayName,
             };
 

@@ -232,6 +232,8 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ =>
         {
+            // TODO(design §15): offer the game's Thunderstore community here instead when it has no Nexus presence
+            if (!game.NexusModsGameId.HasValue) return;
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetGameUri(gameDomain);
             osInterop.OpenUri(gameUri);
@@ -239,6 +241,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
 
         OpenNexusModsCollectionsCommand = new ReactiveCommand<Unit>(execute: _ =>
         {
+            if (!game.NexusModsGameId.HasValue) return;
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetBrowseCollectionsUri(gameDomain);
             osInterop.OpenUri(gameUri);

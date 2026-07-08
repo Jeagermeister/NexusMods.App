@@ -781,6 +781,9 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <inheritdoc />
     public Optional<VersionData> SuggestVersionData(GameInstallation gameInstallation, IEnumerable<(GamePath Path, Hash Hash)> files)
     {
+        // Games without a Nexus Mods id have no version definitions in the hash DB
+        if (!gameInstallation.Game.NexusModsGameId.HasValue) return Optional<VersionData>.None;
+
         var filesSet = files.ToHashSet();
 
         List<(VersionData VersionData, int Matches)> versionMatches = [];

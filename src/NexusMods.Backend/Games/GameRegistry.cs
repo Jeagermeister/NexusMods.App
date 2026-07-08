@@ -93,7 +93,16 @@ internal class GameRegistry : IGameRegistry
         var metadata = loadout.Installation;
         foreach (var installation in LocateGameInstallations())
         {
-            if (installation.Game.NexusModsGameId != metadata.GameId) continue;
+            if (installation.Game.NexusModsGameId.HasValue)
+            {
+                if (installation.Game.NexusModsGameId.Value != metadata.GameId) continue;
+            }
+            else
+            {
+                // Nexus-less games store a zero sentinel id; disambiguate by install path.
+                if (metadata.GameId != default(NexusMods.Sdk.NexusModsApi.NexusModsGameId)) continue;
+                if (installation.Locations[LocationId.Game].Path.ToString() != metadata.Path) continue;
+            }
             if (installation.LocatorResult.Store != metadata.Store) continue;
 
             gameInstallation = installation;
@@ -110,6 +119,16 @@ internal class GameRegistry : IGameRegistry
         var gameId = installation.Game.NexusModsGameId;
         if (!gameId.HasValue)
         {
+            // Games without a Nexus Mods id (e.g. Thunderstore-only games) store a zero
+            // sentinel GameId; their metadata is matched by install path + store instead.
+            var installPath = installation.Locations[LocationId.Game].Path.ToString();
+            foreach (var pathMetadata in GameInstallMetadata.FindByPath(_connection.Db, installPath))
+            {
+                if (pathMetadata.Store != installation.LocatorResult.Store) continue;
+                result = pathMetadata;
+                return true;
+            }
+
             result = default(GameInstallMetadata.ReadOnly);
             return false;
         }
