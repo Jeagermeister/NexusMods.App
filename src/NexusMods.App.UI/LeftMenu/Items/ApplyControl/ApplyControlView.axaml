@@ -44,10 +44,12 @@
                         Orientation="Horizontal"
                         IsVisible="False"
                         Spacing="8">
-                <spinner:Spinner Width="12"
-                                 Height="24"
+                <spinner:Spinner Width="20"
+                                 Height="20"
+                                 VerticalAlignment="Center"
                                  Foreground="{StaticResource NeutralStrongBrush}" />
-                <TextBlock Text="Recognizing installed version..."
+                <TextBlock x:Name="RecognizingVersionText"
+                           Text="Recognizing installed version..."
                            Theme="{StaticResource BodySMNormalTheme}"
                            Foreground="{StaticResource NeutralModerateBrush}"
                            VerticalAlignment="Center" />

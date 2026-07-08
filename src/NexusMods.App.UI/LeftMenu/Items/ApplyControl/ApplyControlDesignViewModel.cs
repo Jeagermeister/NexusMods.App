@@ -19,6 +19,7 @@ public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, I
     public bool IsIngesting { get; private set; }
     public bool IsVersionUnknown { get; } = true;
     public bool IsRecognizingVersion { get; } = false;
+    public string RecognizingText { get; } = "Recognizing installed version... 42%";
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; } = new LaunchButtonDesignViewModel();
     public bool IsLaunchButtonEnabled { get; } = true;

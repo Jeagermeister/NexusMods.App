@@ -50,10 +50,19 @@ public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewMod
                 this.BindCommand(ViewModel, vm => vm.RecognizeVersionCommand, v => v.RecognizeVersionButton)
                     .DisposeWith(disposables);
 
-                this.OneWayBind(ViewModel, vm => vm.IsVersionUnknown, v => v.RecognizeVersionButton.IsVisible)
+                // While a run is in progress the button gives way to the progress row.
+                this.WhenAnyValue(
+                        view => view.ViewModel!.IsVersionUnknown,
+                        view => view.ViewModel!.IsRecognizingVersion,
+                        static (unknown, recognizing) => unknown && !recognizing)
+                    .OnUI()
+                    .Subscribe(visible => RecognizeVersionButton.IsVisible = visible)
                     .DisposeWith(disposables);
 
                 this.OneWayBind(ViewModel, vm => vm.IsRecognizingVersion, v => v.RecognizingVersionPanel.IsVisible)
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.RecognizingText, v => v.RecognizingVersionText.Text)
                     .DisposeWith(disposables);
             }
         );

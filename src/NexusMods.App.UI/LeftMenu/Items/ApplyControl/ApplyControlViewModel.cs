@@ -1,6 +1,7 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
+using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games.FileHashes;
@@ -45,12 +46,12 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     private readonly IFileHashesService _fileHashesService;
     private readonly GameInstallation _installation;
     private readonly ILogger<ApplyControlViewModel> _logger;
-    private CancellationTokenSource? _recognizeCts;
 
     [Reactive] private bool CanApply { get; set; } = true;
     [Reactive] public bool IsApplying { get; private set; }
     [Reactive] public bool IsVersionUnknown { get; private set; }
     [Reactive] public bool IsRecognizingVersion { get; private set; }
+    [Reactive] public string RecognizingText { get; private set; } = "Recognizing installed version...";
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> ApplyCommand { get; }
     public ReactiveUI.ReactiveCommand<Unit, Unit> RecognizeVersionCommand { get; }
@@ -190,8 +191,36 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                     .Subscribe(unknown => IsVersionUnknown = unknown)
                     .DisposeWith(disposables);
 
-                // Abandon an in-flight recognition run when the loadout view goes away.
-                System.Reactive.Disposables.Disposable.Create(() => _recognizeCts?.Cancel())
+                // Linux fork: recognition runs as a job so it survives navigation; the running state is
+                // observed from the job monitor rather than owned by this view model instance. When a run
+                // for this game ends (from any view), re-evaluate whether the version is still unknown.
+                _jobMonitor.HasActiveJob<RecognizeGameVersionJob>(job => job.Installation.LocatorResult.Path == _installation.LocatorResult.Path)
+                    .Prepend(false)
+                    .OnUI()
+                    .Subscribe(active =>
+                    {
+                        var wasActive = IsRecognizingVersion;
+                        IsRecognizingVersion = active;
+                        if (wasActive && !active)
+                            IsVersionUnknown = ComputeVersionUnknown();
+                    })
+                    .DisposeWith(disposables);
+
+                // Show the job's byte-weighted progress in the "Recognizing..." row.
+                _jobMonitor.ObserveActiveJobs<RecognizeGameVersionJob>()
+                    .Prepend(ChangeSet<IJob, JobId>.Empty)
+                    .QueryWhenChanged(jobs =>
+                    {
+                        var job = jobs.Items.FirstOrDefault(j =>
+                            j.Definition is RecognizeGameVersionJob recognize
+                            && recognize.Installation.LocatorResult.Path == _installation.LocatorResult.Path);
+                        return job?.ObservableProgress ?? Observable.Return(Optional<Percent>.None);
+                    })
+                    .Switch()
+                    .OnUI()
+                    .Subscribe(percent => RecognizingText = percent.HasValue
+                        ? $"Recognizing installed version... {percent.Value}"
+                        : "Recognizing installed version...")
                     .DisposeWith(disposables);
             }
         );
@@ -244,12 +273,12 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     {
         if (_recognizer is null) return;
 
-        using var cts = new CancellationTokenSource();
-        _recognizeCts = cts;
-        IsRecognizingVersion = true;
         try
         {
-            var result = await Task.Run(() => _recognizer.RecognizeAsync(_installation, progress: null, cts.Token), cts.Token);
+            // Runs as a job: it survives navigating away from this loadout, and a second click (or
+            // another view for the same game) joins the in-flight run instead of starting a new one.
+            // IsRecognizingVersion is driven by the job monitor subscription, not set here.
+            var result = await _recognizer.RecognizeInBackground(_installation);
             IsVersionUnknown = ComputeVersionUnknown();
 
             if (result.AnyRecognized)
@@ -267,7 +296,7 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
         }
         catch (OperationCanceledException)
         {
-            // The loadout view was closed mid-run; nothing to report.
+            // The job was cancelled (e.g. app shutdown); nothing to report.
         }
         catch (Exception e)
         {
@@ -275,11 +304,6 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
             _notificationService.ShowToast(
                 $"Failed to recognize {_installation.Game.DisplayName}'s version.",
                 ToastNotificationVariant.Failure);
-        }
-        finally
-        {
-            _recognizeCts = null;
-            IsRecognizingVersion = false;
         }
     }
 }
