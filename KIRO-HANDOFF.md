@@ -557,3 +557,58 @@ shaped this:
 - `src/NexusMods.Networking.Steam/CLI/Verbs.cs` (`steam recognize-game`)
 - `src/NexusMods.Games.FileHashes/FileHashesService.cs` (idempotency guard)
 - `tests/Networking/NexusMods.Networking.Steam.Tests/LocalManifestReaderTests.cs` (new tests)
+
+---
+
+## 14. Session log — 2026-07-08 — In-app "Recognize installed version" GUI (finishes §12.5/§13.5)
+
+> IMPORTANT: PR #2 merged **only the first commit** (`8b8a6e554`); the follow-up commit
+> `e96baef45` (recognizer service, idempotency, `recognize-game` verb, `SteamDepotCachePath`,
+> tests) was **not** in the merge. This session's branch `feature/recognize-installed-version-ui`
+> **cherry-picks that stranded commit** (as `2ef4e9159`) and adds the GUI on top. PR #3 therefore
+> carries both. If reviewing history: the backend changes here are the §13 work re-applied.
+
+### 14.1 Interface relocation (so the UI can consume it)
+`ILocalGameVersionRecognizer` + `LocalRecognitionResult` moved from `NexusMods.Networking.Steam.Local`
+to `src/NexusMods.Abstractions.Games.FileHashes/ILocalGameVersionRecognizer.cs`. The impl
+(`LocalGameVersionRecognizer`) stays in `NexusMods.Networking.Steam` and now implements the abstraction.
+`NexusMods.App.UI` reaches this abstraction **transitively via `NexusMods.Collections`**, so no new UI
+project reference was needed. DI registration in `Networking.Steam/Services.cs` updated to the new
+fully-qualified interface name.
+
+### 14.2 The GUI action (extends ApplyControl — deliberately low-surface)
+Rather than a new control quartet + page wiring (many unverifiable files), the action was added to the
+existing, already-registered/rendered `ApplyControl` in the loadout footer:
+- `IApplyControlViewModel`: `+ RecognizeVersionCommand`, `+ IsVersionUnknown`, `+ IsRecognizingVersion`.
+- `ApplyControlViewModel`: resolves `ILocalGameVersionRecognizer` (optional — `GetService`, null-guarded)
+  and `IFileHashesService`, loads the loadout's `GameInstallation` (`loadout.InstallationInstance`).
+  `IsVersionUnknown = recognizer.CanRecognize(install) && !TryGetVanityVersion((Store, LocatorIds), out _)`
+  (wrapped in try/catch — never throws). `RecognizeVersionCommand` runs `RecognizeAsync` off the UI thread,
+  re-evaluates unknown state, and shows a Success/Neutral/Failure toast with the recorded depot/file counts.
+- `ApplyControlView.axaml` / `.axaml.cs`: a "Recognize installed version" button (default `IsVisible=False`,
+  bound to `IsVersionUnknown`) + a "Recognizing…" spinner row (bound to `IsRecognizingVersion`), bound via
+  the existing code-behind `BindCommand`/`OneWayBind` pattern.
+- `ApplyControlDesignViewModel`: stub members added.
+- Strings are inline literals (not localized) to keep the change small; **follow-up: move to `Language.resx`**.
+
+### 14.3 Status / verification
+- Full solution build: **0 errors**. Steam tests: **3/3 pass**.
+- ⚠️ **Not runtime-verified.** Avalonia UI can't be exercised headlessly here, so the button's rendering,
+  visibility gating, and toast behaviour need a manual launch to confirm. The backend it calls is validated
+  (§12.3/§13.6). Logic reviewed: DI is null-guarded, the version check can't throw, visibility defaults to
+  hidden so known games (the common case) show nothing.
+- Behavioural expectation: the button appears in the loadout footer only for Steam games whose version isn't
+  in the hash DB/overlay; clicking it recognises all installed depots and (on success) the button disappears
+  as the version becomes known.
+
+### 14.4 Files changed
+- `src/NexusMods.Abstractions.Games.FileHashes/ILocalGameVersionRecognizer.cs` (new — relocated interface + result)
+- `src/NexusMods.Networking.Steam/Local/LocalGameVersionRecognizer.cs` (impl now implements the abstraction)
+- `src/NexusMods.Networking.Steam/Services.cs` (DI registration updated)
+- `src/NexusMods.App.UI/LeftMenu/Items/ApplyControl/{IApplyControlViewModel,ApplyControlViewModel,ApplyControlDesignViewModel,ApplyControlView.axaml,ApplyControlView.axaml.cs}`
+
+### 14.5 Remaining follow-ups
+- Localize the UI strings (§14.2).
+- Optional: a determinate progress bar (the recognizer already reports `IProgress<double>`; currently only an
+  indeterminate spinner is shown).
+- Manual runtime verification of the button on a real unknown-version Steam game.

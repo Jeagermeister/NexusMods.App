@@ -19,7 +19,7 @@ public static class Services
         // in-app recognition action.
         services.AddSingleton<Local.LocalManifestReader>();
         services.AddSingleton<Local.LocalFileHasher>();
-        services.AddSingleton<Local.ILocalGameVersionRecognizer, Local.LocalGameVersionRecognizer>();
+        services.AddSingleton<NexusMods.Abstractions.Games.FileHashes.ILocalGameVersionRecognizer, Local.LocalGameVersionRecognizer>();
         return services;
     }
     

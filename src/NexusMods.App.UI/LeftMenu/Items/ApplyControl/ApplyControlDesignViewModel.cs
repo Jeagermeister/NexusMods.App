@@ -11,11 +11,14 @@ public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, I
 {
     public ReactiveCommand<Unit, Unit> ApplyCommand { get; }
     public ReactiveCommand<Unit, Unit> IngestCommand { get; }
+    public ReactiveCommand<Unit, Unit> RecognizeVersionCommand { get; }
 
     public ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
     [Reactive] public bool CanApply { get; private set; } = true;
     [Reactive] public bool IsApplying { get; private set; } = false;
     public bool IsIngesting { get; private set; }
+    public bool IsVersionUnknown { get; } = true;
+    public bool IsRecognizingVersion { get; } = false;
 
     public ILaunchButtonViewModel LaunchButtonViewModel { get; } = new LaunchButtonDesignViewModel();
     public bool IsLaunchButtonEnabled { get; } = true;
@@ -27,6 +30,7 @@ public class ApplyControlDesignViewModel : AViewModel<IApplyControlViewModel>, I
     public ApplyControlDesignViewModel()
     {
         ShowApplyDiffCommand = ReactiveCommand.Create<NavigationInformation>(_ => { });
+        RecognizeVersionCommand = ReactiveCommand.Create(() => { });
 
         ApplyCommand = ReactiveCommand.CreateFromTask(async () =>
             {

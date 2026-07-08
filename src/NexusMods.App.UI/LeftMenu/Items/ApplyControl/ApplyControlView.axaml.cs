@@ -45,6 +45,16 @@ public partial class ApplyControlView : ReactiveUserControl<IApplyControlViewMod
                 
                 this.OneWayBind(ViewModel, vm => vm.ProcessingText, v => v.ProgressBarControl.ProgressTextFormat)
                     .DisposeWith(disposables);
+
+                // Linux fork: recognise installed version action
+                this.BindCommand(ViewModel, vm => vm.RecognizeVersionCommand, v => v.RecognizeVersionButton)
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.IsVersionUnknown, v => v.RecognizeVersionButton.IsVisible)
+                    .DisposeWith(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.IsRecognizingVersion, v => v.RecognizingVersionPanel.IsVisible)
+                    .DisposeWith(disposables);
             }
         );
     }
