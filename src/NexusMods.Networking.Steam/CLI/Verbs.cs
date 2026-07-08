@@ -2,15 +2,20 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Cli;
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Abstractions.Steam;
 using NexusMods.Abstractions.Steam.DTOs;
 using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Networking.Steam.Exceptions;
+using NexusMods.Networking.Steam.Local;
 using NexusMods.Paths;
 using NexusMods.Paths.Extensions;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
+using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Sdk.ProxyConsole;
+using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
 namespace NexusMods.Networking.Steam.CLI;
 
@@ -21,7 +26,90 @@ public static class Verbs
             .AddModule("steam", "Verbs for interacting with Steam")
             .AddModule("steam app", "Verbs for querying app data")
             .AddVerb(() => IndexSteamApp)
+            .AddVerb(() => LocalIndexSteamApp)
             .AddVerb(() => Login);
+
+    [Verb("steam local-index", "Recognises an installed Steam game version locally by verifying its files against the on-disk depot manifest (no login or download), then records it in the local hash overlay so the app stops treating the install as fully modified")]
+    private static async Task<int> LocalIndexSteamApp(
+        [Injected] IRenderer renderer,
+        [Injected] LocalManifestReader manifestReader,
+        [Injected] LocalFileHasher fileHasher,
+        [Injected] IFileHashesService fileHashesService,
+        [Option("g", "game", "The game install directory (the depot root on disk)")] AbsolutePath game,
+        [Option("c", "depotcache", "The Steam depotcache directory (usually <SteamRoot>/depotcache)")] AbsolutePath depotCache,
+        [Option("d", "depot", "The Steam depot id")] long depot,
+        [Option("m", "manifest", "The Steam manifest id")] string manifest,
+        [Option("a", "app", "The Steam app id (optional; recorded on the manifest)", true)] long app,
+        [Option("i", "gameId", "The Nexus Mods game id (optional; when set, a version definition is also written)", true)] long gameId,
+        [Option("n", "versionName", "A human-friendly version name (optional; defaults to 'local-<manifestId>')", true)] string? versionName,
+        [Option("s", "os", "Operating system for the version definition: Windows|MacOS|Linux (optional; defaults to the host OS)", true)] string? os,
+        [Injected] CancellationToken token)
+    {
+        var depotId = DepotId.From((uint)depot);
+        var appId = AppId.From((uint)app);
+
+        if (!ulong.TryParse(manifest, out var parsedManifestId))
+        {
+            await renderer.TextLine("Invalid manifest id '{0}': must be an unsigned 64-bit integer", manifest);
+            return 1;
+        }
+        var manifestId = ManifestId.From(parsedManifestId);
+
+        await renderer.TextLine("Reading cached manifest {0} (depot {1}) from {2}", manifestId.Value, depotId.Value, depotCache);
+        var parsedManifest = manifestReader.TryReadManifest(depotCache, depotId, manifestId);
+        if (parsedManifest is null)
+        {
+            await renderer.TextLine("Could not read a usable manifest for depot {0} / manifest {1} from {2}. The file may be missing, or its filenames are encrypted (never decrypted by the Steam client on this machine).", depotId.Value, manifestId.Value, depotCache);
+            return 1;
+        }
+
+        await renderer.TextLine("Hashing and verifying installed files under {0} (this reads every game file; large games take a while)...", game);
+        var result = await fileHasher.VerifyAndHashAsync(game, parsedManifest, progress: null, token);
+
+        await renderer.TextLine("Verification: {0}/{1} files matched, {2} missing, {3} modified (fully verified: {4})",
+            result.MatchedCount, result.TotalFiles, result.MissingCount, result.MismatchCount, result.IsFullyVerified);
+
+        if (result.MatchedCount == 0)
+        {
+            await renderer.TextLine("No files matched the manifest; nothing to record. Check that --game points at the correct install and --depot/--manifest match it.");
+            return 1;
+        }
+
+        var name = string.IsNullOrWhiteSpace(versionName) ? $"local-{manifestId.Value}" : versionName!;
+        NexusModsGameId? nexusGameId = gameId > 0 ? NexusModsGameId.From((uint)gameId) : null;
+        var operatingSystem = ParseOperatingSystem(os);
+
+        var verifiedFiles = result.VerifiedFiles.Select(f => (f.Path, f.Hash)).ToArray();
+        await fileHashesService.AddLocalSteamVersionAsync(appId, depotId, manifestId, name, nexusGameId, operatingSystem, verifiedFiles, token);
+
+        await renderer.TextLine("Recorded {0} verified files as version '{1}' in the local hash overlay.", verifiedFiles.Length, name);
+
+        // Confirm the version is now recognised through the same read path the synchronizer uses.
+        var recognisedFileCount = fileHashesService
+            .GetGameFiles((GameStore.Steam, new[] { LocatorId.From(manifestId.Value.ToString()) }))
+            .Count();
+        await renderer.TextLine("GetGameFiles now returns {0} known game files for manifest {1}.", recognisedFileCount, manifestId.Value);
+
+        if (nexusGameId is null)
+            await renderer.TextLine("Note: --gameId was not provided, so no version definition was written (only the file manifest). The install will still be recognised as vanilla by the synchronizer.");
+
+        return 0;
+    }
+
+    private static OperatingSystem ParseOperatingSystem(string? os)
+    {
+        if (!string.IsNullOrWhiteSpace(os))
+        {
+            if (os.Equals("Windows", StringComparison.OrdinalIgnoreCase)) return OperatingSystem.Windows;
+            if (os.Equals("MacOS", StringComparison.OrdinalIgnoreCase) || os.Equals("OSX", StringComparison.OrdinalIgnoreCase)) return OperatingSystem.MacOS;
+            if (os.Equals("Linux", StringComparison.OrdinalIgnoreCase)) return OperatingSystem.Linux;
+        }
+
+        return OSInformation.Shared.MatchPlatform(
+            onWindows: () => OperatingSystem.Windows,
+            onLinux: () => OperatingSystem.Linux,
+            onOSX: () => OperatingSystem.MacOS);
+    }
     
     [Verb("steam login", "Starts the login process for Steam")]
     private static async Task<int> Login(

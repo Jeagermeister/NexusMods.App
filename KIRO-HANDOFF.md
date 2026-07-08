@@ -381,3 +381,99 @@ modified installs (SHA1 check protects correctness regardless).
 ### 11.7 Git state at pause
 Foundation classes (11.4) + this doc committed as a WIP commit on `linux-fork`. Umbilical work
 (§10) is at `264dcd73c` and pushed to `origin` (Jeagermeister/NexusMods.App).
+
+---
+
+## 12. Session log — 2026-07-07 (cont.) — Local recognition wired into runtime (§11 tasks 3–6 DONE)
+
+> Completes §11's remaining work. The overlay is now unioned into `FileHashesService` and driven
+> by a working CLI verb, validated on real Stardew + Bannerlord data. The only §11 item left is
+> the in-app one-click UX (was §11.5 "Task 5"), re-tracked as §12.5 below.
+
+### 12.1 Writable overlay + union reads (the invasive core — DONE)
+`src/NexusMods.Games.FileHashes/FileHashesService.cs`:
+- New `OverlayDb(Connection, DatomStore, Backend)` record + `_overlayDb` field. `EnsureOverlayOpen()`
+  opens a **writable** RocksDB at `_hashDatabaseLocation / "local-overlay"` with
+  `new Backend()` + `new Connection(logger, store, _provider, [], prefix: "hashes", queryEngine: _queryEngine)`.
+  The `prefix:"hashes"` + shared query engine on a *writable* connection is exactly what
+  `tests/.../StubbedFileHasherService.cs` does — that resolved §11.5's "VERIFY prefix" open question.
+- `ReadDbs()` yields the shipped DB (`_currentDb.Db`) then the overlay (`_overlayDb.Connection.Db`).
+  Every read path now unions over it: `GetGameFiles` (Steam/EGS resolved per-id, first DB wins to
+  avoid dupes; GOG factored into a per-DB `GetGogGameFiles` helper), `TryGetGameVersionDefinition`
+  (split into a per-DB `...InDb(out def, out score)` — version↔manifest matching **must** stay
+  within one DB because entity ids are DB-scoped — the wrapper keeps the highest-scoring match,
+  shipped DB preferred on ties), `GetVersionDefinitions`, `TryGetLocatorIdsForVanityVersion`.
+  `SuggestVersionData` / `GetKnownVanityVersions` inherit the union transitively.
+- No `_currentDb`-style reload needed for the overlay: reads take `Connection.Db` fresh each call,
+  so writes are visible immediately in-process. `StartAsync` opens the overlay (guarded — failure
+  is logged, never blocks the shipped DB); `Dispose` disposes overlay Store + Backend.
+- Write API: `AddLocalSteamVersionAsync(appId, depotId, manifestId, versionName, NexusModsGameId? gameId,
+  OperatingSystem os, IReadOnlyList<(RelativePath, MultiHash)> verifiedFiles, ct)` — added to
+  `IFileHashesService`. Writes a `HashRelation` + `PathHashRelation` per verified file, a
+  `SteamManifest`, and (when `gameId` is set) a `VersionDefinition` anchored via
+  `tx.Add(versionDef, VersionDefinition.SteamManifestsIds, manifest.Id)`. Single transaction;
+  same-tx temp-id references (`HashId = hashRelation` new-obj, `FilesIds = pathIds`,
+  `SteamManifestsIds = manifest.Id`) commit fine (confirmed at runtime).
+- `StubbedFileHasherService` got a no-op implementation of the new interface member.
+
+### 12.2 CLI verb `steam local-index` (DONE)
+`src/NexusMods.Networking.Steam/CLI/Verbs.cs`, registered in `AddSteamVerbs`. Options:
+`-g/--game` (install dir), `-c/--depotcache`, `-d/--depot`, `-m/--manifest` (required);
+`-a/--app`, `-i/--gameId` (Nexus id; when set, writes a version definition), `-n/--versionName`,
+`-s/--os` (optional). Flow: `LocalManifestReader.TryReadManifest` → `LocalFileHasher.VerifyAndHashAsync`
+→ `IFileHashesService.AddLocalSteamVersionAsync`, then prints verification stats and re-queries
+`GetGameFiles` to confirm recognition. Wiring: `NexusMods.Networking.Steam.csproj` now references
+`NexusMods.Abstractions.Games.FileHashes`; `AddSteam()` registers `LocalManifestReader` +
+`LocalFileHasher` as singletons.
+
+Run it headless in-process with the `as-main` startup prefix (no UI, no proxy), e.g.:
+```
+dotnet src/NexusMods.App/bin/Debug/net9.0/NexusMods.App.dll as-main steam local-index \
+  -g "<install dir>" -c "$HOME/.local/share/Steam/depotcache" -d <depotId> -m <manifestId> \
+  -a <appId> -i <nexusGameId>
+```
+
+### 12.3 Validated on real data (2026-07-07)
+- **Stardew** (depot 413153, manifest 6005910083361727734, app 413150, gameId 1303):
+  **3787/3787 matched, 0 missing, 0 modified**; `GetGameFiles` then returned **3787** files.
+- **Bannerlord** depot 261552 (manifest 7719431349712662189, app 261550, ~5 GB):
+  **4938/4938 matched, 0 missing, 0 modified**; `GetGameFiles` then returned **4938** files.
+  The Bannerlord run reopened the overlay that already held the Stardew data and appended
+  cleanly → confirms cross-process persistence and no RocksDB single-writer lock issue.
+- Bannerlord's full install is ~91–101 GB across depots **261551 (~64 GB)** / 261552 (~5 GB)
+  + two DLC depots (2240111 ~1.2 GB, 2927200 ~31.5 GB — **their manifests are NOT in depotcache**,
+  so those can't be locally recognised yet). Only 261551/261552 have cached manifests. The 64 GB
+  depot 261551 was **not** hashed here (≈40 min disk-bound job); the mechanism is size-agnostic and
+  proven, so 261552 stands in as the real-game validation. To fully de-modify Bannerlord, index
+  261551 too (same command, `-d 261551 -m 813532240231811649`).
+- Full solution build after all changes: **0 errors** (submodules initialised: SMAPI + docs/Nexus).
+
+### 12.4 Files changed this session (all on `linux-fork`, uncommitted at time of writing → see 12.6)
+- `src/NexusMods.Abstractions.Games.FileHashes/IFileHashesService.cs` (+`AddLocalSteamVersionAsync`)
+- `src/NexusMods.Games.FileHashes/FileHashesService.cs` (overlay + union reads + writer)
+- `src/NexusMods.Networking.Steam/CLI/Verbs.cs` (`steam local-index` verb)
+- `src/NexusMods.Networking.Steam/Services.cs` (register reader/hasher)
+- `src/NexusMods.Networking.Steam/NexusMods.Networking.Steam.csproj` (ref Abstractions.Games.FileHashes)
+- `tests/NexusMods.StandardGameLocators.TestHelpers/StubbedFileHasherService.cs` (no-op impl)
+
+### 12.5 REMAINING — in-app one-click "Recognize installed version" UX (was §11.5 Task 5)
+The runtime plumbing is done; the UX is not. When a managed game's version is unknown, surface a
+one-click action that calls `IFileHashesService.AddLocalSteamVersionAsync` with progress, using the
+Steam locator's already-available inputs (`SteamLocator.cs`: `AppManifest.InstalledDepots` →
+(depotId, ManifestId), install `.Path`, `.SteamPath`→`/depotcache`; `GameLocatorResult.LocatorIds`
+carries the installed manifest IDs). Iterate **all** installed depots that have cached manifests.
+Show Steam "Verify integrity" guidance for modified installs (the SHA1 check keeps recorded data
+correct regardless). **Known refinement to fold in:** the write path is not idempotent — re-indexing
+the same manifest appends a second `SteamManifest` for that id. `GetGameFiles` (Steam) breaks on the
+first match so it's harmless today, but the UX (and ideally the writer) should dedupe/replace an
+existing overlay manifest by `ManifestId` before writing.
+
+### 12.6 Notes / environment
+- The writable overlay lives at `~/.local/share/NexusMods.App/FileHashesDatabase/local-overlay`
+  and now contains the Stardew + Bannerlord(261552) test entries — legitimate runtime recognition
+  data (not part of the repo). Do **not** run the CLI verb while the main app is running (RocksDB
+  single writer; one process at a time).
+- Kiro terminal stdout-capture quirk from §10.3/§11.6 **persists**; still worked around with
+  redirect-to-file. The multi-file `read_files` tool worked fine this session.
+- Full solution build requires the submodules — run `git submodule update --init --recursive` once
+  (done this session: SMAPI @ `fd73446`, docs/Nexus @ `fe4e8b1`).
