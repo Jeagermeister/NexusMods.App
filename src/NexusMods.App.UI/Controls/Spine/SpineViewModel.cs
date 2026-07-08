@@ -53,6 +53,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 
     private Dictionary<WorkspaceId, ILeftMenuViewModel> _leftMenus = new([]);
     private readonly IConnection _conn;
+    private readonly NexusMods.Sdk.Games.IGameRegistry _gameRegistryForFilter;
     [Reactive] public ILeftMenuViewModel? LeftMenuViewModel { get; private set; }
 
     public SpineViewModel(
@@ -69,6 +70,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         _logger = logger;
         _windowManager = windowManager;
         _conn = conn;
+        _gameRegistryForFilter = serviceProvider.GetRequiredService<NexusMods.Sdk.Games.IGameRegistry>();
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
 
         // Setup the special spine items
@@ -96,7 +98,8 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
                 var loadouts = Loadout.ObserveAll(_conn);
 
                 loadouts
-                    .Filter(loadout => loadout.IsVisible())
+                    // Orphaned loadouts (game uninstalled/moved) must not fault the spine pipeline
+                    .Filter(loadout => loadout.IsVisible() && _gameRegistryForFilter.TryGetGameInstallation(loadout, out _))
                     .TransformAsync(async loadout =>
                         {
                             await using var iconStream = await loadout.InstallationInstance.Game.IconImage.GetStreamAsync();

@@ -1,5 +1,6 @@
 ﻿using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.WorkspaceSystem;
+using Microsoft.Extensions.DependencyInjection;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Loadouts;
 
@@ -9,9 +10,12 @@ public class LoadoutAttachmentsFactory(IConnection conn) : IWorkspaceAttachments
 {
     public string CreateTitle(LoadoutContext context)
     {
-        // Use the game name as the title
+        // Use the game name as the title. Orphaned loadouts (game uninstalled/moved) must not
+        // throw here — this runs during saved-window-state restoration.
         var loadout = Loadout.Load(conn.Db, context.LoadoutId);
-        return loadout.InstallationInstance.Game.DisplayName;
+        var gameRegistry = conn.ServiceProvider.GetRequiredService<NexusMods.Sdk.Games.IGameRegistry>();
+        if (!gameRegistry.TryGetGameInstallation(loadout, out var installation)) return loadout.Name;
+        return installation!.Game.DisplayName;
     }
 
     public string CreateSubtitle(LoadoutContext context)
