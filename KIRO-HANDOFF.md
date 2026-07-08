@@ -934,6 +934,24 @@ library file lookup). `INexusModsDownloadJob` and `IThunderstoreDownloadJob` bot
   version; deleting one should NOT warn "not redownloadable". This also closes the §18.2
   browser-click forwarding check.
 
-### 19.5 Next
+### 19.5 GUI verification PASSED + desktop-file bug found & fixed (same day)
+Brian ran the app and clicked "Install with Mod Manager" on a RoR2 mod: the running app
+received the link and downloaded the 10-package closure (ArtilleristMod 1.2.2 + R2API family
++ BepInExPack 5.4.2109 — correctly stored beside the already-present 5.4.2121). Closes the
+§18.2 forwarding check AND §19.4's GUI check. First attempt exposed a PRE-EXISTING Linux bug:
+for framework-dependent launches (`dotnet NexusMods.App.dll`, i.e. running from source),
+`Environment.ProcessPath` is the bare dotnet host, so the registered `.desktop` `Exec` lost
+the assembly argument and nxm://+ror2mm:// links were silently dropped (upstream never saw it
+— they shipped AppImages). Fixed in `LinuxInterop.GetRunningExecutablePath`: prefer the
+apphost binary next to the entry assembly (`fa3c8b7bf` on the PR C branch).
+
+### 19.6 Cross-source design principle (Brian) — recorded in DESIGN-modsources.md §15
+Games often live on BOTH Nexus and Thunderstore with diverging mods/versions. Standing rules:
+multi-source mods must coexist in one loadout (PR D: RoR2 keeps its NexusModsGameId beside
+the Thunderstore community); per-game discovery CTAs should offer both storefronts;
+cross-source mod identity stays (source, native-id) — no fuzzy merging until update checking
+makes it worthwhile.
+
+### 19.7 Next
 PR D: RoR2 pilot game module + BepInEx loader/plugin installers + missing-loader diagnostic
 (gives Thunderstore items a game association → Game column, GetAllFiles, install targeting).
