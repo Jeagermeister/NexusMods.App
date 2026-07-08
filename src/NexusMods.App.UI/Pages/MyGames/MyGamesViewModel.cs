@@ -162,7 +162,10 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                             });
 
                             vm.IsManagedObservable = Loadout.ObserveAll(conn)
-                                .Filter(l => l.IsVisible() && l.InstallationInstance.Game.GameId == installation.Game.GameId && l.InstallationInstance.LocatorResult.Store == installation.LocatorResult.Store)
+                                .Filter(l => l.IsVisible()
+                                             && TryGetInstallationInstance(l, out var loadoutInstallation)
+                                             && loadoutInstallation!.Game.GameId == installation.Game.GameId
+                                             && loadoutInstallation.LocatorResult.Store == installation.LocatorResult.Store)
                                 .Count()
                                 .Select(c => c > 0);
 
@@ -378,7 +381,10 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         }
 
         // no applied loadout, return the first one
-        var loadout = Loadout.All(conn.Db).FirstOrOptional(loadout => loadout.IsVisible() && loadout.InstallationInstance.Equals(installation));
+        var loadout = Loadout.All(conn.Db).FirstOrOptional(loadout =>
+            loadout.IsVisible()
+            && TryGetInstallationInstance(loadout, out var loadoutInstallation)
+            && loadoutInstallation!.Equals(installation));
         return loadout.HasValue ? loadout.Value.LoadoutId : Optional<LoadoutId>.None;
     }
     
@@ -408,5 +414,16 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 );
             }
         );
+    }
+
+    /// <summary>
+    /// Safe variant of <see cref="Loadout.ReadOnly.InstallationInstance"/>: loadouts whose game
+    /// installation can no longer be located (uninstalled, moved, or a stale manage of a broken
+    /// install) are reported as unmatched instead of throwing and killing the reactive pipeline.
+    /// </summary>
+    private static bool TryGetInstallationInstance(Loadout.ReadOnly loadout, out GameInstallation? installation)
+    {
+        var gameRegistry = loadout.Db.Connection.ServiceProvider.GetRequiredService<IGameRegistry>();
+        return gameRegistry.TryGetGameInstallation(loadout, out installation);
     }
 }
