@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary;
+using NexusMods.Abstractions.Thunderstore.Models;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
@@ -8,10 +9,10 @@ namespace NexusMods.App.UI.Pages.Library;
 /// <summary>
 ///     Represents the properties needed for deletion of a library item.
 /// </summary>
-/// <param name="IsNexus">Whether the library item has been sourced from Nexus Mods (it is redownloadable).</param>
+/// <param name="IsNexus">Whether the library item came from a redownloadable mod source (Nexus Mods or Thunderstore).</param>
 /// <param name="IsNonPermanent">
 ///     Whether the library item is a download that is not guaranteed to be redownloadable.
-///     (As of time of writing it means 'not from Nexus Mods')
+///     (As of time of writing it means 'not from a known mod source')
 /// </param>
 /// <param name="IsManuallyAdded">Whether this library item was manually added from FileSystem to library.</param>
 /// <param name="Loadouts">The loadouts that this library item is used within.</param>
@@ -21,8 +22,8 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
     {
         var info = new LibraryItemRemovalInfo();
 
-        // Check if it's a file which was downloaded.
-        if (toRemove.TryGetAsNexusModsLibraryItem(out _))
+        // Check if it's a file which was downloaded from a redownloadable mod source.
+        if (toRemove.TryGetAsNexusModsLibraryItem(out _) || toRemove.TryGetAsThunderstoreLibraryItem(out _))
         {
             info.IsNexus = true;
             info.IsNonPermanent = !info.IsNexus;

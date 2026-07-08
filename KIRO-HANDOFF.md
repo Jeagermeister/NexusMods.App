@@ -869,3 +869,71 @@ of Rain 2 pilot module + BepInEx loader/plugin installers + missing-loader diagn
 ### 18.3 Next
 PR C: DownloadsService de-Nexusing + ThunderstoreDataProvider (Library UI) + redownloadable
 capability + localized strings. PR D: RoR2 pilot game module + BepInEx installers.
+
+---
+
+## 19. Session log — 2026-07-08 (cont.) — Downloads/Library UI de-Nexusing (PR C)
+
+> PR #7 merged → `linux-fork` @ `c94226c4e`. Branch `feature/thunderstore-ui` carries PR C:
+> the one non-additive slice of the mod-source plan — the Downloads page and Library UI stop
+> assuming Nexus. Design: DESIGN-modsources.md §9.1/§9.2, §13 PR C.
+
+### 19.1 `ILibraryDownloadJob` — the source-agnostic downloads seam
+New interface in `Abstractions.Downloads`: `DisplayName`, `GameId` (OUR game identity, not
+Nexus's), `DownloadPageUri`, `MetadataEntityId` (for icons), `IJob? InnerJob` (wrapper jobs
+expose the inner HTTP job that observables/pause/resume actually live on; jobs that ARE the
+HTTP transfer return null), and `FindLibraryFile(IDb)` (source-specific completed-download →
+library file lookup). `INexusModsDownloadJob` and `IThunderstoreDownloadJob` both extend it:
+- `NexusModsDownloadJob` maps NexusModsGameId→GameId at Create() via `GetServices<IGameData>()`;
+  `FindLibraryFile` = the FindByFileMetadata logic that used to live inside DownloadsService.
+- `ThunderstoreDownloadJob`: GameId = default (packages are global; game unknown at download
+  time → shows as unknown in the Game column until PR D), InnerJob = null, `FindLibraryFile`
+  via the version-metadata LibraryItems backref.
+
+### 19.2 DownloadsService + model + UI retype (GameId everywhere)
+- `DownloadsService` subscribes `GetObservableChangeSet<ILibraryDownloadJob>()`; progress
+  observables come from `InnerJob ?? change.Current`; the issue-#3892 pause/resume unwrap is
+  now `InnerJob`-based; `ResolveLibraryFile` invokes a resolver captured per-download
+  (`DownloadInfo.LibraryFileResolver`) so completed downloads resolve after the job leaves the
+  monitor, for any source. All Nexus usings dropped from the service.
+- `DownloadInfo.GameId`, `IDownloadsService.{GetDownloadsForGame,GetActiveDownloadsForGame,
+  PauseAllForGame,ResumeAllForGame}`, `IDownloadsServiceExtensions`, `DownloadsFilter`,
+  `DownloadsPageContext.GameScope`, `IDownloadsDataProvider.ResolveGameName` all retyped
+  `NexusModsGameId`→`GameId`; `ResolveGameName` matches on `Game.GameId`; the game-scoped
+  Downloads left-menu item passes `Game.GameId`. ⚠️ Old persisted workspace layouts with a
+  game-scoped Downloads page deserialize to a non-matching GameId (header "Unknown Game",
+  empty list) — reopen the page once to fix; accepted for a dev fork.
+- `DownloadsDataProvider.CreateIconComponent` still loads `NexusModsFileMetadata` from
+  `FileMetadataId`; for Thunderstore ids `IsValid()` is false → fallback icon (real
+  Thunderstore icons = follow-up pipeline work).
+
+### 19.3 Library page: `ThunderstoreDataProvider` + removal info
+- `ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProvider` (App.UI, registered
+  beside the other providers; App.UI now refs Abstractions.Thunderstore). Modeled on
+  LocalFileDataProvider + the ItemVersion column from `ThunderstoreVersionMetadata.VersionNumber`.
+  Fallback thumbnail; changelog/mod-page actions disabled (package-page link + real icons are
+  follow-ups). `GetAllFiles` returns [] until Thunderstore items gain a game association (PR D).
+- `LibraryItemRemovalInfo`: "redownloadable" now = Nexus OR Thunderstore item (delete-warning
+  UX treats one-click packages as safely deletable).
+
+### 19.4 Validation
+- Full solution 0 errors. Suites: Library.Tests **3/3** (incl. NEW
+  `DirectDownloadJobs_SurfaceAlongsideWrapperJobs` — a Thunderstore-shaped direct job and the
+  wrapper-shaped Nexus job surface together, direct pause/resume routes to the job itself, id-
+  tracked and self-contained against the shared-singleton cache), Thunderstore **53/53**,
+  Steam 11/12 (pre-existing skip), Synchronizer **12/12**, DataModel **232/232**.
+- Test-harness notes: `TestNexusModsDownloadJob`/`DownloadJobFactory` gained the new members
+  (synthetic NexusModsGameId→GameId mapping); new `TestDirectDownloadJob` polls its completion
+  source with periodic `YieldAsync` so cooperative pause/cancel work; existing exact-count
+  waits are order-fragile against the singleton cache — new tests should track by job id.
+- Live headless: `protocol-invoke ror2mm://…HookGenPatcher/1.2.3/` through the refactored
+  pipeline → 2-package closure downloaded, completed cleanly.
+- ⚠️ NEEDS GUI VERIFICATION (Brian): with the app open, click "Install with Mod Manager" on
+  thunderstore.io → Downloads page should show the download live (name, size, progress,
+  pause/resume) with game "Unknown"; Library page should list Thunderstore items with their
+  version; deleting one should NOT warn "not redownloadable". This also closes the §18.2
+  browser-click forwarding check.
+
+### 19.5 Next
+PR D: RoR2 pilot game module + BepInEx loader/plugin installers + missing-loader diagnostic
+(gives Thunderstore items a game association → Game column, GetAllFiles, install targeting).

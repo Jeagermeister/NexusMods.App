@@ -1,7 +1,7 @@
 using DynamicData;
 using NexusMods.Abstractions.Downloads;
 using NexusMods.App.UI.Controls;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Games;
 
 namespace NexusMods.App.UI.Pages.Downloads;
 
@@ -27,7 +27,7 @@ public interface IDownloadsDataProvider
     /// <summary>
     /// Resolves the name of a game based on its GameId.
     /// </summary>
-    /// <param name="nexusModsGameId">The GameId to resolve the name for.</param>
+    /// <param name="gameId">The GameId to resolve the name for.</param>
     /// <returns>The name of the game or a default string if not found.</returns>
-    string ResolveGameName(NexusModsGameId nexusModsGameId);
+    string ResolveGameName(GameId gameId);
 }

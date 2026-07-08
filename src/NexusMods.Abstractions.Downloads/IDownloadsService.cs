@@ -1,7 +1,7 @@
 using DynamicData;
 using DynamicData.Kernel;
 using JetBrains.Annotations;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 
 namespace NexusMods.Abstractions.Downloads;
@@ -30,12 +30,12 @@ public interface IDownloadsService
     /// <summary>
     /// Get downloads filtered by game.
     /// </summary>
-    IObservable<IChangeSet<DownloadInfo, DownloadId>> GetDownloadsForGame(NexusModsGameId nexusModsGameId);
+    IObservable<IChangeSet<DownloadInfo, DownloadId>> GetDownloadsForGame(GameId gameId);
     
     /// <summary>
     /// Get active downloads filtered by game.
     /// </summary>
-    IObservable<IChangeSet<DownloadInfo, DownloadId>> GetActiveDownloadsForGame(NexusModsGameId nexusModsGameId);
+    IObservable<IChangeSet<DownloadInfo, DownloadId>> GetActiveDownloadsForGame(GameId gameId);
     
     
     /// <summary>
@@ -61,7 +61,7 @@ public interface IDownloadsService
     /// <summary>
     /// Pauses all active downloads for a specific game.
     /// </summary>
-    void PauseAllForGame(NexusModsGameId nexusModsGameId);
+    void PauseAllForGame(GameId gameId);
     
     /// <summary>
     /// Resumes all paused downloads.
@@ -71,7 +71,7 @@ public interface IDownloadsService
     /// <summary>
     /// Resumes all paused downloads for a specific game.
     /// </summary>
-    void ResumeAllForGame(NexusModsGameId nexusModsGameId);
+    void ResumeAllForGame(GameId gameId);
     
     /// <summary>
     /// Cancels selected downloads.
@@ -79,8 +79,8 @@ public interface IDownloadsService
     void CancelRange(IEnumerable<DownloadInfo> downloads);
     
     /// <summary>
-    /// Resolves a library file for a completed download using FileId/GameId matching.
-    /// Returns None for incomplete downloads or non-Nexus downloads.
+    /// Resolves the library file a completed download produced (source-agnostic).
+    /// Returns None for incomplete downloads.
     /// </summary>
     /// <param name="downloadInfo">The download info to resolve library file for.</param>
     /// <returns>The library file if found, otherwise None.</returns>

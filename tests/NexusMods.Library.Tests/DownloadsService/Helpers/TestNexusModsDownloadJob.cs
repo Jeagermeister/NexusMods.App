@@ -1,8 +1,10 @@
 using System.Reactive.Subjects;
+using DynamicData.Kernel;
 using NexusMods.Abstractions.HttpDownloads;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 
@@ -30,9 +32,17 @@ public record TestNexusModsDownloadJob : IJobDefinitionWithStart<TestNexusModsDo
     
     // <see cref="IDownloadJob"/> implementation
     public AbsolutePath Destination => HttpDownloadJob.JobDefinition.Destination;
-    
+
     // Additional properties for test control
     public IJobTask<IHttpDownloadJob, AbsolutePath> HttpDownloadJob { get; set; } = null!;
+
+    // <see cref="ILibraryDownloadJob"/> implementation
+    public GameId GameId { get; init; } = default;
+    public string DisplayName => FileMetadata.Name;
+    public Uri DownloadPageUri => HttpDownloadJob.JobDefinition.DownloadPageUri;
+    public EntityId MetadataEntityId => FileMetadata.Id;
+    public IJob? InnerJob => HttpDownloadJob.Job;
+    public Optional<LibraryFile.ReadOnly> FindLibraryFile(IDb db) => Optional<LibraryFile.ReadOnly>.None;
     
     // <see cref="IJobDefinitionWithStart{TJobDefinition,TResult}"/> implementation
     public async ValueTask<AbsolutePath> StartAsync(IJobContext<TestNexusModsDownloadJob> context)

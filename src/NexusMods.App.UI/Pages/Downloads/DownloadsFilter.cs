@@ -1,5 +1,5 @@
 using DynamicData.Kernel;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Games;
 
 namespace NexusMods.App.UI.Pages.Downloads;
 
@@ -8,27 +8,27 @@ namespace NexusMods.App.UI.Pages.Downloads;
 /// </summary>
 /// <param name="Scope">The filtering scope to apply</param>
 /// <param name="GameId">Optional game ID for game-specific filtering</param>
-public readonly record struct DownloadsFilter(DownloadsScope Scope, Optional<NexusModsGameId> GameId)
+public readonly record struct DownloadsFilter(DownloadsScope Scope, Optional<GameId> GameId)
 {
     /// <summary>
     /// Creates a filter for all downloads.
     /// </summary>
-    public static DownloadsFilter All() => new(DownloadsScope.All, Optional<NexusModsGameId>.None);
+    public static DownloadsFilter All() => new(DownloadsScope.All, Optional<GameId>.None);
 
     /// <summary>
     /// Creates a filter for active downloads only.
     /// </summary>
-    public static DownloadsFilter Active() => new(DownloadsScope.Active, Optional<NexusModsGameId>.None);
+    public static DownloadsFilter Active() => new(DownloadsScope.Active, Optional<GameId>.None);
 
     /// <summary>
     /// Creates a filter for completed downloads only.
     /// </summary>
-    public static DownloadsFilter Completed() => new(DownloadsScope.Completed, Optional<NexusModsGameId>.None);
+    public static DownloadsFilter Completed() => new(DownloadsScope.Completed, Optional<GameId>.None);
 
     /// <summary>
     /// Creates a filter for downloads from a specific game.
     /// </summary>
-    public static DownloadsFilter ForGame(NexusModsGameId nexusModsGameId) => new(DownloadsScope.GameSpecific, nexusModsGameId);
+    public static DownloadsFilter ForGame(GameId gameId) => new(DownloadsScope.GameSpecific, gameId);
 }
 
 /// <summary>

@@ -1,7 +1,7 @@
 using DynamicData;
 using JetBrains.Annotations;
 using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Games;
 using R3;
 using Observable = System.Reactive.Linq.Observable;
 
@@ -72,9 +72,9 @@ public static class IDownloadsServiceExtensions
     public static IObservable<IChangeSet<DownloadInfo, DownloadId>> GetDownloadsByStatusForGame(
         this IDownloadsService service,
         JobStatus status,
-        NexusModsGameId nexusModsGameId)
+        GameId gameId)
     {
-        return service.GetDownloadsForGame(nexusModsGameId)
+        return service.GetDownloadsForGame(gameId)
             .FilterOnObservable(x => x.Status.AsObservable().Select(s => s == status).AsSystemObservable());
     }
 
@@ -83,9 +83,9 @@ public static class IDownloadsServiceExtensions
     /// </summary>
     public static IObservable<IChangeSet<DownloadInfo, DownloadId>> GetRunningDownloadsForGame(
         this IDownloadsService service,
-        NexusModsGameId nexusModsGameId)
+        GameId gameId)
     {
-        return service.GetDownloadsByStatusForGame(JobStatus.Running, nexusModsGameId);
+        return service.GetDownloadsByStatusForGame(JobStatus.Running, gameId);
     }
 
     /// <summary>
@@ -93,8 +93,8 @@ public static class IDownloadsServiceExtensions
     /// </summary>
     public static IObservable<IChangeSet<DownloadInfo, DownloadId>> GetPausedDownloadsForGame(
         this IDownloadsService service,
-        NexusModsGameId nexusModsGameId)
+        GameId gameId)
     {
-        return service.GetDownloadsByStatusForGame(JobStatus.Paused, nexusModsGameId);
+        return service.GetDownloadsByStatusForGame(JobStatus.Paused, gameId);
     }
 }

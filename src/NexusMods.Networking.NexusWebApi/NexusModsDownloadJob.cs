@@ -8,6 +8,7 @@ using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
 using DynamicData.Kernel;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Tracking;
@@ -24,6 +25,33 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
     /// <inheritdoc/>
     public AbsolutePath Destination => HttpDownloadJob.JobDefinition.Destination;
 
+    /// <inheritdoc/>
+    public required GameId GameId { get; init; }
+
+    /// <inheritdoc/>
+    public string DisplayName => FileMetadata.Name;
+
+    /// <inheritdoc/>
+    public Uri DownloadPageUri => HttpDownloadJob.JobDefinition.DownloadPageUri;
+
+    /// <inheritdoc/>
+    public EntityId MetadataEntityId => FileMetadata.Id;
+
+    /// <inheritdoc/>
+    public IJob? InnerJob => HttpDownloadJob.Job;
+
+    /// <inheritdoc/>
+    public Optional<LibraryFile.ReadOnly> FindLibraryFile(IDb db)
+    {
+        var libraryItems = NexusModsLibraryItem.FindByFileMetadata(db, FileMetadata);
+        if (libraryItems.Count == 0) return Optional<LibraryFile.ReadOnly>.None;
+
+        var libraryItem = libraryItems.First().AsLibraryItem();
+        return libraryItem.TryGetAsLibraryFile(out var libraryFile)
+            ? Optional<LibraryFile.ReadOnly>.Create(libraryFile)
+            : Optional<LibraryFile.ReadOnly>.None;
+    }
+
     public static IJobTask<NexusModsDownloadJob, AbsolutePath> Create(
         IServiceProvider provider,
         IJobTask<HttpDownloadJob, AbsolutePath> httpDownloadJob,
@@ -31,12 +59,19 @@ public class NexusModsDownloadJob : INexusModsDownloadJob, IJobDefinitionWithSta
         Optional<CollectionRevisionMetadata.ReadOnly> parentRevision = default)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
+
+        // Map the Nexus game id to our own game identity for the source-agnostic downloads UI.
+        var gameId = provider.GetServices<IGameData>()
+            .FirstOrDefault(game => game.NexusModsGameId.HasValue && game.NexusModsGameId.Value.Equals(fileMetadata.Uid.GameId))
+            ?.GameId ?? default;
+
         var job = new NexusModsDownloadJob
         {
             Logger = provider.GetRequiredService<ILogger<NexusModsDownloadJob>>(),
             HttpDownloadJob = httpDownloadJob,
             FileMetadata = fileMetadata,
             ParentRevision = parentRevision,
+            GameId = gameId,
         };
 
         return monitor.Begin<NexusModsDownloadJob, AbsolutePath>(job);
