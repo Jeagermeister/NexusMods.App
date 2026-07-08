@@ -749,3 +749,77 @@ Headless `steam recognize-game -a 261550` after restoring the overlay:
   job-based flow (progress %, button↔row swap, completion toast — the toast has still never been
   seen on screen); consider a cancel affordance on the progress row (jobs support Cancel);
   remaining 182 warnings are upstream CS0618/CS0219-class noise, mechanical to clear.
+
+---
+
+## 17. Session log — 2026-07-08 (cont., Claude Code / Fable 5) — Mod-source Phase 1: Thunderstore plumbing (PR A)
+
+> Directive §7 Phase 1 begins. Design-doc-first per FABLE5-TASKS §2.1: `DESIGN-modsources.md`
+> (repo root) is the reviewed design; Brian approved it + its four §14 decisions this session
+> (pilot game **Risk of Rain 2**, debug-only feature gate, ecosystem-schema vendoring deferred,
+> keep `NexusMods.*` naming). Work is on branch `feature/thunderstore-source` (PR A of four).
+
+### 17.0 Repo repair first — PR #5's merge had been clobbered
+The 2026-07-08 history scrub (see memory/§16 era) force-pushed `linux-fork` from a local state
+that predated Brian's 08:30 merge of PR #5 — GitHub kept the PR marked "merged" but the
+recognition-as-job commits were no longer on the branch. Verified scrubbed↔pre-scrub trees
+byte-identical, re-merged scrubbed `fix/recognition-ux` (4d54cc3b6) as `d6f743918` with
+GitHub's original merge message, pushed. Build on restored tip: 0 errors / 182 warnings (§16
+baseline). **Lesson: after a filter-branch scrub, check no merges landed between the local
+snapshot and the force-push.**
+
+### 17.1 Research (four parallel agents, condensed into the design doc §2)
+Codebase: the core is already source-agnostic (`ILibraryService.AddDownload` takes any
+`IDownloadJob`; `AddDownloadJob` → `AddMetadata(tx, libraryFile)` is the single identity
+choke point; installers + `ILoadoutManager.InstallItem` don't care about origin; protocol
+dispatch iterates `IIpcProtocolHandler`s by scheme). Nexus privilege lives in:
+`NxmIpcProtocolHandler` (monolith), `HandlerRegistration` (hardcoded `"nxm"`),
+`DownloadsService` (observes only `INexusModsDownloadJob`, `DownloadInfo.GameId` is
+`NexusModsGameId` — the one non-additive refactor, deferred to PR C), `LibraryItemRemovalInfo`
+(redownloadable==Nexus), `GameRegistry.TryGetMetadata` (needs `NexusModsGameId`; in-code TODO).
+Thunderstore (live-verified 2026-07-08): experimental API is anonymous/CORS-open; deps are
+exact-version strings `Namespace-Name-1.2.3`; download endpoint 302s to CDN zip;
+`ror2mm://v1/install/thunderstore.io/{ns}/{name}/{version}/` one-click; **ecosystem schema**
+`/api/experimental/schema/dev/latest/` (296 games, 88 loader packages, per-game installRules —
+r2modman consumes this instead of hardcoding; feeds Phase 2). Corrections: r2modmanPlus is
+**MIT** (not GPL-3); no `thunderstore://` scheme exists; no published rate limits.
+
+### 17.2 PR A implemented (purely additive; app behavior unchanged unless verbs invoked)
+- **`src/NexusMods.Abstractions.Thunderstore/`** — `PackageRef`/`PackageVersionRef`
+  (right-anchored dependency-string parsing: names/versions have restricted charsets,
+  namespaces may contain dashes), DTOs for the experimental API, `IThunderstoreApiClient`,
+  `IThunderstoreLibrary`, `IThunderstoreDownloadJob`, and MnemonicDB models mirroring the
+  Nexus triple: `ThunderstorePackageMetadata` (≙ mod page; FullName indexed) /
+  `ThunderstoreVersionMetadata` (≙ file; FullName indexed, `Dependencies` StringsAttribute
+  verbatim) / `ThunderstoreLibraryItem [Include<LibraryItem>]`. No game/community ref on the
+  package — packages are global on Thunderstore; the target game is an install-time property.
+- **`src/NexusMods.Networking.Thunderstore/`** — `ThunderstoreApiClient` (anonymous GETs,
+  404→null), `ThunderstoreUrls` (stable URL shapes), `ThunderstoreLibrary`
+  (GetOrAddVersion/GetLatestVersion/IsAlreadyDownloaded/CreateDownloadJob),
+  `ThunderstoreDownloadJob : HttpDownloadJob` (ExternalDownloadJob subclass pattern; pause/
+  resume native; `AddMetadata` stamps `ThunderstoreLibraryItem` + `DownloadedFile`),
+  `ThunderstoreDependencyResolver` (BFS over exact-version strings, semver-max on conflicts,
+  cycle-safe, 512-package tripwire, errors collected not thrown), CLI verbs
+  `thunderstore resolve` / `thunderstore download` (`-p ns-Name [-v x.y.z] [-n/--noDeps]`).
+- Wiring: `.AddThunderstore()` in `src/NexusMods.App/Services.cs` (next to `AddSteamCli`);
+  3 new projects in the sln (src/Abstractions, src/Networking, tests/Networking folders).
+- **Not yet in PR A (by design):** the `ThunderstoreSettings` gate ships with PR B (one-click
+  protocol) since bare CLI verbs are inert; no UI, no protocol handler, no pilot game module.
+
+### 17.3 Validation
+- **Unit tests 37/37** (`tests/Networking/NexusMods.Networking.Thunderstore.Tests/`): parser
+  (valid/invalid dependency strings, dashed namespaces, numeric-vs-lexicographic version
+  compare), resolver (chain, diamond→highest wins, lower-version skip without API call, cycle
+  termination, missing/unparsable deps reported, noDeps, missing root), DTO deserialization
+  against captured live responses.
+- **Full solution: 0 errors** (warnings unchanged).
+- **Live end-to-end** (`as-main thunderstore …`): `resolve -p bbepis-BepInExPack` → 6-package
+  closure, 0 errors; `download` → all 6 downloaded into the Library with correct names/sizes
+  (BepInExPack 635KB … BepInEx_GUI 3.5MB); re-run → "already in the Library" ×6, 0 downloaded.
+  Library entities + archive analysis confirmed via the standard AddDownload pipeline.
+
+### 17.4 Next (per DESIGN-modsources.md §13)
+PR B: `ror2mm://` one-click (URL parser + `Ror2mmIpcProtocolHandler` + generalized scheme
+registration + `.desktop` MimeType + `ThunderstoreSettings` gate). PR C: `DownloadsService`
+de-Nexusing + `ThunderstoreDataProvider` (Library UI) + redownloadable capability. PR D: Risk
+of Rain 2 pilot module + BepInEx loader/plugin installers + missing-loader diagnostic.

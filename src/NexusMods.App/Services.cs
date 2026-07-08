@@ -28,6 +28,7 @@ using NexusMods.Networking.GOG;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Networking.Steam;
+using NexusMods.Networking.Thunderstore;
 using NexusMods.Paths;
 using NexusMods.ProxyConsole;
 using NexusMods.Sdk.Library;
@@ -105,6 +106,7 @@ public static class Services
                 .AddCleanupVerbs()
                 .AddStatusVerbs()
                 .AddSteamCli()
+                .AddThunderstore()
                 .AddGOG()
                 .AddFileHashes()
                 .AddGitHubApi();

@@ -1,0 +1,40 @@
+using JetBrains.Annotations;
+using NexusMods.Abstractions.Thunderstore.Models;
+using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Paths;
+using NexusMods.Sdk.Jobs;
+
+namespace NexusMods.Abstractions.Thunderstore;
+
+/// <summary>
+/// Thunderstore as a mod source: resolves package versions to metadata entities and creates
+/// download jobs whose results land in the Library (the Thunderstore peer of the Nexus Mods
+/// library facade).
+/// </summary>
+[PublicAPI]
+public interface IThunderstoreLibrary
+{
+    /// <summary>
+    /// Returns the metadata entity for an exact package version, fetching and storing it
+    /// (and its package) on first sight.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">The package or version does not exist on Thunderstore.</exception>
+    Task<ThunderstoreVersionMetadata.ReadOnly> GetOrAddVersion(PackageVersionRef version, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolves the latest published version of a package.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">The package does not exist on Thunderstore.</exception>
+    Task<PackageVersionRef> GetLatestVersion(PackageRef package, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True if a library item for this exact package version already exists.
+    /// </summary>
+    bool IsAlreadyDownloaded(PackageVersionRef version, IDb? db = null);
+
+    /// <summary>
+    /// Creates (and starts) a download job for an exact package version. Pass the result to
+    /// <c>ILibraryService.AddDownload</c> to land it in the Library.
+    /// </summary>
+    Task<IJobTask<IThunderstoreDownloadJob, AbsolutePath>> CreateDownloadJob(PackageVersionRef version, CancellationToken cancellationToken = default);
+}
