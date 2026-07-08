@@ -1020,6 +1020,30 @@ upstream never could — and forcing the §9.4 generalization (design doc update
   `WINEDLLOVERRIDES="winhttp=n,b" %command%` (Proton needs the override; documented in design
   §10 — automating this is Phase 2) → launch and see mods load.
 
+### 20.4b GUI test round 1 findings (Brian, same evening) — three fixes pushed to the PR branch
+1. **Play button crashed** — `LaunchButtonViewModel` requires a registered `IRunGameTool`
+   (`.First()` on an empty set); the module hadn't registered one. Fixed:
+   `RunRiskOfRain2Game : RunGameTool<RiskOfRain2Game>` (Steam installs launch via
+   `steam://run/632360`, so Steam's launch options apply).
+2. **The locator managed a GHOST install.** Steam's home library held a stale
+   `appmanifest_632360.acf` with `StateFlags=36` ("update started", not fully installed) and
+   a folder containing no game files; the real game was nowhere (Brian believed it was on
+   another drive — Steam disagreed). The app managed the ghost, "cleaned" it instantly,
+   deployed mods into it, and launch failed with "Missing game executable". Fixed in
+   `SteamLocator`: skip manifests without `StateFlags.FullyInstalled` (+ log). Bonus fix:
+   the locator built `LinuxCompatibilityDataProvider` but never assigned it to the
+   `GameLocatorResult` — now assigned (needed for fix 3, and likely an upstream bug).
+3. **Manual `WINEDLLOVERRIDES` launch options eliminated** (Brian: "as easy as can be").
+   `RunRiskOfRain2Game.Execute` now ensures the Proton prefix's `user.reg` has
+   `"winhttp"="native,builtin"` under `[Software\\Wine\\DllOverrides]` before every launch
+   (r2modman's mechanism; one-time `.bak` backup; never blocks the launch on failure; no-ops
+   when the prefix doesn't exist yet — Wine creates it on first run, override lands on the
+   next). Generalizing this to the BepInEx game family is Phase 2.
+
+Recovery on the box: ghost folder + stale manifest removed; RoR2 must be properly installed
+via Steam, then re-managed in the app (old ghost metadata/loadout stays dormant in the DB —
+harmless; Path+Store matching means it never reattaches to a different install path).
+
 ### 20.5 Follow-ups
 Real game art; Thunderstore CTA on the Library page for Nexus-less games (design §15 rule 2);
 `config/` conflict semantics between packages; Proton WINEDLLOVERRIDES automation (pairs with
