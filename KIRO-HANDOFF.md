@@ -1048,3 +1048,38 @@ harmless; Path+Store matching means it never reattaches to a different install p
 Real game art; Thunderstore CTA on the Library page for Nexus-less games (design §15 rule 2);
 `config/` conflict semantics between packages; Proton WINEDLLOVERRIDES automation (pairs with
 §3.1 umu work); eventual clean rekey of GameInstallMetadata onto our GameId with migration.
+
+### 20.6 END-TO-END VERIFIED (Brian, 2026-07-08 evening) — Phase 1 complete
+After the fix rounds below, the full arc works on real hardware: thunderstore.io one-click →
+latest-version dependency resolution → Library → BepInEx pack/plugin installers → Apply →
+Play (steam://run with automatic user.reg winhttp override) → **modded characters visible
+in-game**. Verified twice (two different character mods).
+
+Fix rounds during GUI testing (all on the PR #9 branch):
+- Ghost-install saga: stale not-fully-installed Steam manifest → locator filter; ghost
+  loadout in DB crashed startup pipelines AND (fatally) a UI-thread reactive pipeline during
+  downloads → orphan-tolerance in MyGames/Spine/window-restore/MyLoadouts + new
+  **`loadouts delete-orphaned`** CLI recovery verb; ghost purged from Brian's DB.
+- Play button: needs a registered IRunGameTool (added RunRiskOfRain2Game).
+- WINEDLLOVERRIDES automated via user.reg patch at launch (r2modman mechanism).
+- **Dependency pins are FLOORS**: resolver now installs latest version of every dependency
+  (root stays exact) — honoring pins literally installed pre-SotS R2API referencing
+  Newtonsoft.Json 12 which the game no longer ships; every plugin failed. r2modman parity.
+
+### 20.7 Brian's design backlog from the first real session (roadmap items)
+1. **De-Nexus the app's own branding/icons** (ties into fork re-branding, roadmap step 2).
+2. **Real artwork everywhere**: pull game tile/icon art for Thunderstore-only games (RoR2
+   currently placeholder) AND mod thumbnails — Thunderstore package icons (IconUri is
+   already stored on ThunderstorePackageMetadata; needs a resource pipeline like Nexus's),
+   plus Brian reports missing thumbnail previews for Nexus mods in some views too.
+3. **Library page: visual "Installed" indicator** — the installed-state column should be
+   highlighted/badged, not plain text.
+4. **Multi-source accounts**: Thunderstore login support (note: its read/download API is
+   anonymous; login via OpenID exists mainly for ratings/submissions — value is smaller than
+   Nexus's premium-download case but fits the peer-source identity), presented as a
+   **source-account dropdown** replacing the single Nexus login button (Nexus / Thunderstore
+   / future Modrinth-Minecraft) showing per-source login state. Long-term §7 work.
+Also queued from this session: "not a clean install" dialog should not appear for games with
+zero known-vanilla data (and clean-folder is dangerous there); generalize local recognition
+to Nexus-less games (removes the External-Changes wart for RoR2); Library UX for multiple
+downloaded versions of one package (r2modman shows one row per package).
