@@ -15,7 +15,6 @@ using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
@@ -48,7 +47,7 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
             new PageData
             {
                 FactoryId = DownloadsPageFactory.StaticId,
-                Context = new DownloadsPageContext { GameScope = Optional<NexusModsGameId>.None },
+                Context = new DownloadsPageContext { GameScope = Optional<GameId>.None },
             }
         )
         {
@@ -84,7 +83,7 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
             new PageData
             {
                 FactoryId = DownloadsPageFactory.StaticId,
-                Context = new DownloadsPageContext { GameScope = gameInstallation.Game.NexusModsGameId },
+                Context = new DownloadsPageContext { GameScope = gameInstallation.Game.GameId },
             }
         )
         {

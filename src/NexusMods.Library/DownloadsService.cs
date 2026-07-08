@@ -6,11 +6,10 @@ using NexusMods.Abstractions.Downloads;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Networking.HttpDownloader;
-using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.App.UI.Resources;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
-using NexusMods.Sdk.NexusModsApi;
 using R3;
 using ReactiveUI;
 
@@ -44,10 +43,9 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     {
         // TODO: Restore completed downloads from persistent storage on application boot.
 
-        // Monitor Nexus Mods download jobs and transform them into DownloadInfo
+        // Monitor library download jobs (any mod source) and transform them into DownloadInfo
         // Handle completed downloads by keeping them in cache when removed from JobMonitor
-        // Note(sewer): 
-        _jobMonitor.GetObservableChangeSet<INexusModsDownloadJob>()
+        _jobMonitor.GetObservableChangeSet<ILibraryDownloadJob>()
             .Subscribe(changes =>
             {
                 _downloadCache.Edit(updater =>
@@ -59,14 +57,16 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
                             case ChangeReason.Add:
                             case ChangeReason.Update:
                             case ChangeReason.Refresh:
-                                var nexusJob = (INexusModsDownloadJob)change.Current.Definition;
-                                var httpDownloadJob = nexusJob.HttpDownloadJob.Job;
-                                var downloadInfo = CreateDownloadInfo(nexusJob, change.Current.Id);
+                                var libraryJob = (ILibraryDownloadJob)change.Current.Definition;
+                                // Wrapper jobs (Nexus) expose the inner HTTP job whose observables tick;
+                                // jobs that ARE the HTTP transfer (Thunderstore) are observed directly.
+                                var progressJob = libraryJob.InnerJob ?? change.Current;
+                                var downloadInfo = CreateDownloadInfo(libraryJob, change.Current.Id);
                                 updater.AddOrUpdate(downloadInfo, change.Current.Id);
                                 
                                 // Subscribe to job observables for reactive updates
                                 if (change.Reason == ChangeReason.Add)
-                                    SubscribeToJobObservables(httpDownloadJob, downloadInfo);
+                                    SubscribeToJobObservables(progressJob, downloadInfo);
 
                                 break;
                             case ChangeReason.Remove:
@@ -119,13 +119,13 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     public IObservable<IChangeSet<DownloadInfo, DownloadId>> AllDownloads =>
         _downloadCache.Connect();
     
-    public IObservable<IChangeSet<DownloadInfo, DownloadId>> GetDownloadsForGame(NexusModsGameId nexusModsGameId) =>
+    public IObservable<IChangeSet<DownloadInfo, DownloadId>> GetDownloadsForGame(GameId gameId) =>
         _downloadCache.Connect()
-            .Filter(x => x.GameId.Value.Equals(nexusModsGameId));
+            .Filter(x => x.GameId.Value.Equals(gameId));
     
-    public IObservable<IChangeSet<DownloadInfo, DownloadId>> GetActiveDownloadsForGame(NexusModsGameId nexusModsGameId) =>
+    public IObservable<IChangeSet<DownloadInfo, DownloadId>> GetActiveDownloadsForGame(GameId gameId) =>
         _downloadCache.Connect()
-            .FilterOnObservable(x => x.Status.AsObservable().Select(status => x.GameId.Value.Equals(nexusModsGameId) && status.IsActive()).AsSystemObservable())
+            .FilterOnObservable(x => x.Status.AsObservable().Select(status => x.GameId.Value.Equals(gameId) && status.IsActive()).AsSystemObservable())
             .RefCount();
     
     /// <summary>
@@ -133,7 +133,7 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     /// This is a temporary workaround until the job system properly delegates capabilities 
     /// (tracked in issue #3892).
     /// </summary>
-    /// <param name="downloadInfo">The download info containing the NexusModsDownloadJob ID</param>
+    /// <param name="downloadInfo">The download info containing the outer download job ID</param>
     /// <returns>The ID of the underlying HttpDownloadJob if found, otherwise the original ID</returns>
     private JobId ResolveToHttpDownloadJobId(DownloadInfo downloadInfo)
     {
@@ -142,9 +142,9 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
         if (job == null)
             return downloadInfo.Id;
         
-        // Try to cast the job definition to INexusModsDownloadJob and return inner HttpDownloadJob if possible.
-        if (job.Definition is INexusModsDownloadJob nexusJob)
-            return nexusJob.HttpDownloadJob.Job.Id;
+        // Wrapper jobs expose the inner HTTP job that actually supports pause/resume.
+        if (job.Definition is ILibraryDownloadJob { InnerJob: not null } libraryJob)
+            return libraryJob.InnerJob.Id;
         
         return downloadInfo.Id;
     }
@@ -167,10 +167,10 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     }
 
     // Note(sewer) Workaround for issue #3892: Resolve to the underlying HttpDownloadJob ID
-    public void PauseAllForGame(NexusModsGameId nexusModsGameId)
+    public void PauseAllForGame(GameId gameId)
     {
         foreach (var download in _downloadCache.Items.Where(d => 
-            d.Status.Value == JobStatus.Running && d.GameId.Value.Equals(nexusModsGameId)))
+            d.Status.Value == JobStatus.Running && d.GameId.Value.Equals(gameId)))
             _jobMonitor.Pause(ResolveToHttpDownloadJobId(download));
     }
 
@@ -182,10 +182,10 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     }
 
     // Note(sewer) Workaround for issue #3892: Resolve to the underlying HttpDownloadJob ID
-    public void ResumeAllForGame(NexusModsGameId nexusModsGameId)
+    public void ResumeAllForGame(GameId gameId)
     {
         foreach (var download in _downloadCache.Items.Where(d => 
-            d.Status.Value == JobStatus.Paused && d.GameId.Value.Equals(nexusModsGameId)))
+            d.Status.Value == JobStatus.Paused && d.GameId.Value.Equals(gameId)))
             _jobMonitor.Resume(ResolveToHttpDownloadJobId(download));
     }
     
@@ -196,20 +196,19 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
             _jobMonitor.Cancel(ResolveToHttpDownloadJobId(download));
     }
     
-    private DownloadInfo CreateDownloadInfo(INexusModsDownloadJob nexusJob, JobId currentId)
+    private DownloadInfo CreateDownloadInfo(ILibraryDownloadJob libraryJob, JobId currentId)
     {
-        var httpJobDefinition = nexusJob.HttpDownloadJob.JobDefinition;
-        
         var info = new DownloadInfo 
         { 
             Id = currentId,
         };
         
         // Set initial values using internal methods
-        info.SetGameId(nexusJob.FileMetadata.Uid.GameId);
-        info.SetName(ExtractName(nexusJob));
-        info.SetDownloadPageUri(httpJobDefinition.DownloadPageUri);
-        info.SetFileMetadataId(nexusJob.FileMetadata.Id);
+        info.SetGameId(libraryJob.GameId);
+        info.SetName(ExtractName(libraryJob));
+        info.SetDownloadPageUri(libraryJob.DownloadPageUri);
+        info.SetFileMetadataId(libraryJob.MetadataEntityId);
+        info.LibraryFileResolver = libraryJob.FindLibraryFile;
         // FileSize, Progress, DownloadedBytes, TransferRate, Status, CompletedAt are set by observable subscriptions
         
         return info;
@@ -267,23 +266,21 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
     }
 
     // Helper methods
-    private string ExtractName(INexusModsDownloadJob nexusJob)
+    private string ExtractName(ILibraryDownloadJob libraryJob)
     {
-        // Direct access to file name from FileMetadata
-        var fileName = nexusJob.FileMetadata.Name;
+        // Direct access to the source-provided display name
+        var fileName = libraryJob.DisplayName;
         if (!string.IsNullOrEmpty(fileName))
             return fileName;
         
         // Note(sewer): The name should never be empty in practice, as we always fetch the metadata before
-        // starting a download, however; as a precaution; we provide a fallback here. This fallback
-        // should also work for non-Nexus downloads in the future.
+        // starting a download, however; as a precaution; we provide a fallback here.
 
-        // Fallback to destination filename if FileMetadata.Name is empty as absolute last resort.
-        var httpJob = nexusJob.HttpDownloadJob.JobDefinition;
-        if (httpJob.Destination == default(AbsolutePath))
+        // Fallback to destination filename if the display name is empty as absolute last resort.
+        if (libraryJob.Destination == default(AbsolutePath))
             return Language.Downloads_UnknownDownload;
 
-        var destinationFileName = httpJob.Destination.FileName;
+        var destinationFileName = libraryJob.Destination.FileName;
         if (string.IsNullOrEmpty(destinationFileName))
             return Language.Downloads_UnknownDownload;
         
@@ -299,19 +296,8 @@ public sealed class DownloadsService : IDownloadsService, IDisposable
         
         try
         {
-            // Retrieve the FileMetadata from the database using the stored EntityId
-            var fileMetadata = new NexusModsFileMetadata.ReadOnly(_connection.Db, downloadInfo.FileMetadataId.Value);
-            
-            // Find library items that match this file metadata
-            var libraryItems = NexusModsLibraryItem.FindByFileMetadata(_connection.Db, fileMetadata);
-            if (libraryItems.Count == 0)
-                return Optional<LibraryFile.ReadOnly>.None;
-            
-            // Convert the first library item to LibraryFile.ReadOnly
-            var libraryItem = libraryItems.First().AsLibraryItem();
-            return !libraryItem.TryGetAsLibraryFile(out var libraryFile) 
-                ? Optional<LibraryFile.ReadOnly>.None
-                : Optional<LibraryFile.ReadOnly>.Create(libraryFile);
+            // Source-specific lookup captured from the originating download job.
+            return downloadInfo.LibraryFileResolver?.Invoke(_connection.Db) ?? Optional<LibraryFile.ReadOnly>.None;
         }
         catch (Exception)
         {

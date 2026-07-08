@@ -26,7 +26,7 @@ using NexusMods.App.UI.WorkspaceAttachments;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Loadouts;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -292,7 +292,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         workspaceController.ChangeOrCreateWorkspaceByContext<DownloadsContext>(() => new PageData
             {
                 FactoryId = DownloadsPageFactory.StaticId,
-                Context = new DownloadsPageContext { GameScope = Optional<NexusModsGameId>.None }
+                Context = new DownloadsPageContext { GameScope = Optional<GameId>.None }
             }
         );
     }

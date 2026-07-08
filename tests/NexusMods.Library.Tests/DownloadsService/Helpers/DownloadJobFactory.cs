@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.NexusModsApi;
 
@@ -49,6 +50,8 @@ public class DownloadJobFactory(IJobMonitor jobMonitor, IServiceProvider service
         // Create test Nexus Mods download job
         var testNexusJob = new TestNexusModsDownloadJob
         {
+            // Synthetic NexusModsGameId -> GameId mapping for tests (production maps via IGameData)
+            GameId = GameId.From(nexusModsGameId.Value),
             FileMetadata = CreateTestFileMetadata("TestFile.zip", nexusModsGameId),
             StatusController = statusController,
             ProgressController = progressController,

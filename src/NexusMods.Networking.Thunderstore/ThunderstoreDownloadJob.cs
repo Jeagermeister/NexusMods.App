@@ -1,3 +1,4 @@
+using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Thunderstore;
@@ -5,6 +6,7 @@ using NexusMods.Abstractions.Thunderstore.Models;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 
@@ -19,6 +21,35 @@ public record ThunderstoreDownloadJob : HttpDownloadJob, IThunderstoreDownloadJo
 {
     /// <inheritdoc/>
     public required ThunderstoreVersionMetadata.ReadOnly VersionMetadata { get; init; }
+
+    /// <inheritdoc/>
+    public string DisplayName => $"{VersionMetadata.Package.Name} ({VersionMetadata.Package.PackageNamespace})";
+
+    /// <inheritdoc/>
+    /// <remarks>Thunderstore packages are global — the target game isn't known at download time.</remarks>
+    public GameId GameId => default;
+
+    /// <inheritdoc/>
+    public EntityId MetadataEntityId => VersionMetadata.Id;
+
+    /// <inheritdoc/>
+    /// <remarks>This job IS the HTTP transfer; there is no inner job.</remarks>
+    public IJob? InnerJob => null;
+
+    /// <inheritdoc/>
+    public Optional<LibraryFile.ReadOnly> FindLibraryFile(IDb db)
+    {
+        var version = ThunderstoreVersionMetadata.Load(db, VersionMetadata.Id);
+        if (!version.IsValid()) return Optional<LibraryFile.ReadOnly>.None;
+
+        foreach (var item in version.LibraryItems)
+        {
+            if (item.AsLibraryItem().TryGetAsLibraryFile(out var libraryFile))
+                return Optional<LibraryFile.ReadOnly>.Create(libraryFile);
+        }
+
+        return Optional<LibraryFile.ReadOnly>.None;
+    }
 
     /// <summary>
     /// Creates (and starts) a download job for the given package version.

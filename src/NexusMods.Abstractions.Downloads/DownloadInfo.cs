@@ -3,8 +3,9 @@ using DynamicData.Kernel;
 using JetBrains.Annotations;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
-using NexusMods.Sdk.NexusModsApi;
+using NexusMods.Sdk.Library;
 using R3;
 
 [assembly: InternalsVisibleTo("NexusMods.Library")]
@@ -27,7 +28,7 @@ public class DownloadInfo : IDisposable
     
     // Backing fields for reactive properties
     private readonly BindableReactiveProperty<string> _name = new(string.Empty);
-    private readonly BindableReactiveProperty<NexusModsGameId> _gameId = new(default(NexusModsGameId));
+    private readonly BindableReactiveProperty<GameId> _gameId = new(default(GameId));
     private readonly BindableReactiveProperty<Size> _fileSize = new(Size.From(0));
     private readonly BindableReactiveProperty<Percent> _progress = new(Percent.Zero);
     private readonly BindableReactiveProperty<Size> _downloadedBytes = new(Size.From(0));
@@ -45,7 +46,7 @@ public class DownloadInfo : IDisposable
     /// <summary>
     /// The game this download is for.
     /// </summary>
-    public IReadOnlyBindableReactiveProperty<NexusModsGameId> GameId => _gameId;
+    public IReadOnlyBindableReactiveProperty<GameId> GameId => _gameId;
     
     /// <summary>
     /// Total file size.
@@ -96,9 +97,16 @@ public class DownloadInfo : IDisposable
     /// </summary>
     internal System.Reactive.Disposables.CompositeDisposable? Subscriptions { get; set; }
 
+    /// <summary>
+    /// Source-specific lookup of the library file this download produced, captured from the
+    /// originating <see cref="ILibraryDownloadJob"/> so completed downloads can be resolved
+    /// after the job leaves the job monitor.
+    /// </summary>
+    internal Func<IDb, Optional<LibraryFile.ReadOnly>>? LibraryFileResolver { get; set; }
+
     // Internal mutation methods for DownloadsService
     internal void SetName(string value) => _name.Value = value;
-    internal void SetGameId(NexusModsGameId value) => _gameId.Value = value;
+    internal void SetGameId(GameId value) => _gameId.Value = value;
     internal void SetFileSize(Size value) => _fileSize.Value = value;
     internal void SetProgress(Percent value) => _progress.Value = value;
     internal void SetDownloadedBytes(Size value) => _downloadedBytes.Value = value;

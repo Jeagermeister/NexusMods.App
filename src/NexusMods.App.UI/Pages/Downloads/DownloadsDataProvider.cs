@@ -9,7 +9,6 @@ using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
-using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Sdk.Resources;
 using R3;
 using ReactiveUI;
@@ -92,10 +91,10 @@ public sealed class DownloadsDataProvider(IServiceProvider serviceProvider) : ID
         return model;
     }
 
-    public string ResolveGameName(NexusModsGameId nexusModsGameId)
+    public string ResolveGameName(GameId gameId)
     {
         return _gameRegistry.LocateGameInstallations()
-            .FirstOrDefault(g => g.Game.NexusModsGameId.Equals(nexusModsGameId))?.Game.DisplayName 
+            .FirstOrDefault(g => g.Game.GameId.Equals(gameId))?.Game.DisplayName 
             ?? Language.Downloads_UnknownGame;
     }
 

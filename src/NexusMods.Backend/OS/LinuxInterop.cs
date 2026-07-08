@@ -45,6 +45,28 @@ internal partial class LinuxInterop : IOSInterop
         }
 
         rawPath = Environment.ProcessPath ?? throw new NotSupportedException("Unable to get process path");
+
+        // Framework-dependent launches (`dotnet NexusMods.App.dll`, e.g. running from source)
+        // report the dotnet host as the process path. A desktop file pointing at the bare host
+        // loses the assembly argument, so nxm/ror2mm links silently go nowhere. Prefer the
+        // apphost binary that sits next to the entry assembly when it exists.
+        if (Path.GetFileNameWithoutExtension(rawPath) == "dotnet")
+        {
+            var entryAssembly = Environment.GetCommandLineArgs()[0];
+            if (entryAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                var appHost = entryAssembly[..^".dll".Length];
+                if (File.Exists(appHost))
+                {
+                    rawPath = appHost;
+                }
+                else
+                {
+                    _logger.LogWarning("Running framework-dependent without an apphost binary; URI scheme handlers registered with `{Path}` will not work", rawPath);
+                }
+            }
+        }
+
         return _fileSystem.FromUnsanitizedFullPath(rawPath);
     }
 
