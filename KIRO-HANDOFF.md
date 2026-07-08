@@ -823,3 +823,49 @@ PR B: `ror2mm://` one-click (URL parser + `Ror2mmIpcProtocolHandler` + generaliz
 registration + `.desktop` MimeType + `ThunderstoreSettings` gate). PR C: `DownloadsService`
 de-Nexusing + `ThunderstoreDataProvider` (Library UI) + redownloadable capability. PR D: Risk
 of Rain 2 pilot module + BepInEx loader/plugin installers + missing-loader diagnostic.
+
+---
+
+## 18. Session log — 2026-07-08 (cont.) — Thunderstore one-click (PR B)
+
+> PR #6 (PR A plumbing) merged by Brian → `linux-fork` @ `4eede716a`. This session adds PR B on
+> branch `feature/thunderstore-one-click`: `ror2mm://` one-click installs + the settings gate +
+> generalized URI-scheme registration. Design: DESIGN-modsources.md §7.
+
+### 18.1 What was built
+- **`Ror2mmUrl.TryParseInstallUrl`** (Abstractions.Thunderstore) — parses
+  `ror2mm://v1/install/{host}/{ns}/{name}/{version}[/]`; accepts `thunderstore.io` +
+  `{sub}.thunderstore.io` (r2modman parity), rejects near-miss hosts (`notthunderstore.io`),
+  unknown protocol versions/actions, malformed names/versions.
+- **`ThunderstoreSettings`** (Abstractions.Thunderstore, registered via `AddSettings<>` in
+  `AddThunderstore()`) — `EnableThunderstore`, default `ApplicationConstants.IsDebug` (ON in
+  debug, OFF in release), Experimental section, RequiresRestart.
+- **`IIpcProtocolHandler.IsEnabled`** — new default-true interface property; disabled handlers
+  are skipped by scheme registration and no-op in `Handle`. Nxm handler untouched (default).
+- **`Ror2mmIpcProtocolHandler`** (App.Cli, beside the nxm handler; App.Cli now refs
+  Networking.Thunderstore) — settings-gated; parse → `IsAlreadyDownloaded` short-circuit
+  (sends the same `CliMessages.ModDownloadFailed(AlreadyExists)` the nxm handler uses, so
+  existing UI toasts work) → resolve closure (abort+message on incomplete) → download each
+  missing package via `ILibraryService.AddDownload` → `ModDownloadSucceeded` for the clicked
+  root package. TaskCanceled swallowed like nxm.
+- **`UriSchemeRegistration`** (App.Cli, hosted service) — iterates all `IIpcProtocolHandler`s
+  and registers each enabled handler's scheme with `IOSInterop`. **Retired
+  `HandlerRegistration`** (NexusWebApi's hardcoded nxm registrar — file deleted, DI line
+  removed). Adding a future scheme (modrinth://) is now: implement handler, add one DI line.
+- `.desktop` MimeType now `x-scheme-handler/nxm;x-scheme-handler/ror2mm`; new CLI verb
+  `associate-ror2mm` mirrors `associate-nxm`.
+
+### 18.2 Validation
+- Full solution 0 errors; Thunderstore tests **53/53** (16 new `Ror2mmUrlTests`).
+- Live: startup now runs `xdg-settings set default-url-scheme-handler` for **both** nxm and
+  ror2mm (debug build → gate ON); `xdg-mime query default x-scheme-handler/ror2mm` →
+  `com.nexusmods.app.desktop`. `protocol-invoke -u "ror2mm://v1/install/thunderstore.io/
+  bbepis/BepInExPack/5.4.2100/"` → resolved (1-package closure), downloaded into Library,
+  "Completed ror2mm install"; re-invoke → "already been downloaded and will be skipped".
+- NOT verified: the browser-click → running-GUI path (SingleProcess forwarding) and the UI
+  toast for a ror2mm download — needs a manual GUI session (same class of follow-up as the
+  recognition toast, §16.4).
+
+### 18.3 Next
+PR C: DownloadsService de-Nexusing + ThunderstoreDataProvider (Library UI) + redownloadable
+capability + localized strings. PR D: RoR2 pilot game module + BepInEx installers.

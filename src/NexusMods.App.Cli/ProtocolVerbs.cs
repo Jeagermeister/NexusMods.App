@@ -17,6 +17,7 @@ public static class ProtocolVerbs
     /// <returns></returns>
     public static IServiceCollection AddProtocolVerbs(this IServiceCollection services) =>
         services.AddVerb(() => AssociateNxm)
+            .AddVerb(() => AssociateRor2mm)
             .AddVerb(() => ProtocolInvoke);
 
 
@@ -24,6 +25,13 @@ public static class ProtocolVerbs
     private static async Task<int> AssociateNxm([Injected] IOSInterop osInterop)
     {
         await osInterop.RegisterUriSchemeHandler("nxm");
+        return 0;
+    }
+
+    [Verb("associate-ror2mm", "Associate the ror2mm:// protocol (Thunderstore one-click installs) with this application")]
+    private static async Task<int> AssociateRor2mm([Injected] IOSInterop osInterop)
+    {
+        await osInterop.RegisterUriSchemeHandler("ror2mm");
         return 0;
     }
     

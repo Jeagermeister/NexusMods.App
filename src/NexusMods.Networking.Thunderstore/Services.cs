@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Thunderstore;
 using NexusMods.Networking.Thunderstore.CLI;
+using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Networking.Thunderstore;
 
@@ -17,6 +18,7 @@ public static class Services
     {
         return services
             .AddThunderstoreModels()
+            .AddSettings<ThunderstoreSettings>()
             .AddSingleton<IThunderstoreApiClient, ThunderstoreApiClient>()
             .AddSingleton<IThunderstoreLibrary, ThunderstoreLibrary>()
             .AddSingleton<ThunderstoreDependencyResolver>()

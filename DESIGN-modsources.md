@@ -217,12 +217,13 @@ Thunderstore dependencies are exact-version strings, so this is NOT constraint s
   `ILibraryService.AddDownload` → notify (reuse the existing toast/notification pattern the
   nxm handler uses). No login gate — Thunderstore is anonymous.
 - **Scheme registration:** generalize instead of duplicating the hardcoded pattern:
-  - Move nothing heavy; add `UriSchemeRegistration : BackgroundService` in the App
-    composition that iterates `GetServices<IIpcProtocolHandler>()` and calls
-    `IOSInterop.RegisterUriSchemeHandler(handler.Protocol)` for each. Retire
-    `HandlerRegistration`'s hardcoded `"nxm"` call in favor of it. (If project layering makes
-    `IIpcProtocolHandler` awkward to see from the host, relocate the interface to
-    `NexusMods.Sdk` — precedent: §14.1 did exactly this for `ILocalGameVersionRecognizer`.)
+  - Move nothing heavy; add `UriSchemeRegistration : BackgroundService` (implemented in
+    `NexusMods.App.Cli`, where `IIpcProtocolHandler` lives) that iterates
+    `GetServices<IIpcProtocolHandler>()` and calls
+    `IOSInterop.RegisterUriSchemeHandler(handler.Protocol)` for each. Retired
+    `HandlerRegistration`'s hardcoded `"nxm"` call in favor of it. Handlers gained a
+    default-true `IsEnabled` property so settings-gated handlers (ror2mm reads
+    `ThunderstoreSettings`) are skipped by registration and no-op in `Handle`.
   - `.desktop` file: `MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm;`
     (`src/NexusMods.App/com.nexusmods.app.desktop:11`).
   - Add CLI verb `associate-ror2mm` mirroring `associate-nxm`.
