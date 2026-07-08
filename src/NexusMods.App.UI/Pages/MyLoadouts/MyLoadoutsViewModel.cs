@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
+using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Pages.MyLoadouts.GameLoadoutsSectionEntry;
 using NexusMods.App.UI.Resources;
@@ -31,7 +32,8 @@ public class MyLoadoutsViewModel : APageViewModel<IMyLoadoutsViewModel>, IMyLoad
         this.WhenActivated(d =>
         {
             Loadout.ObserveAll(conn)
-                .Filter(l => l.IsVisible())
+                // Orphaned loadouts (game uninstalled/moved) can't resolve an installation
+                .Filter(l => l.IsVisible() && serviceProvider.GetRequiredService<NexusMods.Sdk.Games.IGameRegistry>().TryGetGameInstallation(l, out _))
                 .DistinctValues(loadout => loadout.InstallationInstance)
                 .Transform(managedGameInstall =>
                     {

@@ -44,7 +44,9 @@ public class GameLoadoutsSectionEntryViewModel : AViewModel<IGameLoadoutsSection
         HeadingText = string.Format(Language.MyLoadoutsGameSectionHeading, _gameInstallation.Game.DisplayName);
 
         Loadout.ObserveAll(conn)
-            .Filter(l => l.IsVisible() && l.InstallationInstance.Locations[LocationId.Game].Path == _gameInstallation.Locations[LocationId.Game].Path)
+            .Filter(l => l.IsVisible()
+                         && serviceProvider.GetRequiredService<NexusMods.Sdk.Games.IGameRegistry>().TryGetGameInstallation(l, out var loadoutInstallation)
+                         && loadoutInstallation!.Locations[LocationId.Game].Path == _gameInstallation.Locations[LocationId.Game].Path)
             .Transform(loadout =>
                 {
                     return (IViewModelInterface)new LoadoutCardViewModel(loadout, conn, serviceProvider)
