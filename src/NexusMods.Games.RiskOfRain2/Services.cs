@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.RiskOfRain2.Emitters;
 using NexusMods.Games.RiskOfRain2.Installers;
 using NexusMods.Games.RiskOfRain2.Models;
@@ -18,6 +19,7 @@ public static class Services
     {
         return services
             .AddGame<RiskOfRain2Game>()
+            .AddSingleton<ITool, RunRiskOfRain2Game>()
             .AddSingleton<BepInExPackInstaller>()
             .AddSingleton<BepInExPluginInstaller>()
             .AddSingleton<MissingBepInExEmitter>()
