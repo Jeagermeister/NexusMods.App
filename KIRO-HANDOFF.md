@@ -692,3 +692,60 @@ non-numeric depot prefixes.
 - UI strings still not localized; spinner still indeterminate (byte-weighted IProgress now makes a
   determinate bar easy).
 - `Dispose` vs in-flight readers race (pre-existing upstream flaw, mirrored by the overlay).
+
+---
+
+## 16. Session log — 2026-07-08 (cont.) — GUI verification round-trip + recognition-as-job
+
+> Brian manually exercised the "Recognize installed version" button (first-ever GUI run). The test
+> validated both visibility cases and exposed two real mid-run design flaws, fixed on branch
+> `fix/recognition-ux`. Also: CS8785 root-caused and eliminated.
+
+### 16.1 What the manual test showed
+- **Bannerlord (unknown version): button appeared and worked** — clicking recorded the 5GB depot
+  (4938/4938 matched) in seconds.
+- **Stardew (known version): button correctly absent.** Stardew's last update predates the frozen
+  hash DB snapshot (2025-09-30), so its version resolves from the shipped database — the negative
+  case behaves as designed. (Verify casually: its game card shows a version string.)
+- **Flaw 1:** the version definition was written after the FIRST depot completed, so the game read
+  "known" while the 64GB depot was still hashing (button vanished early, partial data state).
+- **Flaw 2:** navigating away deactivated the view and CANCELLED the in-flight run (the §15 CTS
+  wiring was too aggressive) — no toast, no completion, half-recognized game.
+
+### 16.2 Fixes (branch `fix/recognition-ux`)
+- **Definition-at-end:** `RecognizeAsync` now records per-depot file manifests with no game id and
+  writes the single `VersionDefinition` only after the whole run completes. A cancelled/failed run
+  leaves the version unknown → the button returns → re-running **resumes** (pass-1 skip makes
+  completed depots instant). Cancellation-safe by construction.
+- **Recognition runs as a job:** new `RecognizeGameVersionJob` (`Abstractions.Games.FileHashes`) +
+  `ILocalGameVersionRecognizer.RecognizeInBackground(installation)` — starts via `IJobMonitor.Begin`,
+  reports byte-weighted progress through `ctx.SetPercent`, survives navigation, and dedupes: a second
+  call for the same install path joins the in-flight job. The ApplyControl VM observes
+  `HasActiveJob<RecognizeGameVersionJob>` for its running state (any view of the same game shows it)
+  and re-evaluates `IsVersionUnknown` when a run ends.
+- **UI:** the "Recognizing…" row now shows live percentage from the job (`ObservableProgress`); the
+  button yields to the progress row while running; spinner fixed to 20×20 (was a squished 12×24).
+- **CS8785 eliminated (§6 warm-up item):** the `GenerateWeaveSources` crash came from the **Weave
+  2.1.0** analyzer dragged in transitively by `NexusMods.MnemonicDB.SourceGenerator` (NuGet ignores
+  `exclude="Analyzers"` on transitive deps); it unconditionally reads a compiler-visible property
+  that only Weave's own — never imported — targets declare → `Path.Combine(null)`. The repo has no
+  `.weave` files, so a new root `Directory.Build.targets` strips the analyzer after
+  `ResolveLockFileAnalyzers`. Clean rebuild: **226 → 182 warnings, 0 errors**. (Upstream MnemonicDB
+  could take this as an issue/PR.)
+
+### 16.3 Bannerlord fully recognized + the perf number
+Headless `steam recognize-game -a 261550` after restoring the overlay:
+- Depot 261551 (the big one, previously estimated "~40 min"): **17,067/17,067 matched in ~23 s**
+  (parallel hashing × 1MiB buffers; ~2.5 CPU-minutes across cores).
+- The two DLC depots' manifests are now present in depotcache (they weren't in §12.3) — both
+  recognized (307 + 3,109 files). **Whole game: 4/4 depots, 20,483 files, 0 modified, 36 s total.**
+- Pass-1 skip + definition-at-end validated live: already-recorded depot skipped instantly, no
+  duplicate definition written.
+
+### 16.4 State / follow-ups
+- Overlay at `~/.local/share/NexusMods.App/FileHashesDatabase/local-overlay` now holds: Stardew
+  (413153), Bannerlord 261551/261552 + both DLC depots, one "(local)" definition per game.
+- Follow-ups that remain: UI string localization (Language.resx); GUI re-verification of the new
+  job-based flow (progress %, button↔row swap, completion toast — the toast has still never been
+  seen on screen); consider a cancel affordance on the progress row (jobs support Cancel);
+  remaining 182 warnings are upstream CS0618/CS0219-class noise, mechanical to clear.
