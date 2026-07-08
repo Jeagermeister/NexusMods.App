@@ -36,6 +36,10 @@ public static class Services
 
         // Protocol Handlers
         services.AddSingleton<IIpcProtocolHandler, NxmIpcProtocolHandler>();
+        services.AddSingleton<IIpcProtocolHandler, Ror2mmIpcProtocolHandler>();
+
+        // Registers an OS-level URI scheme handler for every enabled IIpcProtocolHandler above.
+        services.AddHostedService<UriSchemeRegistration>();
 
         services.AddProtocolVerbs();
         return services;
