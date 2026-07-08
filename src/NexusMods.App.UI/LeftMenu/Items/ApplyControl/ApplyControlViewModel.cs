@@ -2,6 +2,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Exceptions;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
@@ -37,10 +38,19 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
     private readonly LoadoutId _loadoutId;
     private readonly IServiceProvider _serviceProvider;
     private readonly GameInstallMetadataId _gameMetadataId;
+
+    // Linux fork: local (login-free) game version recognition.
+    private readonly ILocalGameVersionRecognizer? _recognizer;
+    private readonly IFileHashesService _fileHashesService;
+    private readonly GameInstallation _installation;
+
     [Reactive] private bool CanApply { get; set; } = true;
     [Reactive] public bool IsApplying { get; private set; }
+    [Reactive] public bool IsVersionUnknown { get; private set; }
+    [Reactive] public bool IsRecognizingVersion { get; private set; }
 
     public ReactiveUI.ReactiveCommand<Unit, Unit> ApplyCommand { get; }
+    public ReactiveUI.ReactiveCommand<Unit, Unit> RecognizeVersionCommand { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, Unit> ShowApplyDiffCommand { get; }
 
     [Reactive] public bool IsProcessing { get; private set; }
@@ -62,13 +72,24 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
         var windowManager = serviceProvider.GetRequiredService<IWindowManager>();
         _gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
-        _gameMetadataId = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId).InstallationId;
+        var loadout = Sdk.Loadouts.Loadout.Load(_conn.Db, loadoutId);
+        _gameMetadataId = loadout.InstallationId;
+        _installation = loadout.InstallationInstance;
+
+        // Linux fork: recognizer is optional (only registered when the Steam module is present).
+        _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
+        _recognizer = serviceProvider.GetService<ILocalGameVersionRecognizer>();
 
         LaunchButtonViewModel = serviceProvider.GetRequiredService<ILaunchButtonViewModel>();
         LaunchButtonViewModel.LoadoutId = loadoutId;
         
         ApplyCommand = ReactiveCommand.CreateFromTask(async () => await Apply(), 
             canExecute: this.WhenAnyValue(vm => vm.CanApply));
+
+        RecognizeVersionCommand = ReactiveCommand.CreateFromTask(RecognizeVersionAsync,
+            canExecute: this.WhenAnyValue(vm => vm.IsVersionUnknown, vm => vm.IsRecognizingVersion, (unknown, recognizing) => unknown && !recognizing));
+
+        UpdateVersionUnknown();
         
         ShowApplyDiffCommand = ReactiveCommand.Create<NavigationInformation>(info =>
         {
@@ -172,6 +193,68 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
         catch (ExecutableInUseException)
         {
             await MessageBoxOkViewModel.ShowGameAlreadyRunningError(_serviceProvider, loadout.Installation.Name);
+        }
+    }
+
+    /// <summary>
+    /// Linux fork: recompute whether the managed game's version is unknown-but-locally-recognisable, which
+    /// drives the visibility of the recognise action. Never throws.
+    /// </summary>
+    private void UpdateVersionUnknown()
+    {
+        IsVersionUnknown = ComputeVersionUnknown();
+    }
+
+    private bool ComputeVersionUnknown()
+    {
+        if (_recognizer is null || !_recognizer.CanRecognize(_installation))
+            return false;
+
+        try
+        {
+            var locatorIds = _installation.LocatorResult.LocatorIds.ToArray();
+            var isKnown = _fileHashesService.TryGetVanityVersion((_installation.LocatorResult.Store, locatorIds), out _);
+            return !isKnown;
+        }
+        catch
+        {
+            // Hash database not ready or lookup failed; don't surface the action rather than risk a broken button.
+            return false;
+        }
+    }
+
+    private async Task RecognizeVersionAsync()
+    {
+        if (_recognizer is null) return;
+
+        IsRecognizingVersion = true;
+        try
+        {
+            var result = await Task.Run(() => _recognizer.RecognizeAsync(_installation, progress: null, CancellationToken.None));
+            UpdateVersionUnknown();
+
+            if (result.AnyRecognized)
+            {
+                _notificationService.ShowToast(
+                    $"Recognised {_installation.Game.DisplayName}: {result.DepotsRecognized} depot(s), {result.TotalVerifiedFiles} verified files.",
+                    ToastNotificationVariant.Success);
+            }
+            else
+            {
+                _notificationService.ShowToast(
+                    $"Couldn't recognise {_installation.Game.DisplayName}. If the install is modified, verify its files in Steam and try again.",
+                    ToastNotificationVariant.Neutral);
+            }
+        }
+        catch (Exception)
+        {
+            _notificationService.ShowToast(
+                $"Failed to recognise {_installation.Game.DisplayName}'s version.",
+                ToastNotificationVariant.Failure);
+        }
+        finally
+        {
+            IsRecognizingVersion = false;
         }
     }
 }

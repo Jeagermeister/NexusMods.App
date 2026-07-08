@@ -55,4 +55,15 @@ public class GameLocatorResult
     /// Optional linux compatability data provider.
     /// </summary>
     public ILinuxCompatabilityDataProvider? LinuxCompatabilityDataProvider { get; init; }
+
+    /// <summary>
+    /// For Steam installations, the path to the Steam client's global <c>depotcache</c> directory
+    /// (which holds the on-disk <c>&lt;depotId&gt;_&lt;manifestId&gt;.manifest</c> files). Null for other stores.
+    /// </summary>
+    /// <remarks>
+    /// Linux fork: used by login-free local version recognition to read Steam depot manifests without
+    /// contacting Steam. The depotcache is global to the Steam install (not per-library), so it cannot
+    /// be derived from the game's install path and is captured here by the Steam locator.
+    /// </remarks>
+    public AbsolutePath? SteamDepotCachePath { get; init; }
 }

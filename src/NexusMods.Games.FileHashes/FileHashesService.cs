@@ -789,6 +789,16 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         using var _ = await _lock.LockAsync();
 
         var overlay = EnsureOverlayOpen();
+
+        // Idempotency: a Steam manifest id uniquely identifies a specific depot content snapshot, so if
+        // it is already present in the overlay the recorded data is identical. Skip to avoid stacking
+        // duplicate manifests (and duplicate version definitions) on repeated recognition runs.
+        if (SteamManifest.FindByManifestId(overlay.Connection.Db, manifestId).Any())
+        {
+            _logger.LogInformation("Local Steam manifest {ManifestId} is already recorded in the overlay; skipping", manifestId.Value);
+            return;
+        }
+
         using var tx = overlay.Connection.BeginTransaction();
 
         // Each verified file becomes a self-contained hash relation + path relation in the overlay, so

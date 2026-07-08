@@ -27,7 +27,48 @@ public static class Verbs
             .AddModule("steam app", "Verbs for querying app data")
             .AddVerb(() => IndexSteamApp)
             .AddVerb(() => LocalIndexSteamApp)
+            .AddVerb(() => RecognizeSteamGame)
             .AddVerb(() => Login);
+
+    [Verb("steam recognize-game", "Recognises an installed Steam game's version locally across all of its installed depots (no login or download) and records it in the local hash overlay, so the app stops treating the install as fully modified")]
+    private static async Task<int> RecognizeSteamGame(
+        [Injected] IRenderer renderer,
+        [Injected] IGameRegistry gameRegistry,
+        [Injected] ILocalGameVersionRecognizer recognizer,
+        [Option("a", "app", "The Steam app id of the installed game to recognise")] long app,
+        [Injected] CancellationToken token)
+    {
+        var appId = (uint)app;
+
+        var installations = gameRegistry.LocateGameInstallations()
+            .Where(installation => installation.LocatorResult.Store == GameStore.Steam
+                                   && installation.LocatorResult.StoreIdentifier == appId.ToString())
+            .ToArray();
+
+        if (installations.Length == 0)
+        {
+            await renderer.TextLine("No installed Steam game found with app id {0}.", appId);
+            return 1;
+        }
+
+        foreach (var installation in installations)
+        {
+            if (!recognizer.CanRecognize(installation))
+            {
+                await renderer.TextLine("Cannot recognise {0} locally (no depotcache available).", installation.Game.DisplayName);
+                continue;
+            }
+
+            await renderer.TextLine("Recognising {0} at {1} ...", installation.Game.DisplayName, installation.LocatorResult.Path);
+            var result = await recognizer.RecognizeAsync(installation, progress: null, token);
+
+            await renderer.TextLine(
+                "  {0} depots recorded, {1} without cached manifests; {2} verified files, {3} missing, {4} modified.",
+                result.DepotsRecognized, result.DepotsSkippedNoManifest, result.TotalVerifiedFiles, result.TotalMissingFiles, result.TotalModifiedFiles);
+        }
+
+        return 0;
+    }
 
     [Verb("steam local-index", "Recognises an installed Steam game version locally by verifying its files against the on-disk depot manifest (no login or download), then records it in the local hash overlay so the app stops treating the install as fully modified")]
     private static async Task<int> LocalIndexSteamApp(

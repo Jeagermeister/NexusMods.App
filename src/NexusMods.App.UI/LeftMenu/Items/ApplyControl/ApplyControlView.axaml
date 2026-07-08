@@ -27,6 +27,32 @@
                     HorizontalAlignment="Stretch"
                     Spacing="{StaticResource Spacing-2}">
 
+            <!-- Linux fork: recognise installed game version locally (shown only when the version is unknown) -->
+            <Button x:Name="RecognizeVersionButton"
+                    HorizontalAlignment="Stretch"
+                    IsVisible="False"
+                    ToolTip.Tip="Recognise this game's installed version locally (no login or download) so a vanilla install isn't treated as fully modified.">
+                <TextBlock Text="Recognize installed version"
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+            </Button>
+
+            <StackPanel x:Name="RecognizingVersionPanel"
+                        Orientation="Horizontal"
+                        IsVisible="False"
+                        Spacing="8">
+                <spinner:Spinner Width="12"
+                                 Height="24"
+                                 Foreground="{StaticResource NeutralStrongBrush}" />
+                <TextBlock Text="Recognizing installed version..."
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           Foreground="{StaticResource NeutralModerateBrush}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
             <!-- preview changes button -->
             <navigation:NavigationControl x:Name="PreviewChangesButton"
                                           Text="{x:Static resources:Language.ApplyControlView_ViewApplyChanges}"

@@ -34,6 +34,57 @@ public class LocalManifestReader
     public static string ManifestFileName(DepotId depotId, ManifestId manifestId) => $"{depotId.Value}_{manifestId.Value}.manifest";
 
     /// <summary>
+    /// Try to read and parse a cached depot manifest given only its manifest id, by locating the
+    /// <c>&lt;depotId&gt;_&lt;manifestId&gt;.manifest</c> file in <paramref name="depotCacheDirectory"/> (manifest ids are
+    /// globally unique, so the depot id is recovered from the file name). This is what the app uses at
+    /// runtime, where the Steam locator exposes installed manifest ids but not their depot ids.
+    /// Returns <c>null</c> when no matching manifest file is found or it cannot be parsed.
+    /// </summary>
+    public Manifest? TryReadManifestByManifestId(AbsolutePath depotCacheDirectory, ManifestId manifestId)
+    {
+        if (!TryFindManifestFile(depotCacheDirectory, manifestId, out _, out var depotId))
+        {
+            _logger.LogDebug("No cached Steam manifest found for manifest id {ManifestId} under {Path}", manifestId.Value, depotCacheDirectory);
+            return null;
+        }
+
+        return TryReadManifest(depotCacheDirectory, depotId, manifestId);
+    }
+
+    /// <summary>
+    /// Locate the cached <c>&lt;depotId&gt;_&lt;manifestId&gt;.manifest</c> file for a given manifest id within
+    /// <paramref name="depotCacheDirectory"/>, recovering the depot id from the file name. Manifest ids are
+    /// globally unique, so at most one file matches. Returns <c>false</c> when the directory is missing or no
+    /// matching file exists. This is pure file-name resolution and does not parse the manifest contents.
+    /// </summary>
+    public static bool TryFindManifestFile(AbsolutePath depotCacheDirectory, ManifestId manifestId, out AbsolutePath manifestPath, out DepotId depotId)
+    {
+        manifestPath = default(AbsolutePath);
+        depotId = default(DepotId);
+
+        if (!depotCacheDirectory.DirectoryExists())
+            return false;
+
+        var suffix = $"_{manifestId.Value}.manifest";
+        foreach (var file in depotCacheDirectory.EnumerateFiles("*.manifest", recursive: false))
+        {
+            var fileName = file.FileName.ToString();
+            if (!fileName.EndsWith(suffix, StringComparison.Ordinal))
+                continue;
+
+            var depotPart = fileName[..^suffix.Length];
+            if (!uint.TryParse(depotPart, out var depotIdValue))
+                continue;
+
+            manifestPath = file;
+            depotId = DepotId.From(depotIdValue);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Try to read and parse the cached depot manifest for the given depot/manifest pair from the
     /// provided <paramref name="depotCacheDirectory"/>. Returns <c>null</c> when the manifest file is
     /// absent, has encrypted filenames (i.e. was never decrypted locally), or fails to parse.

@@ -477,3 +477,138 @@ existing overlay manifest by `ManifestId` before writing.
   redirect-to-file. The multi-file `read_files` tool worked fine this session.
 - Full solution build requires the submodules — run `git submodule update --init --recursive` once
   (done this session: SMAPI @ `fd73446`, docs/Nexus @ `fe4e8b1`).
+
+---
+
+## 13. Session log — 2026-07-07 (cont.) — Recognition service, idempotency, tests (follow-up "A1–A3")
+
+> Builds on §12. Turns the recognition pipeline into a reusable, idempotent service driven from a
+> `GameInstallation`, exposes it as a one-command CLI action, and adds regression tests. The GUI
+> button (§12.5) is intentionally still open — see 13.5.
+
+### 13.1 Idempotency (A2 — DONE)
+`AddLocalSteamVersionAsync` now returns early if a `SteamManifest` with the same `ManifestId` is
+already in the overlay (`SteamManifest.FindByManifestId(overlay.Db, manifestId).Any()`). A manifest id
+uniquely identifies a depot content snapshot, so re-recognition is a genuine no-op — no duplicate
+manifests/version definitions stack up. Verified at runtime ("already recorded in the overlay; skipping").
+
+### 13.2 Reusable recognition service (A1 core — DONE)
+`ILocalGameVersionRecognizer` / `LocalGameVersionRecognizer` (`NexusMods.Networking.Steam/Local`,
+registered in `AddSteam()`):
+- `CanRecognize(GameInstallation)` → true for Steam installs that expose a depotcache path.
+- `RecognizeAsync(GameInstallation, IProgress<double>?, ct)` resolves everything from the installation:
+  install dir = `LocatorResult.Path`, appId = `LocatorResult.StoreIdentifier`, installed manifest ids =
+  `LocatorResult.LocatorIds`, gameId = `Game.NexusModsGameId`, OS via `LocatorResult.TargetOS.MatchPlatform`.
+  It iterates every installed depot, reads its cached manifest, hashes+verifies, and records the
+  verified-vanilla files. It writes ONE version definition for the whole game (on the first recognised
+  depot, named "<Game> (local)") and only the file manifest for the rest. Returns a `LocalRecognitionResult`
+  (depots recorded / skipped-no-manifest, verified / missing / modified counts) and reports 0..1 progress.
+
+Supporting changes:
+- **`GameLocatorResult.SteamDepotCachePath`** (new, nullable) — the Steam client's global depotcache
+  directory. It cannot be derived from the per-library install path, so `SteamLocator` now captures it
+  as `gameFinderGame.SteamPath.Combine("depotcache")`.
+- **`LocalManifestReader.TryReadManifestByManifestId` / `TryFindManifestFile`** — the locator exposes
+  manifest ids but not depot ids, so the cached `<depotId>_<manifestId>.manifest` file is found by
+  matching the manifest-id suffix and the depot id is recovered from the file name.
+
+### 13.3 One-command in-app surface (A1 — DONE)
+`steam recognize-game -a <appId>` (`NexusMods.Networking.Steam/CLI/Verbs.cs`) resolves the installed,
+matching Steam `GameInstallation`(s) via `IGameRegistry.LocateGameInstallations()` and runs the service
+across all installed depots. This is the concrete, verifiable "recognise an installed game in one action"
+entry point (the earlier `steam local-index` remains for single-depot / explicit-path use).
+
+### 13.4 Tests (A3 — DONE)
+`tests/Networking/NexusMods.Networking.Steam.Tests/LocalManifestReaderTests.cs` — 3 passing tests for
+`TryFindManifestFile`: recovers the depot id from the cached file name, returns false when the requested
+manifest is absent, and returns false when the depotcache directory is missing. (A full `FileHashesService`
+overlay-union integration test was deliberately not added: it requires standing up the entire
+MnemonicDB/query-engine/settings graph, disproportionate to its value given the overlay union + idempotency
+are already validated end-to-end on real data — §12.3 and below.)
+
+### 13.5 STILL OPEN — the GUI button (was §12.5)
+The reusable service is done and injectable app-wide, but there is still **no GUI button**. Findings that
+shaped this:
+- Diagnostics **cannot** trigger in-app actions (their markdown links only open external URIs via
+  `osInterop`; `NoWayToSourceFilesOnDisk` is disabled with a TODO about needing a UI backup path). So the
+  action must be a real button/menu item, not a diagnostic link.
+- `NexusMods.App.UI` does **not** reference `NexusMods.Networking.Steam` or `Abstractions.Games.FileHashes`,
+  so wiring a button needs either an interface relocation (e.g. move `ILocalGameVersionRecognizer` to an
+  abstraction the UI already references) or a new project reference, plus an Avalonia view/VM wired into a
+  page (the `ApplyControlViewModel` + `IJobMonitor` pattern is the template) and localization strings.
+- It also can't be runtime-verified in this headless environment, so it was scoped out of this PR rather
+  than shipped unverified. Recommended next step: relocate the recognizer interface to an abstraction, add
+  a "Recognize installed version" action to the loadout left menu (mirroring `ApplyControlViewModel`),
+  run it as an `IJobDefinition` for progress, and trigger it when `SuggestVersionData` reports an unknown
+  version.
+
+### 13.6 Validation this round
+- `steam recognize-game -a 413150` (Stardew): located the install, derived depotcache from the new locator
+  field, found the manifest by id, hashed 3787 files, and hit the idempotency skip (manifest already
+  recorded) — confirming the full `GameInstallation`-driven path and A2.
+- `LocalManifestReaderTests`: 3/3 passed. Full solution build: 0 errors.
+
+### 13.7 Files changed this round
+- `src/NexusMods.Sdk/Games/Locators/GameLocatorResult.cs` (+`SteamDepotCachePath`)
+- `src/NexusMods.Backend/Games/Locators/SteamLocator.cs` (capture depotcache)
+- `src/NexusMods.Networking.Steam/Local/LocalManifestReader.cs` (`TryReadManifestByManifestId`/`TryFindManifestFile`)
+- `src/NexusMods.Networking.Steam/Local/LocalGameVersionRecognizer.cs` (new service)
+- `src/NexusMods.Networking.Steam/Services.cs` (register service)
+- `src/NexusMods.Networking.Steam/CLI/Verbs.cs` (`steam recognize-game`)
+- `src/NexusMods.Games.FileHashes/FileHashesService.cs` (idempotency guard)
+- `tests/Networking/NexusMods.Networking.Steam.Tests/LocalManifestReaderTests.cs` (new tests)
+
+---
+
+## 14. Session log — 2026-07-08 — In-app "Recognize installed version" GUI (finishes §12.5/§13.5)
+
+> IMPORTANT: PR #2 merged **only the first commit** (`8b8a6e554`); the follow-up commit
+> `e96baef45` (recognizer service, idempotency, `recognize-game` verb, `SteamDepotCachePath`,
+> tests) was **not** in the merge. This session's branch `feature/recognize-installed-version-ui`
+> **cherry-picks that stranded commit** (as `2ef4e9159`) and adds the GUI on top. PR #3 therefore
+> carries both. If reviewing history: the backend changes here are the §13 work re-applied.
+
+### 14.1 Interface relocation (so the UI can consume it)
+`ILocalGameVersionRecognizer` + `LocalRecognitionResult` moved from `NexusMods.Networking.Steam.Local`
+to `src/NexusMods.Abstractions.Games.FileHashes/ILocalGameVersionRecognizer.cs`. The impl
+(`LocalGameVersionRecognizer`) stays in `NexusMods.Networking.Steam` and now implements the abstraction.
+`NexusMods.App.UI` reaches this abstraction **transitively via `NexusMods.Collections`**, so no new UI
+project reference was needed. DI registration in `Networking.Steam/Services.cs` updated to the new
+fully-qualified interface name.
+
+### 14.2 The GUI action (extends ApplyControl — deliberately low-surface)
+Rather than a new control quartet + page wiring (many unverifiable files), the action was added to the
+existing, already-registered/rendered `ApplyControl` in the loadout footer:
+- `IApplyControlViewModel`: `+ RecognizeVersionCommand`, `+ IsVersionUnknown`, `+ IsRecognizingVersion`.
+- `ApplyControlViewModel`: resolves `ILocalGameVersionRecognizer` (optional — `GetService`, null-guarded)
+  and `IFileHashesService`, loads the loadout's `GameInstallation` (`loadout.InstallationInstance`).
+  `IsVersionUnknown = recognizer.CanRecognize(install) && !TryGetVanityVersion((Store, LocatorIds), out _)`
+  (wrapped in try/catch — never throws). `RecognizeVersionCommand` runs `RecognizeAsync` off the UI thread,
+  re-evaluates unknown state, and shows a Success/Neutral/Failure toast with the recorded depot/file counts.
+- `ApplyControlView.axaml` / `.axaml.cs`: a "Recognize installed version" button (default `IsVisible=False`,
+  bound to `IsVersionUnknown`) + a "Recognizing…" spinner row (bound to `IsRecognizingVersion`), bound via
+  the existing code-behind `BindCommand`/`OneWayBind` pattern.
+- `ApplyControlDesignViewModel`: stub members added.
+- Strings are inline literals (not localized) to keep the change small; **follow-up: move to `Language.resx`**.
+
+### 14.3 Status / verification
+- Full solution build: **0 errors**. Steam tests: **3/3 pass**.
+- ⚠️ **Not runtime-verified.** Avalonia UI can't be exercised headlessly here, so the button's rendering,
+  visibility gating, and toast behaviour need a manual launch to confirm. The backend it calls is validated
+  (§12.3/§13.6). Logic reviewed: DI is null-guarded, the version check can't throw, visibility defaults to
+  hidden so known games (the common case) show nothing.
+- Behavioural expectation: the button appears in the loadout footer only for Steam games whose version isn't
+  in the hash DB/overlay; clicking it recognises all installed depots and (on success) the button disappears
+  as the version becomes known.
+
+### 14.4 Files changed
+- `src/NexusMods.Abstractions.Games.FileHashes/ILocalGameVersionRecognizer.cs` (new — relocated interface + result)
+- `src/NexusMods.Networking.Steam/Local/LocalGameVersionRecognizer.cs` (impl now implements the abstraction)
+- `src/NexusMods.Networking.Steam/Services.cs` (DI registration updated)
+- `src/NexusMods.App.UI/LeftMenu/Items/ApplyControl/{IApplyControlViewModel,ApplyControlViewModel,ApplyControlDesignViewModel,ApplyControlView.axaml,ApplyControlView.axaml.cs}`
+
+### 14.5 Remaining follow-ups
+- Localize the UI strings (§14.2).
+- Optional: a determinate progress bar (the recognizer already reports `IProgress<double>`; currently only an
+  indeterminate spinner is shown).
+- Manual runtime verification of the button on a real unknown-version Steam game.
