@@ -16,27 +16,27 @@ By default, the app stores your files in the following locations:
 
 | OS      | Default Path                                                                 |
 |---------|------------------------------------------------------------------------------|
-| Windows | `C:\Users\<YourUsername>\AppData\Local\NexusMods.App\DataModel\Archives` |
-| Linux   | `~/.local/state/NexusMods.App/DataModel/Archives`                            |
+| Windows | `C:\Users\<YourUsername>\AppData\Local\Apocrypha\DataModel\Archives` |
+| Linux   | `~/.local/share/Apocrypha/DataModel/Archives`                            |
 
 #### Windows
 - Press <kbd>Win</kbd>+<kbd>R</kbd>, paste the following path, and press <kbd>Enter</kbd>: 
 ```
-%localappdata%\NexusMods.App\DataModel\Archives
+%localappdata%\Apocrypha\DataModel\Archives
 ```
 - Or, open File Explorer and navigate to 
 ```
-C:\Users\<YourUsername>\AppData\Local\NexusMods.App\DataModel\Archives
+C:\Users\<YourUsername>\AppData\Local\Apocrypha\DataModel\Archives
 ```
 
 #### Linux
 - Using a terminal (such as Konsole) paste the following command, and press <kbd>Enter</kbd>:
 ```
-xdg-open file://$HOME/.local/state/NexusMods.App/DataModel/Archives
+xdg-open file://$HOME/.local/share/Apocrypha/DataModel/Archives
 ```
 - Alternatively, open the following path in your file manager:
 ```
-~/.local/state/NexusMods.App/DataModel/Archives
+~/.local/share/Apocrypha/DataModel/Archives
 ```
 
 ## Update the Storage Location

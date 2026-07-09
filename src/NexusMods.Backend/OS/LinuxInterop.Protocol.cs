@@ -8,7 +8,7 @@ namespace NexusMods.Backend.OS;
 
 internal partial class LinuxInterop
 {
-    private const string ApplicationId = "com.nexusmods.app";
+    private const string ApplicationId = ApplicationIdentity.AppId;
     private const string DesktopFile = $"{ApplicationId}.desktop";
     private const string DesktopFileResourceName = $"NexusMods.Backend.{DesktopFile}";
     private const string ExecuteParameterPlaceholder = "${INSTALL_EXEC}";
@@ -58,9 +58,26 @@ internal partial class LinuxInterop
         }
     }
 
+    /// <summary>
+    /// Removes the pre-rebrand registration files — xdg re-registers the new id right after,
+    /// which also supersedes the old id in mimeapps.list defaults.
+    /// </summary>
+    private void RemoveLegacyDesktopFiles(AbsolutePath applicationsDirectory)
+    {
+        foreach (var legacyName in (string[])[$"{ApplicationIdentity.LegacyAppId}.desktop", $"{ApplicationIdentity.LegacyAppId}.desktop.bak", $"{ApplicationIdentity.LegacyAppId}.sh"])
+        {
+            var legacyFile = applicationsDirectory.Combine(legacyName);
+            if (!legacyFile.FileExists) continue;
+
+            _logger.LogInformation("Removing pre-rebrand registration file `{Path}`", legacyFile);
+            legacyFile.Delete();
+        }
+    }
+
     private async Task CreateDesktopFile(AbsolutePath applicationsDirectory, CancellationToken cancellationToken = default)
     {
         if (!applicationsDirectory.DirectoryExists()) applicationsDirectory.CreateDirectory();
+        RemoveLegacyDesktopFiles(applicationsDirectory);
 
         var filePath = applicationsDirectory.Combine(DesktopFile);
         var backupPath = filePath.AppendExtension(new Extension(".bak"));

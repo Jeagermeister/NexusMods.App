@@ -1,5 +1,6 @@
 using NexusMods.Abstractions.Steam;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 
 namespace NexusMods.Networking.Steam;
 
@@ -7,7 +8,7 @@ namespace NexusMods.Networking.Steam;
 internal class AppDirectoryAuthStorage(IFileSystem fileSystem) : IAuthStorage
 {
     private readonly AbsolutePath _storagePath = fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory)
-                                                 / (fileSystem.OS.IsOSX ? "NexusMods_App" : "NexusMods.App")
+                                                 / ApplicationIdentity.DataDirectoryName
                                                  / "steam/auth";
     
     public async Task<(bool Success, byte[] Data)> TryLoad()

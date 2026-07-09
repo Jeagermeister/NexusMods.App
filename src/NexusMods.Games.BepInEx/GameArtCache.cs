@@ -1,4 +1,5 @@
 using NexusMods.Paths;
+using NexusMods.Sdk;
 
 namespace NexusMods.Games.BepInEx;
 
@@ -18,19 +19,14 @@ internal static class GameArtCache
         return GetCacheDirectory(fileSystem).Combine(fileName);
     }
 
-    // TODO(linux-fork): rebrand R3 unifies the app's independently-derived base-dir names
-    // (KIRO-HANDOFF.md §23.2) — fold this copy into the shared constant then. Being a pure
-    // cache, the R3 move-migration can skip this directory.
     private static AbsolutePath GetCacheDirectory(IFileSystem fileSystem)
     {
-        var os = fileSystem.OS;
-        var baseKnownPath = os.MatchPlatform(
+        var baseKnownPath = fileSystem.OS.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
             onLinux: () => KnownPath.XDG_DATA_HOME,
             onOSX: () => KnownPath.LocalApplicationDataDirectory
         );
 
-        var baseDirectoryName = os.IsOSX ? "NexusMods_App" : "NexusMods.App";
-        return fileSystem.GetKnownPath(baseKnownPath).Combine(baseDirectoryName).Combine("Cache/GameArt");
+        return fileSystem.GetKnownPath(baseKnownPath).Combine(ApplicationIdentity.DataDirectoryName).Combine("Cache/GameArt");
     }
 }

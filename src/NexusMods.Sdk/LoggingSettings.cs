@@ -113,26 +113,24 @@ public record LoggingSettings : ISettings
     public static AbsolutePath GetLogBaseFolder(IOSInformation os, IFileSystem fs)
     {
         var baseKnownPath = BaseKnownPath(os);
-        var baseDirectoryName = GetBaseDirectoryName(os);
-        return fs.GetKnownPath(baseKnownPath).Combine(baseDirectoryName);
+        return fs.GetKnownPath(baseKnownPath).Combine(BaseDirectoryName);
     }
 
     public static LoggingSettings CreateDefault(IOSInformation os)
     {
         var baseKnownPath = BaseKnownPath(os);
-        var baseDirectoryName = GetBaseDirectoryName(os);
+        var baseDirectoryName = BaseDirectoryName;
 
         return new LoggingSettings
         {
-            MainProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.main.current.log"),
-            MainProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.main.{{##}}.log"),
-            SlimProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.slim.current.log"),
-            SlimProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/nexusmods.app.slim.{{##}}.log"),
+            MainProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/apocrypha.main.current.log"),
+            MainProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/apocrypha.main.{{##}}.log"),
+            SlimProcessLogFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/apocrypha.slim.current.log"),
+            SlimProcessArchiveFilePath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/apocrypha.slim.{{##}}.log"),
         };
     }
-    
-    // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-    private static string GetBaseDirectoryName(IOSInformation os) => os.IsOSX ? "NexusMods_App/Logs" : "NexusMods.App/Logs";
+
+    private const string BaseDirectoryName = $"{ApplicationIdentity.DataDirectoryName}/Logs";
 
     private static KnownPath BaseKnownPath(IOSInformation os)
     {

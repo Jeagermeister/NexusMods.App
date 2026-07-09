@@ -7,9 +7,11 @@ GenericName=Mod Manager
 Comment=Mod Manager for your games
 Categories=Game
 Terminal=false
+# StartupWMClass/X-AppImage-Name track the executable name, which stays NexusMods.App
+# until rebrand R4 renames the binary (pupnet AppBaseName/PackageName).
 StartupWMClass=NexusMods.App
 MimeType=x-scheme-handler/nxm;x-scheme-handler/ror2mm
-Icon=com.nexusmods.app
+Icon=io.github.jeagermeister.apocrypha
 Exec=${INSTALL_EXEC} %u
 TryExec=${INSTALL_TRYEXEC}
 X-AppImage-Integrate=true
