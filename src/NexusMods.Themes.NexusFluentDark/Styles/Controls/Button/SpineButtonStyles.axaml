@@ -84,7 +84,7 @@
         </Style>
 
         <Style Selector="^.Home /template/ icons|UnifiedIcon#Icon">
-            <Setter Property="Value" Value="{x:Static icons:IconValues.Nexus}" />
+            <Setter Property="Value" Value="{x:Static icons:IconValues.Apocrypha}" />
             <Setter Property="Size" Value="28" />
         </Style>
 

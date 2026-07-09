@@ -697,7 +697,13 @@ public static class IconValues
 #region Brand Pictograms
     
     /// <summary>
-    /// Brand pictogram for Health
+    /// The Apocrypha tome logo — the APP's own mark (spine Home button, About surfaces).
+    /// The Nexus marks below stay for contexts where Nexus is the mod SOURCE.
+    /// </summary>
+    public static readonly IconValue Apocrypha = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/apocrypha-logo.svg");
+
+    /// <summary>
+    /// The colored Nexus Mods logo.
     /// </summary>
     public static readonly IconValue NexusColor = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/nexus-logo.svg");
     

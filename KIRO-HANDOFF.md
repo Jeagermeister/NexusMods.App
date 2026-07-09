@@ -1458,53 +1458,18 @@ had silently survived a `kill` (verify process death, not just send the signal).
 
 ---
 
-## 28. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
-
-`linux-fork` @ the PR #18 merge (rebrand R3, §27 — identity + data migration,
-live-verified; Brian's box runs on `~/.local/share/Apocrypha`). The repo is
-**`github.com/Jeagermeister/Apocrypha`**; local clone still `~/Source/NexusMods.App` (the
-folder name can be renamed any time now — R3 settled the identifiers; only the executable
-name waits for R4).
-
-Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
-rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
-handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
-**rebrand R3 (#18, §27)**.
-
-**Next up (Brian's mode: "each issue, each improvement, one by one"):**
-1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
-   StartupWMClass/X-AppImage-Name/uninstall scripts/app.manifest flip with it), workflows
-   (drop the release-to-nexusmods job), releases-to-appstream.py OWNER/REPO,
-   NuGet.Build.props, icon ladders (kit: `~/Source/VortexApp_Artwork/
-   apocrypha_app_icon_set/`, desktop Icon= is already the new id) → ends in an installable
-   AppImage (roadmap step 10). Windows registry QA pass rides here too (§27.1).
-2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
-3. Or pick from the **§28.1 UI backlog** below — each is a small self-contained PR.
+## 28. Backlogs & standing queue (pointer lives at §30)
 
 ### 28.1 Brian's UI backlog (added 2026-07-09 post-R3 — de-Nexus the app's face)
 
-1. **Spine "Home" button → Apocrypha icon** (small). The top-left Home button renders the
-   B&W Nexus developer logo: `Themes.NexusFluentDark/Styles/Controls/Button/
-   SpineButtonStyles.axaml:86-89` sets `IconValues.Nexus` (defined in
-   `NexusMods.UI.Sdk/Icons/IconValues.cs:540`). Fix: add `IconValues.Apocrypha` (SVG from
-   the icon kit; `docs/apocrypha-icon.png` is already in-repo) and repoint that ONE style
-   setter. KEEP `IconValues.Nexus`/`NexusColor` everywhere else — they mark Nexus as a
-   mod SOURCE (Library/collections views; R1 §23.5 decision).
+1. ~~**Spine "Home" button → Apocrypha icon**~~ **DONE — §29 (PR #20).**
 2. **Search box in "Other supported games"** (small-medium). `App.UI/Pages/MyGames/
    MyGamesView.axaml:99` — the section lists every supported-but-undetected game, ~200
    rows since PR E. Add a filter TextBox above the wrap panel + a case-insensitive
    DisplayName filter in `MyGamesViewModel` (games flow through DynamicData → `.Filter()`
    on an observable of the search text). Consider the same box filtering the Detected
    section too.
-3. **Orange → PURPLE accent** (small change, app-wide effect). The theme is a 3-layer
-   palette under `Themes.NexusFluentDark/Resources/Palette/Colors/`:
-   `PrimitiveColors.axaml` holds raw Tailwind ramps — **`PrimitiveViolet50–950` already
-   exists** — `BrandColors.axaml` maps `BrandPrimary50–950` → `PrimitiveOrange50–950`
-   (THE Nexus orange), and the semantic layer (`ElementColors.axaml`:
-   `PrimaryModerate`/`PrimaryStrong`/…) sits on BrandPrimary. Fix: remap the ~11
-   `BrandPrimary*` lines to `PrimitiveViolet*` and the whole app follows. Then sweep for
-   stray hardcoded oranges and eyeball Active/hover contrast. Violet suits the
-   arcane-tome brand.
+3. ~~**Orange → PURPLE accent**~~ **DONE — §29 (PR #20).**
 4. **Login (research note — nothing to build).** "Login" is the NEXUS MODS account login,
    not an Apocrypha account: OAuth2+PKCE against `users.nexusmods.com/oauth`, public
    client id `nma` (`Networking.NexusWebApi/Auth/OAuth.cs:20-21`), browser round-trip,
@@ -1519,3 +1484,54 @@ Standing follow-up queue: Backend.Tests real-FS hygiene (§27.3), Brian deletes 
 Nexus-less recognition, multi-version Library UX; mod icons can ride
 `CachedHttpStreamFactory`), `loadout revert` verb doesn't restore (§22.4), localization of
 new strings, GUI check of the recognition toast.
+
+---
+
+## 29. Session log — 2026-07-09 (cont.) — UI: de-Nexus the face (§28.1 items 1+3)
+
+> Branch `ui/de-nexus-face`, **PR #20**. Two backlog items in one visual PR.
+
+- **Orange → PURPLE:** `BrandColors.axaml` — the 11 `BrandPrimary50–950` StaticResource
+  lines remapped `PrimitiveOrange*` → `PrimitiveViolet*`; the semantic layer follows
+  untouched. Verified NOTHING else consumes `PrimitiveOrange` directly. Hardcoded-hex
+  sweep: 11 pictogram SVGs (`App.UI/Assets/Pictograms/`) carried raw orange ramp values —
+  recolored to the violet counterparts (#FB923C→#A78BFA, #F97316→#8B5CF6, #FDBA74→#C4B5FD,
+  #EA580C→#7C3AED). KEPT orange: `nexus-logo.svg` (#D98F40 — Nexus's own mark as a
+  SOURCE).
+- **Spine Home button → the tome:** `apocrypha.svg` from the icon kit copied to
+  `App.UI/Assets/apocrypha-logo.svg` (the `Assets\**` AvaloniaResource wildcard picks it
+  up), new `IconValues.Apocrypha` (AvaloniaSvg, next to the source-branding Nexus marks
+  with a comment drawing the line), and the ONE setter in `SpineButtonStyles.axaml`
+  repointed `IconValues.Nexus` → `IconValues.Apocrypha`.
+- Build 0 errors; app launched clean for Brian's visual pass (purple accent + tome Home).
+- Process note: PR #19 turned out to be UNMERGED despite the merge being announced —
+  caught by `gh pr view` (the remote tip was still #18). Lesson: verify merge state on
+  the remote, not from conversation. This branch fast-forwarded over
+  `origin/docs/ui-backlog` so it carries the §28.1 docs either way.
+
+---
+
+## 30. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+
+`linux-fork` @ the PR #18 merge (rebrand R3 — Brian's box runs on
+`~/.local/share/Apocrypha`). **Open: PR #19** (docs, §28.1 backlog — announced merged but
+still open, needs the click) and **PR #20** (`ui/de-nexus-face`, §29 — purple accent +
+Apocrypha Home icon; contains #19's commit, so merging #20 alone also lands the docs).
+Local repo folder `~/Source/NexusMods.App` can be renamed anytime.
+
+Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
+rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
+handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
+**rebrand R3 (#18, §27)** → UI de-Nexus face (#20, §29, pending merge).
+
+**Next up (Brian's mode: one by one):**
+1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
+   StartupWMClass/X-AppImage-Name/uninstall scripts/app.manifest flip with it), workflows
+   (drop the release-to-nexusmods job), releases-to-appstream.py OWNER/REPO,
+   NuGet.Build.props, icon ladders (kit: `~/Source/VortexApp_Artwork/
+   apocrypha_app_icon_set/`, desktop Icon= already the new id) → installable AppImage
+   (roadmap step 10). Windows registry QA (§27.1) rides here.
+2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
+3. **§28.1 item 2** — search box in "Other supported games" (the remaining UI backlog item).
+
+Backlogs: §28.1 (UI) and the standing queue at the end of §28.
