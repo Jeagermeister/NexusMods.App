@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using NexusMods.Sdk;
 using NexusMods.Sdk.Settings;
 
 namespace NexusMods.Backend;
@@ -41,9 +42,7 @@ public sealed class JsonStorageBackend : IStorageBackend
             onOSX: () => KnownPath.LocalApplicationDataDirectory
         );
 
-        // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-        var baseDirectoryName = os.IsOSX ? "NexusMods_App/Configs" : "NexusMods.App/Configs";
-        return fileSystem.GetKnownPath(baseKnownPath).Combine(baseDirectoryName);
+        return fileSystem.GetKnownPath(baseKnownPath).Combine($"{ApplicationIdentity.DataDirectoryName}/Configs");
     }
 
     private AbsolutePath GetConfigPath<T>(string? key)

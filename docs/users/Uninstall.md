@@ -41,19 +41,19 @@ If something goes wrong during uninstall, it may be necessary to remove the app 
 Inside the App, ensure that all mods for your loadouts in all games are disabled and these changes have been applied. This will remove any files added to the game folder and get the game back to a "vanilla" state. (When possible, you should delete your loadouts). Close the app before continuing. 
 
 ### Manual Uninstall on Windows
-To reset the app on Windows you will need to empty the contents of `%LOCALAPPDATA%\NexusMods.App`. 
+To reset the app on Windows you will need to empty the contents of `%LOCALAPPDATA%\Apocrypha`. 
 
 1. Press ++win+"R"++ to open the "Run" command box.
-2. Paste `%LOCALAPPDATA%\NexusMods.App\` into the Open field and press OK.
+2. Paste `%LOCALAPPDATA%\Apocrypha\` into the Open field and press OK.
 3. This will open the correct folder in a File Explorer window.
 4. Delete the contents of this folder. 
 5. Delete the app itself (or uninstall it using the Windows system settings if possible). 
 
 ### Manual Uninstall on Linux
-To reset the app on Linux you will need to empty the contents of `$XDG_STATE_HOME/NexusMods.App/Logs` and `$XDG_DATA_HOME/NexusMods.App`.
+To reset the app on Linux you will need to empty the contents of `$XDG_STATE_HOME/Apocrypha/Logs` and `$XDG_DATA_HOME/Apocrypha`.
 
 1. Navigate to your Desktop (on Steam Deck you will need to be in Desktop Mode, which can be found in the power menu).
 2. Open a terminal window (e.g. Konsole)
-3. Paste the following command into the terminal and press ++enter++: `rm -Ird ${XDG_STATE_HOME:-$HOME/.local/state}/NexusMods.App`.
-4. Paste the following command into the terminal and press ++enter++: `rm -Ird ${XDG_DATA_HOME:-$HOME/.local/share}/NexusMods.App`.
+3. Paste the following command into the terminal and press ++enter++: `rm -Ird ${XDG_STATE_HOME:-$HOME/.local/state}/Apocrypha`.
+4. Paste the following command into the terminal and press ++enter++: `rm -Ird ${XDG_DATA_HOME:-$HOME/.local/share}/Apocrypha`.
 5. Delete the appimage file from your PC. 

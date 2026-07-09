@@ -40,7 +40,7 @@ would like to provide a method to select the version of the game on which a give
   * First of all, wait for the new hash database to be generated. You will know when this happens, when you can see the new correct version
 in the "My Games" tab
   * Close the app
-  * Next, go to the archives folder for the app, normally in `C:\Users\<user>\AppData\Local\NexusMods.App\DataModel\Archives` and sort by
+  * Next, go to the archives folder for the app, normally in `C:\Users\<user>\AppData\Local\Apocrypha\DataModel\Archives` and sort by
 by file size. You should see a `.nx` file matching the size of the backed up game files, normally this is 20GB, 30GB or 80GB.
   * Rename the files to a different extension or move them to another folder.
   * Restart the app

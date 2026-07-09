@@ -68,13 +68,13 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="com.nexusmods.app.desktop">
+        <None Update="io.github.jeagermeister.apocrypha.desktop">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="app.manifest">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="com.nexusmods.app.metainfo.xml">
+        <None Update="io.github.jeagermeister.apocrypha.metainfo.xml">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="sign.bat">
@@ -86,7 +86,7 @@
         <None Update="icon.svg">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="com.nexusmods.app.releases.xml">
+        <None Update="io.github.jeagermeister.apocrypha.releases.xml">
           <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
     </ItemGroup>

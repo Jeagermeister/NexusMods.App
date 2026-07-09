@@ -64,7 +64,7 @@ Translations are currently handled via the IDE. See [this issue](https://github.
 
 If you want to create a package for your distribution, here are some helpful tips to get started. If you have questions or want to let us know about your new package, consider joining our [Discord](https://discord.gg/ReWTxb93jS).
 
-If possible, use `nexusmods-app` for the package name and `com.nexusmods.app` as the rDNS ID for Flatpaks and similar. See [Linux Dependencies](../users/SystemRequirements.md#linux-dependencies) for a list of dependencies.
+If possible, use `apocrypha` for the package name and `io.github.jeagermeister.apocrypha` as the rDNS ID for Flatpaks and similar. See [Linux Dependencies](../users/SystemRequirements.md#linux-dependencies) for a list of dependencies.
 
 There are various build variables you should consider using. You can set compile constants using `-p:DefineConstants="NAME"` with `dotnet build` or `dotnet publish`. For a full list of available application-specific compile constants, see [`Directory.Build.props`](https://github.com/Nexus-Mods/NexusMods.App/blob/main/Directory.Build.props):
 

@@ -47,6 +47,11 @@ public class Program
 
         MainThreadData.SetMainThread();
 
+        // Rebrand R3: must run before ANYTHING touches the data directories — the settings
+        // host below creates the Configs dir, logging creates the state dir, MnemonicDB
+        // opens the database. Logging isn't up yet, so progress goes to the console.
+        LegacyDataMigration.Run(FileSystem.Shared, static message => Console.WriteLine(message));
+
         TrackingSettings trackingSettings;
         LoggingSettings loggingSettings;
         ExperimentalSettings experimentalSettings;
@@ -347,7 +352,7 @@ public class Program
         var config = new NLog.Config.LoggingConfiguration();
 
         const string defaultLayout = "${processtime} [${level:uppercase=true}] (${logger}) ${message:withexception=true}";
-        const string defaultHeader = "############ Nexus Mods App log file - ${longdate} ############";
+        const string defaultHeader = "############ Apocrypha log file - ${longdate} ############";
 
         FileTarget fileTarget;
         if (startupMode.RunAsMain)

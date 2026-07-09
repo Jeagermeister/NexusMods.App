@@ -11,7 +11,7 @@ On a Linux PC, you can check the default app for `nxm://` downloads and reset it
 - Check which app is currently set as the default by running `xdg-mime query default x-scheme-handler/nxm`.
 - If this doesn't return `nexusmods-app-nxm.desktop` run this command:`xdg-settings set default-url-scheme-handler nxm nexusmods-app-nxm.desktop`.
 - Restart any open web browser windows to ensure the change is applied.
-- In your browser, when selecting what application should be used to open the nxm link, select **NexusMods.App NXM Handler**.
+- In your browser, when selecting what application should be used to open the nxm link, select **Apocrypha NXM Handler**.
 
 ### Setting up Gear Lever on Linux
 For Linux users who have the AppImage version of the app and are unable to resolve the registration issue using the commands above, we recommend [Gear Lever](https://github.com/mijorus/gearlever).

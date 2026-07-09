@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using NexusMods.Sdk;
 
 namespace NexusMods.Backend.OS;
 
@@ -20,6 +21,15 @@ internal partial class WindowsInterop
 
         try
         {
+            RemoveLegacyRegistration(scheme);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Exception while removing pre-rebrand registry entries — continuing, the new registration supersedes them");
+        }
+
+        try
+        {
             SetAsDefaultHandler(scheme);
         }
         catch (Exception e)
@@ -30,14 +40,14 @@ internal partial class WindowsInterop
         return ValueTask.CompletedTask;
     }
 
-    private static string CreateProgId(string uriScheme) => $"NexusMods.App.{uriScheme}";
+    private static string CreateProgId(string uriScheme) => $"Apocrypha.{uriScheme}";
 
     [SupportedOSPlatform("windows")]
     private void RegisterApplication(string uriScheme)
     {
         // https://learn.microsoft.com/en-us/windows/win32/shell/default-programs
 
-        const string capabilitiesPath = @"SOFTWARE\Nexus Mods\NexusMods.App\Capabilities";
+        const string capabilitiesPath = @"SOFTWARE\Apocrypha\Capabilities";
 
         using var key = Registry.CurrentUser.CreateSubKey(capabilitiesPath);
         key.SetValue("ApplicationName", "Apocrypha");
@@ -47,9 +57,25 @@ internal partial class WindowsInterop
         urlAssociationsKey.SetValue(uriScheme, CreateProgId(uriScheme));
 
         using var registeredApplicationsKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\RegisteredApplications");
-        registeredApplicationsKey.SetValue("NexusMods.App", capabilitiesPath);
+        registeredApplicationsKey.SetValue("Apocrypha", capabilitiesPath);
 
         CreateProgIdClass(CreateProgId(uriScheme), $"Apocrypha {uriScheme.ToUpperInvariant()} Handler", isProtocolHandler: false);
+    }
+
+    /// <summary>
+    /// Best-effort removal of the pre-rebrand HKCU entries (ProgID classes
+    /// <c>NexusMods.App.{scheme}</c>, the <c>SOFTWARE\Nexus Mods</c> capabilities tree, and
+    /// the old RegisteredApplications value). Untested on a real Windows box — flagged for
+    /// the R4 Windows QA pass.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private void RemoveLegacyRegistration(string uriScheme)
+    {
+        Registry.CurrentUser.DeleteSubKeyTree(@$"SOFTWARE\Classes\{ApplicationIdentity.LegacyDataDirectoryName}.{uriScheme}", throwOnMissingSubKey: false);
+        Registry.CurrentUser.DeleteSubKeyTree(@"SOFTWARE\Nexus Mods", throwOnMissingSubKey: false);
+
+        using var registeredApplicationsKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\RegisteredApplications", writable: true);
+        registeredApplicationsKey?.DeleteValue(ApplicationIdentity.LegacyDataDirectoryName, throwOnMissingValue: false);
     }
 
     [SupportedOSPlatform("windows")]

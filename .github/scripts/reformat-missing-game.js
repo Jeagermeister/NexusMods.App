@@ -94,8 +94,10 @@ ${logs}
     console.log("No comment needed based on the responses.");
   }
 
-  // If the user has added nonsense to the logs section, automatically flag the issue as such
-  if (!logs.includes('nexusmods.app.main') && !logs.includes('nexusmods.app.slim') && !logs.includes('Nexus Mods App log file')) {
+  // If the user has added nonsense to the logs section, automatically flag the issue as such.
+  // Accept both pre-rebrand (nexusmods.app.*) and current (apocrypha.*) log names.
+  if (!logs.includes('nexusmods.app.main') && !logs.includes('nexusmods.app.slim') && !logs.includes('Nexus Mods App log file')
+      && !logs.includes('apocrypha.main') && !logs.includes('apocrypha.slim') && !logs.includes('Apocrypha log file')) {
     console.log('Issue doesn\`t seem to contain valid logs, tagging invalid');
     await octokit.issues.addLabels({
         owner,

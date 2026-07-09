@@ -1395,35 +1395,93 @@ harbor. Key findings:
 
 ---
 
-## 26. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+## 27. Session log — 2026-07-09 (cont., Claude Code / Fable 5) — Rebrand R3: one identity + the data migration
 
-`linux-fork` @ the PR #16 merge (runtime art, §25); **PR #17 open** (§25.3 quick fix —
-the orphaned EventTracker test; merging it makes full-solution builds green). The repo is
-**`github.com/Jeagermeister/Apocrypha`** (old URLs redirect; local clone still lives at
-`~/Source/NexusMods.App` — the on-disk folder name deliberately waits for R3/R4 to settle
-identifiers).
+> The careful slice (§23.3 item 3), done and **verified live on the dev box** (33GB moved,
+> loadouts intact). Branch `rebrand/r3-identity-migration`, **PR #18** into linux-fork.
 
-Shipped, in order: Phase 1 (PRs #1–#9, Thunderstore→RoR2 end-to-end) → Phase 2 PR E
-(#10, ~200-game BepInEx family) → the critical sync-wipe fix (#11) + PR F rules engine
-(#12, Subnautica pilot verified live) → **the fork is named APOCRYPHA** → rebrand R1
-(#13, strings + Brian's tome icon) → repo rename → rebrand R2 (#14, telemetry ripped out,
-fork links, fork README) → handoff restore (#15) → PR H' runtime art (#16, §25) →
-build-health fix (#17, §25.3).
+### 27.1 What landed
+- **`NexusMods.Sdk/ApplicationIdentity`** — THE definition: `DataDirectoryName="Apocrypha"`
+  (no dot → the macOS `NexusMods_App` special-case dies everywhere) + `AppId=
+  io.github.jeagermeister.apocrypha` + the legacy names for migration/cleanup. **EIGHT**
+  previously independent derivations unified (§23.2 knew six; recon found two more:
+  `FileHashesServiceSettings:75` and `JsonStorageBackend:45`): DataModelSettings,
+  LoggingSettings, IFileExtractorSettings, JsonStorageBackend, FileHashesServiceSettings,
+  AppDirectoryAuthStorage, CliSettings, GameArtCache.
+- **`NexusMods.Sdk/LegacyDataMigration`**, hooked at the very top of `Program.Main` (before
+  `BuildSettingsHost()` — the earliest point; the settings host otherwise creates Configs
+  first). Per-base atomic `Directory.Move` (Linux: XDG_DATA_HOME + XDG_STATE_HOME +
+  LocalApplicationData; Windows/macOS equivalents), THEN rewrites legacy fragments inside
+  `Configs/*.json`. **CRITICAL recon finding that shaped this:** the persisted settings
+  JSON pins the OLD paths (`MnemonicDBPath.File="NexusMods.App/DataModel/..."`, log paths,
+  the absolute CLI sync-file path) and `SettingsManager.Get` prefers persisted over
+  defaults — a naive rename+constant-change would have booted a FRESH EMPTY datom store
+  and stranded the 32GB. Idempotent (move gated old-exists/new-missing; rewrite re-scans
+  every boot) + crash-safe (rename atomic; crash between move and rewrite self-heals).
+- **Linux id:** desktop/metainfo/releases files renamed to the new id (git mv), Backend's
+  embedded-resource reference + App csproj + pupnet `AppId`/`DesktopFile`/`MetaFile`
+  follow; `LinuxInterop` registers the new id and **deletes the pre-rebrand desktop files**
+  on registration. `StartupWMClass`/`X-AppImage-Name` deliberately stay `NexusMods.App`
+  until R4 renames the binary — **verified live: that IS the WM_CLASS the app presents**
+  (xprop on the running window).
+- **Windows id (code-only, needs R4 QA):** ProgIDs `Apocrypha.{scheme}`,
+  `HKCU\SOFTWARE\Apocrypha\Capabilities`, RegisteredApplications value `Apocrypha`,
+  best-effort legacy-key removal (`SOFTWARE\Nexus Mods` tree, old ProgIDs, old value).
+- Log basenames → `apocrypha.main/slim.*` (issue-triage CI script accepts old AND new);
+  docs' data-path references updated; OTel meter/service name → Apocrypha (its "don't
+  change" Mixpanel pin died with R2).
+
+### 27.2 Verification
+- **Tests:** 11-case migration suite (Sdk.Tests 53/53) on a REAL-filesystem sandbox —
+  `CreateOverlayFileSystem` maps the KnownPath bases into a temp dir, so the atomic move
+  runs for real on every CI OS. Cases: move+rewrite, no-op, idempotency, both-exist guard,
+  crash-between-move-and-rewrite resume, fragment fixtures taken verbatim from the live
+  box (incl. negatives: DeviceId GUID, Nexus-Mods/game-hashes URL untouched). Full
+  solution 0 errors; DataModel 232, Backend 59, BepInEx 51, Synchronizer 12 all green.
+- **Live migration on the box:** app start moved `~/.local/share/NexusMods.App` (33GB) +
+  `~/.local/state/NexusMods.App` instantly, rewrote 4 config files, opened the REAL datom
+  store ("existing state found, last tx 1a5"), logs to `Apocrypha/Logs/apocrypha.main.
+  current.log`, the 162-file art cache rode along, xdg handlers (nxm+ror2mm) re-registered
+  to the new desktop id and the old `com.nexusmods.app.desktop` was removed. Zero
+  `NexusMods.App` dirs remain.
+
+### 27.3 Gotcha worth remembering (cost one recovery loop)
+The FIRST live run hit the both-exist guard: **running the test suites had pre-created a
+fresh empty `~/.local/share/Apocrypha`** — `JsonStorageBackend`'s constructor eagerly
+`CreateDirectory()`s against `FileSystem.Shared`, and Backend.Tests instantiate it for
+real (pre-existing hygiene issue, invisible before because the dir always existed). The
+guarded migration correctly refused, the app booted a fresh empty store; recovery = kill
+app, park the fresh dirs as `~/.local/{share,state}/Apocrypha.fresh-discard` (safe to
+delete), re-run → clean migration. Follow-up queued: Backend.Tests should overlay-map
+their filesystem. Also killed: a stray app instance from earlier WM_CLASS probing that
+had silently survived a `kill` (verify process death, not just send the signal).
+
+---
+
+## 28. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+
+`linux-fork` @ the PR #17 merge (all green); **PR #18 open** (`rebrand/r3-identity-migration`,
+§27 — identity + data migration, live-verified). The repo is
+**`github.com/Jeagermeister/Apocrypha`**; local clone still `~/Source/NexusMods.App` (the
+folder name can be renamed any time now — R3 settled the identifiers; only the executable
+name waits for R4).
+
+Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
+rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
+handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
+**rebrand R3 (#18, §27)**.
 
 **Next up (Brian's mode: "each issue, each improvement, one by one"):**
-1. **Rebrand R3** — the careful slice: AppId `io.github.jeagermeister.apocrypha` across
-   .desktop/metainfo/pupnet + StartupWMClass + Windows registry + unify the
-   independently-derived `NexusMods.App` data-dir constants (SIX in §23.2, +1 §25.1)
-   behind one name **with a one-time move-migration** (loadouts/Library/overlay/configs/
-   logs) and old-registration cleanup. Inventory + risks: §23.2/§23.3.
-2. **Rebrand R4 / packaging** — pupnet AppBaseName/PackageName, workflows (drop the
-   release-to-nexusmods job), releases-to-appstream.py OWNER/REPO, NuGet.Build.props, wire
-   Brian's icon ladders (kit: `~/Source/VortexApp_Artwork/apocrypha_app_icon_set/`) →
-   ends in an installable AppImage (roadmap step 10).
-3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (delete the hand-written module;
-   plan §21/design doc §9 — models already compatible, GameId identity-preserving).
+1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
+   StartupWMClass/X-AppImage-Name/uninstall scripts/app.manifest flip with it), workflows
+   (drop the release-to-nexusmods job), releases-to-appstream.py OWNER/REPO,
+   NuGet.Build.props, icon ladders (kit: `~/Source/VortexApp_Artwork/
+   apocrypha_app_icon_set/`, desktop Icon= is already the new id) → ends in an installable
+   AppImage (roadmap step 10). Windows registry QA pass rides here too (§27.1).
+2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
 
-Standing follow-up queue: §20.7 backlog (Installed badge, clean-install dialog, Nexus-less
-recognition, multi-version Library UX; mod icons can now ride `CachedHttpStreamFactory`),
-`loadout revert` verb doesn't restore (§22.4), localization of new strings, GUI check of
-the recognition toast.
+Standing follow-up queue: Backend.Tests real-FS hygiene (§27.3), Brian deletes the
+`Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge, clean-install dialog,
+Nexus-less recognition, multi-version Library UX; mod icons can ride
+`CachedHttpStreamFactory`), `loadout revert` verb doesn't restore (§22.4), localization of
+new strings, GUI check of the recognition toast.

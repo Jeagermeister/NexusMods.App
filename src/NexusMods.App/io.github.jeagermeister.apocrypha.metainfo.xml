@@ -2,7 +2,7 @@
 <component type="desktop-application">
     <!-- See https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec -->
 
-    <id>com.nexusmods.app</id>
+    <id>io.github.jeagermeister.apocrypha</id>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-only</project_license>
 
@@ -23,7 +23,7 @@
         <color type="primary" scheme_preference="dark">#1d1d21</color>
     </branding>
 
-    <launchable type="desktop-id">com.nexusmods.app.desktop</launchable>
+    <launchable type="desktop-id">io.github.jeagermeister.apocrypha.desktop</launchable>
 
     <url type="homepage">https://github.com/Jeagermeister/Apocrypha</url>
     <url type="bugtracker">https://github.com/Jeagermeister/Apocrypha/issues</url>

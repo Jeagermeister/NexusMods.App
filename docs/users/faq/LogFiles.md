@@ -9,25 +9,25 @@ To quickly open your logs folder, simply click the "View app logs" button from t
 ![The top-right corner of the main window with the help menu expanded.](../images/0.8.2/OpenAppLogsButton.webp)
 
 ## :fontawesome-brands-windows: Windows
-Log files for the app are located in `%LOCALAPPDATA%\NexusMods.App\Logs` on Windows. You can quickly find these files by following the steps below:
+Log files for the app are located in `%LOCALAPPDATA%\Apocrypha\Logs` on Windows. You can quickly find these files by following the steps below:
 
 1. Press ++win+"R"++ to open the "Run" command box.
-2. Paste `%LOCALAPPDATA%\NexusMods.App\Logs` into the Open field and press OK.
-![The Run dialogue in Windows pre-filled with %LOCALAPPDATA%\NexusMods.App\Logs](../images/RunCommandLogsWindows.webp)
+2. Paste `%LOCALAPPDATA%\Apocrypha\Logs` into the Open field and press OK.
+![The Run dialogue in Windows pre-filled with %LOCALAPPDATA%\Apocrypha\Logs](../images/RunCommandLogsWindows.webp)
 3. This will open the correct folder in a File Explorer window.
-4. Identify that latest files starting with `nexusmods.app.main.` and ``nexusmods.app.slim.`. You can sort by "Date Modified" to make this easier.
+4. Identify that latest files starting with `apocrypha.main.` and ``apocrypha.slim.`. You can sort by "Date Modified" to make this easier.
 5. Share these files in your Discord, GitHub or Forum post by dragging and dropping them into the text field.
 
 
 ## :fontawesome-brands-linux: Linux
 ??? tip "Using the terminal"
-    If you're familiar with the Linux Terminal, simply type `xdg-open file://$HOME/.local/state/NexusMods.App/Logs/` to browse to the correct location. 
+    If you're familiar with the Linux Terminal, simply type `xdg-open file://$HOME/.local/state/Apocrypha/Logs/` to browse to the correct location. 
 
-Log files for the app are located in `~/.local/state/NexusMods.App/Logs` on Linux. You can quickly find these files by following the steps below:
+Log files for the app are located in `~/.local/state/Apocrypha/Logs` on Linux. You can quickly find these files by following the steps below:
 
 1. Open your file explorer.
 2. Press `Ctrl+L` to edit the file path.
-3. In the input box, paste `~/.local/state/NexusMods.App/Logs/`.
-    ![The file explorer in Ubuntu pre-filled with /home/mike/.local/state/NexusMods.App/Logs/](../images/RunCommandLogsLinux.webp)
-4. Identify that latest files starting with `nexusmods.app.main.` and ``nexusmods.app.slim.`. You can sort by "Date Modified" to make this easier.
+3. In the input box, paste `~/.local/state/Apocrypha/Logs/`.
+    ![The file explorer in Ubuntu pre-filled with /home/mike/.local/state/Apocrypha/Logs/](../images/RunCommandLogsLinux.webp)
+4. Identify that latest files starting with `apocrypha.main.` and ``apocrypha.slim.`. You can sort by "Date Modified" to make this easier.
 5. Share these files in your Discord, GitHub or Forum post by dragging and dropping them into the text field.
