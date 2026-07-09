@@ -216,33 +216,56 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         Dictionary<GamePath, SyncNode> syncTree = new();
 
+        // Game files (the lowest layer) come from the C# hash-service API — the SAME read path
+        // every other subsystem uses (version resolution, backup decisions, ReprocessOverrides).
+        // They must NOT come from the SQL layer: the SQL macros resolve hash databases by
+        // registered name, and a database invisible to them (as the local-recognition overlay
+        // once was) silently resolves a known version to ZERO game files — at which point the
+        // sync deletes the whole install as "unwanted". One read path, one truth.
+        foreach (var gameFile in _fileHashService.GetGameFiles((loadout.Installation.Store, loadout.LocatorIds.ToArray())))
+        {
+            syncTree[gameFile.Path] = new SyncNode
+            {
+                SourceItemType = LoadoutSourceItemType.Game,
+                Loadout = new SyncNodePart
+                {
+                    Hash = gameFile.Hash,
+                    Size = gameFile.Size,
+                    LastModifiedTicks = 0,
+                },
+            };
+        }
+
+        // Loadout, override, and intrinsic layers from the winning-files query; they win over
+        // the game layer per-path, and a winning Deleted item removes the game file entirely.
+        HashSet<GamePath> seenFromQuery = [];
         foreach (var tuple in WinningFilesQuery(Connection.Db, loadout))
         {
             var itemType = ToItemType(tuple.ItemType);
 
-            // NOTE(erri120): deleted files are not added to the sync tree
-            if (itemType == LoadoutSourceItemType.Deleted) continue;
+            // The query's own game layer is ignored — see above.
+            if (itemType == LoadoutSourceItemType.Game) continue;
 
             var gamePath = new GamePath(tuple.Location, tuple.Path);
             if (gamePath == default(GamePath)) throw new Exception($"Item of type `{itemType}` with ID `{tuple.Id}` has no valid game path!");
 
-            ref var syncTreeEntry = ref CollectionsMarshal.GetValueRefOrAddDefault(syncTree, gamePath, out var exists);
-            Debug.Assert(!exists, "query should not return duplicate items");
-
-            if (exists)
+            var isDuplicate = !seenFromQuery.Add(gamePath);
+            Debug.Assert(!isDuplicate, "query should not return duplicate items");
+            if (isDuplicate)
             {
                 Logger.LogWarning("Duplicate file for `{Path}`: {Item}", gamePath, tuple);
                 continue;
             }
 
+            // NOTE(erri120): deleted files are not part of the sync tree (and they suppress the game file at their path)
+            if (itemType == LoadoutSourceItemType.Deleted)
+            {
+                syncTree.Remove(gamePath);
+                continue;
+            }
+
             var loadoutPart = itemType switch
             {
-                LoadoutSourceItemType.Game => new SyncNodePart
-                {
-                    Hash = tuple.Hash,
-                    Size = tuple.Size,
-                    LastModifiedTicks = 0,
-                },
                 LoadoutSourceItemType.Loadout => new SyncNodePart
                 {
                     EntityId = tuple.Id,
@@ -251,10 +274,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     LastModifiedTicks = 0,
                 },
                 LoadoutSourceItemType.Intrinsic => default(SyncNodePart),
-                LoadoutSourceItemType.Deleted => throw new UnreachableException("Deleted files should've been filtered out"),
+                LoadoutSourceItemType.Game => throw new UnreachableException("Game files are filtered out above"),
+                LoadoutSourceItemType.Deleted => throw new UnreachableException("Deleted files are handled above"),
             };
 
-            syncTreeEntry = new SyncNode
+            syncTree[gamePath] = new SyncNode
             {
                 SourceItemType = itemType,
                 Loadout = loadoutPart,
@@ -1007,12 +1031,40 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         job?.SetStatus("Collecting files");
         var tree = await BuildSyncTree(loadout);
+        GuardAgainstVanishedGameFiles(loadout, tree);
         ProcessSyncTree(tree);
         loadout = await RunActions(tree, loadout, job);
 
         // Move any override files that now match game files after sync
         loadout = await ReprocessOverrides(loadout);
         return loadout;
+    }
+
+    /// <summary>
+    /// Defense in depth against a catastrophic class of bug: the sync tree's Game-layer files
+    /// come from the SQL query path (file_hashes.loadout_files), while version knowledge comes
+    /// from the C# hash-service API. If the C# side considers the loadout's version KNOWN but
+    /// the SQL side resolved ZERO game files, the two read paths disagree — proceeding would
+    /// treat every vanilla file on disk as unwanted and delete the entire install (this
+    /// happened when the local-recognition overlay was invisible to the SQL layer). Refuse to
+    /// sync instead.
+    /// </summary>
+    private void GuardAgainstVanishedGameFiles(Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> tree)
+    {
+        if (loadout.LocatorIds.Count == 0) return;
+        if (tree.Any(node => node.Value.SourceItemType == LoadoutSourceItemType.Game)) return;
+
+        // Unknown-version games legitimately resolve no game files (their files were ingested
+        // into the loadout at manage time) — only a KNOWN version with zero game files is the
+        // inconsistent state.
+        if (!_fileHashService.TryGetVanityVersion((loadout.Installation.Store, loadout.LocatorIds.ToArray()), out var vanityVersion))
+            return;
+
+        throw new InvalidOperationException(
+            $"Refusing to synchronize loadout '{loadout.Name}' ({loadout.LoadoutId}): its game version " +
+            $"'{vanityVersion}' is known to the hash service, but the sync tree resolved zero game files " +
+            "for its locator ids. The hash-database read paths disagree (is a local-recognition overlay " +
+            "invisible to the SQL layer?). Proceeding would delete every vanilla game file on disk.");
     }
 
     public async Task<GameInstallMetadata.ReadOnly> RescanFiles(GameInstallation gameInstallation)

@@ -44,6 +44,13 @@ public class StubbedFileHasherService : IFileHashesService
         _datomStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
         _connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), _datomStore, _provider, [], prefix: "hashes", queryEngine: _provider.GetRequiredService<IQueryEngine>());
 
+        // The production FileHashesService registers a second connection, "hashes_overlay" (the
+        // local-recognition overlay), and the FileHashesQueries.sql macros reference both names.
+        // Register an empty stand-in so those macros resolve in tests.
+        var overlayBackend = new MnemonicDB.Storage.RocksDbBackend.Backend();
+        var overlayStore = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), DatomStoreSettings.InMemory, overlayBackend);
+        _ = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), overlayStore, _provider, [], prefix: "hashes_overlay", queryEngine: _provider.GetRequiredService<IQueryEngine>());
+
         foreach (var file in new[] {"StubbedGameState.zip", "StubbedGameState_game_v2.zip"})
         {
             var stateFile = FileSystem.Shared.GetKnownPath(KnownPath.EntryDirectory) / "Resources" / file;
