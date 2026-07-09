@@ -1083,3 +1083,88 @@ Also queued from this session: "not a clean install" dialog should not appear fo
 zero known-vanilla data (and clean-folder is dangerous there); generalize local recognition
 to Nexus-less games (removes the External-Changes wart for RoR2); Library UX for multiple
 downloaded versions of one package (r2modman shows one row per package).
+
+---
+
+## 21. Session log — 2026-07-08 (cont., Claude Code / Fable 5) — Phase 2 begins: the generic BepInEx game family (PR E)
+
+> Directive §7 Phase 2. Design-doc-first: `DESIGN-bepinex-family.md` (repo root) is the
+> reviewed design; Brian approved its four §14 decisions this session (**ALL ~200 BepInEx+Steam
+> games at once** — not a curated subset; **vendor-only** schema with a re-vendor script;
+> **runtime art fetch+cache** as its own later PR; **Valheim in** with force-Proton guidance).
+> Work on branch `feature/bepinex-family` (PR E of E/F/G/H').
+
+### 21.1 Research that shaped the design (two parallel agents)
+- **Codebase:** the RoR2 module was already a generic BepInEx engine — only 6 constants + 2
+  string literals were game-specific. `IGameData<TSelf>`'s static-abstract members are consumed
+  NOWHERE generically (convention, not requirement) → a data-driven class can implement plain
+  `IGame`. The only DI edge: `AddGame<T>`/`AddAllSingleton` = one singleton per TYPE → the
+  family bypasses it with per-row factory registrations. All store locators (Steam/EGS/GOG/
+  Xbox) build FrozenDictionaries that THROW on duplicate ids → parser dedups app ids, family
+  carries Steam ids only (PR E), RoR2 excluded until PR G.
+- **Ecosystem schema** (`thunderstore.io/api/experimental/schema/dev/latest/`, 0.3.0, 1.35 MB,
+  296 games / 268 instances): per-instance it has everything an IGame needs (displayName,
+  steam ids, exeNames, steamFolderName, dataFolderName, installRules, iconUrl, unique
+  `settingsIdentifier`). **204/214 bepinex instances have byte-identical installRules** — the
+  canonical 5 our installer already implements; 10 deviants are additive routes or
+  `state`-tracking swaps (subnautica QMods). `state` tracking is trivial for us: loadouts
+  already track per-file ownership (r2modman needs state files because it has none). No
+  stable/versioned publication exists → vendor + validate, r2modman does the same. Schema has
+  ZERO Linux/Proton knowledge; native-Linux builds detectable via `.x86_64` exeNames (15 games).
+  Community slug must be derived from `packageIndex` (46 legacy games have no community block).
+
+### 21.2 PR E implemented — `src/NexusMods.Games.BepInEx/`
+- **Assets:** vendored `ecosystem-schema.json` (1.35 MB, embedded) + generated
+  `bepinex-nexus-ids.json` (114/211 games name-matched to Nexus ids via
+  `scripts/python/generate_bepinex_nexus_ids.py`, exact-unique normalized-name joins, 0
+  ambiguous, verification set hand-asserted: subnautica 1155, valheim 3667, lethalcompany
+  5848, gtfo 3657, ultrakill 3515, timberborn 4074, contentwarning 6301, repo 7398, peak 7867,
+  subnauticabelowzero 2706; H3VR + RoR2 correctly Nexus-less).
+- **`EcosystemSchemaParser`** → `BepInExGameData` rows: bepinex+game+visible+steam-id filter,
+  duplicate-app-id dedup (first wins, ordered by settingsIdentifier), unsupported-trackingMethod
+  rows dropped (fail the row, not the app), Nexus-less display-name dedup (zero-sentinel
+  resolution needs unique names), Windows exe preferred as primary file, community slug from
+  packageIndex. **211 candidates → ~200 rows registered.**
+- **`GenericBepInExGame : IGame`** (instance-only, deliberately NOT `IGameData<TSelf>`) +
+  `Services.AddBepInExGames()`: per-row `GameHolder` (lock + memoize) makes IGame/IGameData/
+  ITool factories resolve ONE shared instance per row — the identity contract AddAllSingleton
+  provides for class-per-game modules. GameId = `GameId.From(settingsIdentifier)`.
+- **`ABepInExRunGameTool<T>`** — the RoR2 user.reg winhttp-override tool generalized as a
+  shared base (no-ops without a Proton prefix); `RunBepInExGameTool` per family game,
+  `RunRiskOfRain2Game` now a 3-line subclass.
+- **Installers/emitter moved** from the RoR2 project verbatim (`NexusMods.Games.BepInEx.
+  Installers`); `MissingBepInExEmitter` parameterized by community slug (links
+  `thunderstore.io/c/{slug}/`), constructed per game. RoR2 project now references the family
+  and is down to game class + tool + thin Services.
+- **⚠️ MODEL FINDING (design §9 corrected):** MnemonicDB's query engine keys attributes by
+  `{final-namespace-segment}/{attrName}` — the planned fresh `NexusMods.BepInEx.*` namespaces
+  COLLIDED with the legacy `NexusMods.RiskOfRain2.*` shims at startup (duplicate key
+  `BepInExLoadoutItem/Version`). Resolution: ONE model set keeping the historical
+  `NexusMods.RiskOfRain2.*` attribute strings verbatim (commented at the definition site).
+  Zero migration, no union queries; PR G needs nothing for markers. Lesson: model class
+  final-segment names must be unique app-wide regardless of namespace.
+
+### 21.3 Validation
+- New `NexusMods.Games.BepInEx.Tests`: **11/11** (bundled-load invariants: >150 games, unique
+  GameIds/app ids/Nexus-less display names, verification-set rows exact; synthetic-schema
+  filter/dedup/mapping/exe-preference unit tests; TryGetCommunitySlug; DI registration:
+  distinct instance per row, IGame↔IGameData reference-identical, stable resolution, shared
+  installer singletons).
+- Regression: RoR2 installer tests **5/5** (now exercising the family installers through
+  RiskOfRain2Game), DataModel **232/232**, Synchronizer **12/12**, Library **3/3**,
+  Thunderstore **54/54**, Steam 11/12 (pre-existing skip). Full solution: **0 errors**.
+- **Live headless:** `as-main loadouts list` boots the app with ~200 family games registered —
+  clean startup, Brian's 3 loadouts listed, clean shutdown (~0.6s). Then the money shot:
+  `as-main steam recognize-game -a 264710` — **Subnautica (a schema-driven family game, never
+  hand-written) located via the family registration and fully recognized: 15,760/15,760 files
+  verified in ~4s**, version definition recorded against its Nexus id (1155). The §20.2
+  dual-source path works for family games end-to-end.
+- ⚠️ NEEDS GUI VERIFICATION (Brian): My Games in a debug build will now show ~200 games
+  (EnableAllGames) — all with placeholder art until PR H'. Check: Subnautica appears and can
+  be managed; RoR2 unchanged; a canonical-rules game one-click installs end-to-end.
+
+### 21.4 Next
+PR F: schema-driven installRules engine in `BepInExPluginInstaller` (Subnautica's QMods/state
+rules become correct) + Subnautica pilot end-to-end. PR G: RoR2 folds into the family (delete
+project, enable table row). PR H': runtime art fetch+cache (gcdn covers; groundwork for §20.7
+mod icons). Later: native-Linux doorstop slice; runtime schema refresh.

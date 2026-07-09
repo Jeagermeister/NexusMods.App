@@ -5,7 +5,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
-namespace NexusMods.Games.RiskOfRain2.Installers;
+namespace NexusMods.Games.BepInEx.Installers;
 
 internal static class InstallerHelpers
 {

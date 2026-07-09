@@ -3,18 +3,24 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Diagnostics.Values;
 using NexusMods.Abstractions.Loadouts;
-using NexusMods.Games.RiskOfRain2.Models;
+using NexusMods.Games.BepInEx.Models;
 using NexusMods.Sdk.Loadouts;
 
-namespace NexusMods.Games.RiskOfRain2.Emitters;
+namespace NexusMods.Games.BepInEx.Emitters;
 
 /// <summary>
 /// Warns when the loadout contains BepInEx plugins but no BepInEx loader pack —
-/// the game would launch entirely unmodded.
+/// the game would launch entirely unmodded. Constructed once per family game with that
+/// game's Thunderstore community, so the diagnostic links to the right place.
 /// </summary>
 public class MissingBepInExEmitter : ILoadoutDiagnosticEmitter
 {
-    private static readonly NamedLink BepInExPackLink = new("Thunderstore", new Uri("https://thunderstore.io/c/riskofrain2/p/bbepis/BepInExPack/"));
+    private readonly NamedLink _communityLink;
+
+    public MissingBepInExEmitter(string communitySlug)
+    {
+        _communityLink = new NamedLink("Thunderstore", new Uri($"https://thunderstore.io/c/{communitySlug}/"));
+    }
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(
         Loadout.ReadOnly loadout,
@@ -30,7 +36,7 @@ public class MissingBepInExEmitter : ILoadoutDiagnosticEmitter
 
         yield return Diagnostics.CreateMissingBepInEx(
             PluginCount: pluginCount,
-            BepInExPackUri: BepInExPackLink
+            BepInExPackUri: _communityLink
         );
     }
 }
