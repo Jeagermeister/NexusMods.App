@@ -42,7 +42,7 @@
                     <TextBlock Theme="{StaticResource BodyXLBoldTheme}"
                                TextAlignment="Center"
                                Foreground="{StaticResource AppLinearGradientBrush}"
-                               Text="Nexus Mods App Preview"/>
+                               Text="Apocrypha Preview"/>
                 </StackPanel>
                 
 

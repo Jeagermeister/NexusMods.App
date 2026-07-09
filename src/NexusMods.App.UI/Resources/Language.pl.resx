@@ -31,7 +31,7 @@
 		<value>Diagnostyka i dane</value>
 	</data>
 	<data name="MetricsOptIn_MainMessage" xml:space="preserve">
-		<value>Chcielibyśmy zbierać dane diagnostyczne oraz informacje o Twoim użytkowaniu, aby poprawić wydajność i zwiększyć komfort korzystania z aplikacji. Dzięki tym danym będziemy mogli lepiej identyfikować ewentualne problemy, optymalizować funkcje oraz zapewniać, że Nexus Mods działa jeszcze sprawniej dla wszystkich użytkowników.&#x0a;&#x0a;Twoje dane będą przetwarzane zgodnie z naszą Polityką prywatności. W dowolnym momencie możesz zmienić swoje preferencje w ustawieniach.&#x0a;&#x0a;Czy chcesz włączyć zbieranie danych?</value>
+		<value>Chcielibyśmy zbierać dane diagnostyczne oraz informacje o Twoim użytkowaniu, aby poprawić wydajność i zwiększyć komfort korzystania z aplikacji. Dzięki tym danym będziemy mogli lepiej identyfikować ewentualne problemy, optymalizować funkcje oraz zapewniać, że Apocrypha działa jeszcze sprawniej dla wszystkich użytkowników.&#x0a;&#x0a;Twoje dane będą przetwarzane zgodnie z naszą Polityką prywatności. W dowolnym momencie możesz zmienić swoje preferencje w ustawieniach.&#x0a;&#x0a;Czy chcesz włączyć zbieranie danych?</value>
 	</data>
 	<data name="Updater_UPDATE" xml:space="preserve">
 		<value>Zobacz aktualizację</value>
@@ -709,7 +709,7 @@
 		<value>Usuń</value>
 	</data>
 	<data name="Updated_ViewUninstallDocs" xml:space="preserve">
-		<value>Jak odinstalować aplikację Nexus Mods</value>
+		<value>Jak odinstalować aplikację Apocrypha</value>
 	</data>
 	<data name="HumanizedDateTime_Never" xml:space="preserve">
 		<value>Nigdy</value>

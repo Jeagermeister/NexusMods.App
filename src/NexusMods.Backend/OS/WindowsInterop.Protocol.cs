@@ -40,7 +40,7 @@ internal partial class WindowsInterop
         const string capabilitiesPath = @"SOFTWARE\Nexus Mods\NexusMods.App\Capabilities";
 
         using var key = Registry.CurrentUser.CreateSubKey(capabilitiesPath);
-        key.SetValue("ApplicationName", "Nexus Mods App");
+        key.SetValue("ApplicationName", "Apocrypha");
         key.SetValue("ApplicationDescription", "Mod Manager for your games");
 
         using var urlAssociationsKey = key.CreateSubKey("UrlAssociations");
@@ -49,7 +49,7 @@ internal partial class WindowsInterop
         using var registeredApplicationsKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\RegisteredApplications");
         registeredApplicationsKey.SetValue("NexusMods.App", capabilitiesPath);
 
-        CreateProgIdClass(CreateProgId(uriScheme), $"Nexus Mods App {uriScheme.ToUpperInvariant()} Handler", isProtocolHandler: false);
+        CreateProgIdClass(CreateProgId(uriScheme), $"Apocrypha {uriScheme.ToUpperInvariant()} Handler", isProtocolHandler: false);
     }
 
     [SupportedOSPlatform("windows")]
@@ -74,6 +74,6 @@ internal partial class WindowsInterop
     [SupportedOSPlatform("windows")]
     private void SetAsDefaultHandler(string uriScheme)
     {
-        CreateProgIdClass(uriScheme, $"Nexus Mods App {uriScheme.ToUpperInvariant()} Handler", isProtocolHandler: true);
+        CreateProgIdClass(uriScheme, $"Apocrypha {uriScheme.ToUpperInvariant()} Handler", isProtocolHandler: true);
     }
 }
