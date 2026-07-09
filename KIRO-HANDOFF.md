@@ -1460,8 +1460,8 @@ had silently survived a `kill` (verify process death, not just send the signal).
 
 ## 28. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
 
-`linux-fork` @ the PR #17 merge (all green); **PR #18 open** (`rebrand/r3-identity-migration`,
-§27 — identity + data migration, live-verified). The repo is
+`linux-fork` @ the PR #18 merge (rebrand R3, §27 — identity + data migration,
+live-verified; Brian's box runs on `~/.local/share/Apocrypha`). The repo is
 **`github.com/Jeagermeister/Apocrypha`**; local clone still `~/Source/NexusMods.App` (the
 folder name can be renamed any time now — R3 settled the identifiers; only the executable
 name waits for R4).
@@ -1479,6 +1479,40 @@ handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#1
    apocrypha_app_icon_set/`, desktop Icon= is already the new id) → ends in an installable
    AppImage (roadmap step 10). Windows registry QA pass rides here too (§27.1).
 2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
+3. Or pick from the **§28.1 UI backlog** below — each is a small self-contained PR.
+
+### 28.1 Brian's UI backlog (added 2026-07-09 post-R3 — de-Nexus the app's face)
+
+1. **Spine "Home" button → Apocrypha icon** (small). The top-left Home button renders the
+   B&W Nexus developer logo: `Themes.NexusFluentDark/Styles/Controls/Button/
+   SpineButtonStyles.axaml:86-89` sets `IconValues.Nexus` (defined in
+   `NexusMods.UI.Sdk/Icons/IconValues.cs:540`). Fix: add `IconValues.Apocrypha` (SVG from
+   the icon kit; `docs/apocrypha-icon.png` is already in-repo) and repoint that ONE style
+   setter. KEEP `IconValues.Nexus`/`NexusColor` everywhere else — they mark Nexus as a
+   mod SOURCE (Library/collections views; R1 §23.5 decision).
+2. **Search box in "Other supported games"** (small-medium). `App.UI/Pages/MyGames/
+   MyGamesView.axaml:99` — the section lists every supported-but-undetected game, ~200
+   rows since PR E. Add a filter TextBox above the wrap panel + a case-insensitive
+   DisplayName filter in `MyGamesViewModel` (games flow through DynamicData → `.Filter()`
+   on an observable of the search text). Consider the same box filtering the Detected
+   section too.
+3. **Orange → PURPLE accent** (small change, app-wide effect). The theme is a 3-layer
+   palette under `Themes.NexusFluentDark/Resources/Palette/Colors/`:
+   `PrimitiveColors.axaml` holds raw Tailwind ramps — **`PrimitiveViolet50–950` already
+   exists** — `BrandColors.axaml` maps `BrandPrimary50–950` → `PrimitiveOrange50–950`
+   (THE Nexus orange), and the semantic layer (`ElementColors.axaml`:
+   `PrimaryModerate`/`PrimaryStrong`/…) sits on BrandPrimary. Fix: remap the ~11
+   `BrandPrimary*` lines to `PrimitiveViolet*` and the whole app follows. Then sweep for
+   stray hardcoded oranges and eyeball Active/hover contrast. Violet suits the
+   arcane-tome brand.
+4. **Login (research note — nothing to build).** "Login" is the NEXUS MODS account login,
+   not an Apocrypha account: OAuth2+PKCE against `users.nexusmods.com/oauth`, public
+   client id `nma` (`Networking.NexusWebApi/Auth/OAuth.cs:20-21`), browser round-trip,
+   redirect `nxm://oauth/callback` caught by our protocol handler. It authorizes API/CDN
+   calls as that user (downloads, collections, premium). No Apocrypha website or account
+   system is needed for any of this; Thunderstore's read API needs no login at all.
+   Apocrypha-own accounts would only matter for a future sync/sharing service — nothing
+   blocks on it. Related: §20.7 multi-source login dropdown.
 
 Standing follow-up queue: Backend.Tests real-FS hygiene (§27.3), Brian deletes the
 `Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge, clean-install dialog,
