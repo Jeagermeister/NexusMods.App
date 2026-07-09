@@ -1386,39 +1386,41 @@ harbor. Key findings:
   valid webp, 0 leftover `.tmp`, 0 fallback log lines, 1.1 MB total.
 
 ### 25.3 Found while verifying (pre-existing, NOT this PR)
-- **`linux-fork` full-solution build is RED:** `tests/NexusMods.Backend.Tests/
-  EventTrackerTests.cs:52` still calls `EventTracker.PrepareRequest()`, which R2 (#14)
-  deleted with the Mixpanel loop. One orphaned test (+ Verify snapshot) to remove — queued
-  as the next quick fix. (Everything else in the 96-project solution builds clean.)
+- **`linux-fork` full-solution build was RED:** `tests/NexusMods.Backend.Tests/
+  EventTrackerTests.cs:52` still called `EventTracker.PrepareRequest()`, which R2 (#14)
+  deleted with the Mixpanel loop. **Fixed in PR #17** (same day, after #16 merged): the
+  orphaned test + its Verify snapshot removed — the whole file tested only the deleted
+  request builder, and the tracker never runs anyway (unregistered, no-op ExecuteAsync).
+  Backend.Tests 59/59; **the full 96-project solution builds 0-error again**.
 
 ---
 
 ## 26. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
 
-`linux-fork` @ the PR #15 merge; **PR #16 open** (`feature/bepinex-art`, §25 — runtime
-game art). The repo is **`github.com/Jeagermeister/Apocrypha`** (old URLs redirect; local
-clone still lives at `~/Source/NexusMods.App` — the on-disk folder name deliberately waits
-for R3/R4 to settle identifiers).
+`linux-fork` @ the PR #16 merge (runtime art, §25); **PR #17 open** (§25.3 quick fix —
+the orphaned EventTracker test; merging it makes full-solution builds green). The repo is
+**`github.com/Jeagermeister/Apocrypha`** (old URLs redirect; local clone still lives at
+`~/Source/NexusMods.App` — the on-disk folder name deliberately waits for R3/R4 to settle
+identifiers).
 
 Shipped, in order: Phase 1 (PRs #1–#9, Thunderstore→RoR2 end-to-end) → Phase 2 PR E
 (#10, ~200-game BepInEx family) → the critical sync-wipe fix (#11) + PR F rules engine
 (#12, Subnautica pilot verified live) → **the fork is named APOCRYPHA** → rebrand R1
 (#13, strings + Brian's tome icon) → repo rename → rebrand R2 (#14, telemetry ripped out,
-fork links, fork README) → handoff restore (#15) → PR H' runtime art (#16, §25).
+fork links, fork README) → handoff restore (#15) → PR H' runtime art (#16, §25) →
+build-health fix (#17, §25.3).
 
 **Next up (Brian's mode: "each issue, each improvement, one by one"):**
-1. **Quick fix — remove the orphaned EventTracker test** (§25.3): full-solution builds
-   stay red on linux-fork until it's gone.
-2. **Rebrand R3** — the careful slice: AppId `io.github.jeagermeister.apocrypha` across
+1. **Rebrand R3** — the careful slice: AppId `io.github.jeagermeister.apocrypha` across
    .desktop/metainfo/pupnet + StartupWMClass + Windows registry + unify the
    independently-derived `NexusMods.App` data-dir constants (SIX in §23.2, +1 §25.1)
    behind one name **with a one-time move-migration** (loadouts/Library/overlay/configs/
    logs) and old-registration cleanup. Inventory + risks: §23.2/§23.3.
-3. **Rebrand R4 / packaging** — pupnet AppBaseName/PackageName, workflows (drop the
+2. **Rebrand R4 / packaging** — pupnet AppBaseName/PackageName, workflows (drop the
    release-to-nexusmods job), releases-to-appstream.py OWNER/REPO, NuGet.Build.props, wire
    Brian's icon ladders (kit: `~/Source/VortexApp_Artwork/apocrypha_app_icon_set/`) →
    ends in an installable AppImage (roadmap step 10).
-4. **Phase 2 PR G** — RoR2 folds into the BepInEx family (delete the hand-written module;
+3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (delete the hand-written module;
    plan §21/design doc §9 — models already compatible, GameId identity-preserving).
 
 Standing follow-up queue: §20.7 backlog (Installed badge, clean-install dialog, Nexus-less
