@@ -115,8 +115,14 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     /// <summary>
     /// Linux fork: opens (or reuses) the writable local overlay database. Unlike the shipped database
     /// this is opened read-write so locally-recognised versions can be appended to it, and it persists
-    /// across runs at <c>{HashDatabaseLocation}/local-overlay</c>. It uses the same prefix and query
-    /// engine as the read-only databases so the FileHashes model attributes align.
+    /// across runs at <c>{HashDatabaseLocation}/local-overlay</c>. It shares the query engine with the
+    /// shipped database (model attributes align) but registers under its OWN SQL name,
+    /// <c>hashes_overlay</c>: the query engine resolves <c>DBName=&gt;"…"</c> to the FIRST connection
+    /// with that name, so a second "hashes" connection is silently shadowed — the SQL macros in
+    /// FileHashesQueries.sql must union both names explicitly. Getting this wrong is catastrophic:
+    /// the synchronizer's desired state resolves game files through those macros, and a version that
+    /// exists only in the overlay resolves to ZERO game files — applying such a loadout then deletes
+    /// the entire install as "unwanted".
     /// </summary>
     private readonly object _overlayOpenLock = new();
 
@@ -143,7 +149,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
             try
             {
                 store = new DatomStore(_provider.GetRequiredService<ILogger<DatomStore>>(), settings, backend);
-                var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], prefix: "hashes", queryEngine: _queryEngine);
+                var connection = new Connection(_provider.GetRequiredService<ILogger<Connection>>(), store, _provider, [], prefix: "hashes_overlay", queryEngine: _queryEngine);
 
                 _overlayDb = new OverlayDb(connection, store, backend);
                 return _overlayDb;
