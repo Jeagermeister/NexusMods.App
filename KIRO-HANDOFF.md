@@ -1244,3 +1244,26 @@ manage→mod→apply→unmod lifecycle.
   builds containing PR #11.
 - The §22.1 lesson candidates for upstreaming to MnemonicDB: duplicate-name registration on
   the query engine should throw instead of shadowing.
+
+### 23.5 Rebrand progress (2026-07-08/09)
+- **PR #13 (R1, MERGED):** display strings ×9 locales, .desktop Name, metainfo fork story,
+  pupnet display fields, "Created with Apocrypha" collection stamp, Brian's icon set wired
+  (kit at `~/Source/VortexApp_Artwork/apocrypha_app_icon_set/` — freedesktop/AppDir/Flathub
+  ladders staged for R4). Kept as SOURCE branding: nexus-logo.svg (IconValues.NexusColor) +
+  login-overlay Nexus wordmark.
+- **Repo RENAMED: `Jeagermeister/Apocrypha`** (GitHub auto-redirects the old name; local
+  remote updated).
+- **PR #14 (R2, open):** telemetry GONE not just off — upstream had THREE phone-home
+  surfaces all gated on EnableTracking (Mixpanel EventTracker w/ live tokens, Matomo
+  TrackingDataSender, OTel exporters); none register anymore regardless of settings, the
+  Mixpanel endpoint/loop/tokens deleted, Welcome-overlay opt-in expander + Settings toggle
+  removed (property kept for JSON compat). Help/Welcome keep ONE GitHub link → fork;
+  Discord/forums/status/privacy dropped. Updater + in-app changelog fetch from the fork
+  (upstream's releases would have been offered as "updates"!). User-Agent → "Apocrypha".
+  Full fork README (identity, BepInEx family, build instructions, GPL provenance +
+  non-affiliation).
+- Remaining: **R3** (AppId io.github.jeagermeister.apocrypha + StartupWMClass + Windows
+  registry + the SIX data-dir constants unified + one-time move-migration + old-registration
+  cleanup) and **R4** (pupnet AppBaseName/PackageName, workflows incl. dropping the
+  release-to-nexusmods job, releases-to-appstream.py, NuGet.Build.props, icon ladders into
+  packaging → feeds roadmap step 10 AppImage).

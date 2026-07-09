@@ -17,7 +17,7 @@ namespace NexusMods.App.UI.Pages.Changelog;
 [UsedImplicitly]
 public class ChangelogPageViewModel : APageViewModel<IChangelogPageViewModel>, IChangelogPageViewModel
 {
-    private readonly Uri _changelogUri = new("https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/CHANGELOG.md");
+    private readonly Uri _changelogUri = new("https://raw.githubusercontent.com/Jeagermeister/Apocrypha/linux-fork/CHANGELOG.md");
 
     public IMarkdownRendererViewModel MarkdownRendererViewModel { get; }
 

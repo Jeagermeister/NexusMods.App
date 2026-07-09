@@ -5,16 +5,11 @@ namespace NexusMods.Backend.Tracking;
 
 internal static class JsonText
 {
-    public static readonly JsonEncodedText AppNameValue = JsonEncodedText.Encode("Nexus Mods App");
+    public static readonly JsonEncodedText AppNameValue = JsonEncodedText.Encode("Apocrypha");
     public static readonly JsonEncodedText AppVersionValue = JsonEncodedText.Encode(ApplicationConstants.Version.ToSafeString(maxFieldCount: 3));
     public static readonly JsonEncodedText PlatformTypeValue = JsonEncodedText.Encode("app");
 
-    // NOTE(erri120): These tokens are for untrusted clients, they aren't considered secrets.
-    // Please don't send automated e-mails about exposed secrets.
-    private static readonly JsonEncodedText ProductionToken = JsonEncodedText.Encode("3f01fd6fe87f03fe7a053413929d76b7");
-    private static readonly JsonEncodedText DevelopmentToken = JsonEncodedText.Encode("404c9346f400b7e5e3c65f2b1a1f3325");
-
-    public static JsonEncodedText ProjectToken => ApplicationConstants.IsDebug ? DevelopmentToken : ProductionToken;
+    // Apocrypha: upstream's Mixpanel project tokens were removed with the phone-home (§23.4).
 
     public static readonly JsonEncodedText Event = JsonEncodedText.Encode("event");
     public static readonly JsonEncodedText Properties = JsonEncodedText.Encode("properties");

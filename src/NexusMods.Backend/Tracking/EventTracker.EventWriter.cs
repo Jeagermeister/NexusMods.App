@@ -79,7 +79,7 @@ internal partial class EventTracker
             _jsonWriter.WriteString(JsonText.AppName, JsonText.AppNameValue);
             _jsonWriter.WriteString(JsonText.AppVersion, JsonText.AppVersionValue);
             _jsonWriter.WriteString(JsonText.PlatformType, JsonText.PlatformTypeValue);
-            _jsonWriter.WriteString(JsonText.Token, JsonText.ProjectToken);
+            // Apocrypha: no Mixpanel project token — the phone-home is removed (§23.4).
             _jsonWriter.WriteString(JsonText.DeviceId, _tracker._deviceId);
 
             // https://docs.mixpanel.com/docs/tracking-methods/id-management#distinct-id

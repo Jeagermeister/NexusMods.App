@@ -76,10 +76,10 @@ public static class Services
                 .AddDefaultRenderers()
                 .AddDefaultParsers()
 
+                // Apocrypha: no telemetry. The upstream OpenTelemetry exporters, Matomo
+                // sender, and Mixpanel EventTracker are not registered (KIRO-HANDOFF §23.4);
+                // the Mixpanel endpoint/tokens are also removed at the source.
                 .AddSingleton<ITelemetryProvider, TelemetryProvider>()
-                .AddTelemetry(trackingSettings)
-                .AddTrackingOld(trackingSettings)
-                .AddTracking(trackingSettings)
 
                 .AddSingleton<CommandLineConfigurator>()
                 .AddCLI()

@@ -6,8 +6,11 @@ namespace NexusMods.Sdk.Tracking;
 
 public record TrackingSettings : ISettings
 {
-    public static readonly Uri Link = new("https://help.nexusmods.com/article/20-privacy-policy");
-
+    /// <remarks>
+    /// Apocrypha: telemetry was removed (KIRO-HANDOFF §23.4) — nothing observes this flag
+    /// anymore and the settings UI no longer exposes it. The property survives only so
+    /// existing settings JSON keeps deserializing.
+    /// </remarks>
     public bool EnableTracking { get; [UsedImplicitly] set; }
 
     public Guid DeviceId { get; set; }
@@ -16,19 +19,7 @@ public record TrackingSettings : ISettings
     {
         return settingsBuilder
             .ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json))
-            .ConfigureDefault(CreateDefault)
-            .ConfigureProperty(
-                x => x.EnableTracking,
-                new PropertyOptions<TrackingSettings, bool>
-                {
-                    Section = Sections.Privacy,
-                    DisplayName = "Send diagnostic and usage data",
-                    DescriptionFactory = _ => "Help us improve the app by sending diagnostic and usage data to Nexus Mods.",
-                    HelpLink = Link,
-                    RequiresRestart = true,
-                },
-                new BooleanContainerOptions()
-            );
+            .ConfigureDefault(CreateDefault);
     }
 
     private static TrackingSettings CreateDefault(IServiceProvider serviceProvider)
