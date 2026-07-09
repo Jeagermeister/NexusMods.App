@@ -17,6 +17,7 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
+    public string SupportedGamesSearchText { get; set; } = string.Empty;
 
     public MyGamesDesignViewModel() : base(new DesignWindowManager())
     {

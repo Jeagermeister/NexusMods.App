@@ -19,6 +19,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using OneOf;
 using OneOf.Types;
 using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 using System.Reactive;
 using System.Reactive.Linq;
 using DynamicData.Aggregation;
@@ -66,12 +67,14 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly ILoadoutManager _loadoutManager;
     private readonly IGameRegistry _gameRegistry;
 
-    private ReadOnlyObservableCollection<IViewModelInterface> _supportedGames = new([]);
+    private readonly ObservableCollection<IViewModelInterface> _supportedGamesBacking = new();
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
-    public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
+    public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
+
+    [Reactive] public string SupportedGamesSearchText { get; set; } = string.Empty;
 
     public MyGamesViewModel(
         IWindowManager windowManager,
@@ -98,6 +101,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
         TabTitle = Language.MyGames;
         TabIcon = IconValues.GamepadOutline;
+        SupportedGames = new ReadOnlyObservableCollection<IViewModelInterface>(_supportedGamesBacking);
 
         _serviceProvider = serviceProvider;
         _syncService = syncService;
@@ -218,12 +222,26 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
                 var comingSoonMiniGameWidget = _serviceProvider.GetRequiredService<IComingSoonMiniGameWidgetViewModel>();
 
-                // create a new ReadOnlyObservableCollection from miniGameWidgetViewModels and comingSoonMiniGameWidget
-                _supportedGames = new ReadOnlyObservableCollection<IViewModelInterface>(
-                    new ObservableCollection<IViewModelInterface>(miniGameWidgetViewModels) {
-                    // Add the coming soon widget to the end of the list
-                    comingSoonMiniGameWidget,
-                });
+                // ~200 supported games since the BepInEx family — filtered by the search box.
+                this.WhenAnyValue(vm => vm.SupportedGamesSearchText)
+                    .Select(static text => text?.Trim() ?? string.Empty)
+                    .DistinctUntilChanged()
+                    .OnUI()
+                    .Subscribe(searchText =>
+                        {
+                            _supportedGamesBacking.Clear();
+                            foreach (var widget in miniGameWidgetViewModels)
+                            {
+                                if (searchText.Length == 0 || widget.Name?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true)
+                                    _supportedGamesBacking.Add(widget);
+                            }
+
+                            // Always last: it doubles as the no-results outcome ("your game
+                            // may be coming") and keeps the request-a-game path visible.
+                            _supportedGamesBacking.Add(comingSoonMiniGameWidget);
+                        }
+                    )
+                    .DisposeWith(d);
             }
         );
     }

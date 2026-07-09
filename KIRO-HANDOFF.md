@@ -1509,20 +1509,33 @@ new strings, GUI check of the recognition toast.
   the remote, not from conversation. This branch fast-forwarded over
   `origin/docs/ui-backlog` so it carries the §28.1 docs either way.
 
+### 29.1 Search box in "Other supported games" (§28.1 item 2 — PR #21)
+
+`feature/games-search`. The section's collection was a one-shot static list; now a stable
+`ObservableCollection` backing (`SupportedGames` wraps it once — also fixes the fragile
+rebind-on-reassignment) refilled by a `WhenAnyValue(SupportedGamesSearchText)`
+subscription: trim → `DistinctUntilChanged` → case-insensitive DisplayName `Contains`.
+The coming-soon widget stays appended ALWAYS — it doubles as the no-results outcome and
+keeps the request-a-game path visible. View: plain `TextBox` + `IconValues.Search`
+`InnerLeftContent` under the section heading (hardcoded English watermark, matching the
+hardcoded section title — both on the §20.7 localization sweep), two-way bound in
+code-behind. With this, **all four §28.1 asks are closed** (item 4 was research-only).
+
 ---
 
 ## 30. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
 
-`linux-fork` @ the PR #18 merge (rebrand R3 — Brian's box runs on
-`~/.local/share/Apocrypha`). **Open: PR #19** (docs, §28.1 backlog — announced merged but
-still open, needs the click) and **PR #20** (`ui/de-nexus-face`, §29 — purple accent +
-Apocrypha Home icon; contains #19's commit, so merging #20 alone also lands the docs).
-Local repo folder `~/Source/NexusMods.App` can be renamed anytime.
+`linux-fork` @ the PR #20 merge (purple accent + Apocrypha Home icon, §29; the #19 docs
+merged just before). **Open: PR #21** (`feature/games-search`, §29.1 — the "Other
+supported games" search box; with it all four §28.1 asks are closed). Brian's box runs on
+`~/.local/share/Apocrypha`; the local repo folder `~/Source/NexusMods.App` can be renamed
+anytime.
 
 Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
 rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
 handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
-**rebrand R3 (#18, §27)** → UI de-Nexus face (#20, §29, pending merge).
+**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1,
+pending merge).
 
 **Next up (Brian's mode: one by one):**
 1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
@@ -1532,6 +1545,6 @@ handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#1
    apocrypha_app_icon_set/`, desktop Icon= already the new id) → installable AppImage
    (roadmap step 10). Windows registry QA (§27.1) rides here.
 2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
-3. **§28.1 item 2** — search box in "Other supported games" (the remaining UI backlog item).
 
-Backlogs: §28.1 (UI) and the standing queue at the end of §28.
+Backlogs: §28.1 (UI — all closed; localization rides the §20.7 sweep) and the standing
+queue at the end of §28.
