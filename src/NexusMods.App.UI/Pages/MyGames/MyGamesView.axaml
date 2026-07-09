@@ -100,6 +100,18 @@
                                Theme="{StaticResource HeadingXSSemiTheme}"
                                Foreground="{StaticResource NeutralStrongBrush}" />
 
+                    <TextBox x:Name="SupportedGamesSearchBox"
+                             Watermark="Search games"
+                             Width="320"
+                             MinHeight="24"
+                             HorizontalAlignment="Left">
+                        <TextBox.InnerLeftContent>
+                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.Search}"
+                                               Size="16"
+                                               Margin="8,0,0,0" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+
                     <controls:EmptyState x:Name="SupportedGamesEmptyState"
                                          Margin="0"
                                          HorizontalAlignment="Left">

@@ -12,9 +12,14 @@ namespace NexusMods.App.UI.Pages.MyGames;
 public interface IMyGamesViewModel : IPageViewModelInterface
 {
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
-    
+
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
-    
+
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
 
+    /// <summary>
+    /// Filters the "Other supported games" section by display name (~200 games since the
+    /// BepInEx family); empty shows all.
+    /// </summary>
+    public string SupportedGamesSearchText { get; set; }
 }
