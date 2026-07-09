@@ -61,24 +61,6 @@
                            Text="Join the discussion on:" />
 
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing-4}" HorizontalAlignment="Center">
-                    <controls:StandardButton x:Name="ButtonOpenDiscord"
-                                             Text="Discord"
-                                             Type="Secondary"
-                                             Fill="None"
-                                             Size="Small"
-                                             ShowIcon="Left"
-                                             LeftIcon="{x:Static icons:IconValues.Discord}"
-                                             ToolTip.Tip="Open Discord" />
-
-                    <controls:StandardButton x:Name="ButtonOpenForum"
-                                             Text="Nexus Mods Forums"
-                                             Type="Secondary"
-                                             Fill="None"
-                                             Size="Small"
-                                             ShowIcon="Left"
-                                             LeftIcon="{x:Static icons:IconValues.Forum}"
-                                             ToolTip.Tip="Open Forums at Nexus Mods" />
-
                     <controls:StandardButton x:Name="ButtonOpenGitHub"
                                              Text="GitHub"
                                              Type="Secondary"
@@ -120,32 +102,8 @@
                                              Fill="Strong"
                                              Size="Small" />
                 </StackPanel>
-                <Expander x:Name="PrivacyPolicyExpander" HorizontalAlignment="Stretch">
-
-                    <Expander.Header>
-                        <CheckBox x:Name="CheckBoxAllowTelemetry"
-                                  HorizontalAlignment="Stretch"
-                                  IsChecked="True">Allow this app to collect usage data to improve your experience</CheckBox>
-                    </Expander.Header>
-
-                    <Border Padding="0,12">
-                        <StackPanel Spacing="12">
-                            <TextBlock Theme="{StaticResource BodySMNormalTheme}"
-                                       TextAlignment="Left"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource NeutralSubduedBrush}"
-                                       Text="Help us provide you with the best modding experience. With your permission, we will collect analytics information and send it to our team to help us improve quality and performance. This information is sent anonymously and will never be shared with a 3rd party." />
-
-                            <controls:StandardButton x:Name="ButtonOpenPrivacyPolicy"
-                                                     Text="Privacy Policy"
-                                                     Type="Tertiary"
-                                                     Fill="Weak"
-                                                     Size="Small"
-                                                     LeftIcon="{x:Static icons:IconValues.OpenInNew}"
-                                                     ShowIcon="Left" />
-                        </StackPanel>
-                    </Border>
-                </Expander>
+                <!-- Apocrypha: the telemetry opt-in expander was removed with the Mixpanel
+                     phone-home (KIRO-HANDOFF §23.4) — the app collects nothing. -->
             </StackPanel>
             
             

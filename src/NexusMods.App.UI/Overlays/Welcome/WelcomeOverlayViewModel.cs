@@ -15,18 +15,13 @@ namespace NexusMods.App.UI.Overlays;
 
 public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewModel>, IWelcomeOverlayViewModel
 {
-    public ReactiveCommand CommandOpenDiscord { get; }
-    public ReactiveCommand CommandOpenForum { get; }
     public ReactiveCommand CommandOpenGitHub { get; }
-    public ReactiveCommand CommandOpenPrivacyPolicy { get; }
 
     public ReactiveCommand<Unit> CommandLogIn { get; }
     public ReactiveCommand<Unit> CommandLogOut { get; }
 
     private readonly BindableReactiveProperty<bool> _isLoggedIn = new();
     public IReadOnlyBindableReactiveProperty<bool> IsLoggedIn => _isLoggedIn;
-
-    public BindableReactiveProperty<bool> AllowTelemetry { get; }
 
     public ReactiveCommand CommandClose { get; }
 
@@ -36,12 +31,7 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
         ILoginManager loginManager,
         IWindowNotificationService notificationService)
     {
-        AllowTelemetry = new BindableReactiveProperty<bool>(value: settingsManager.Get<TrackingSettings>().EnableTracking);
-
-        CommandOpenDiscord = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.DiscordUri));
-        CommandOpenForum = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.ForumsUri));
         CommandOpenGitHub = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.GitHubUri));
-        CommandOpenPrivacyPolicy = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.PrivacyPolicyUri));
 
         CommandLogIn = IsLoggedIn.AsObservable().Select(static isLoggedIn => !isLoggedIn).ToReactiveCommand<Unit>(
             executeAsync: async (_, cancellationToken) =>
@@ -59,15 +49,7 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
             initialCanExecute: false
         );
 
-        CommandClose = new ReactiveCommand(_ =>
-        {
-            settingsManager.Update<TrackingSettings>(settings => settings with
-            {
-                EnableTracking = AllowTelemetry.Value,
-            });
-
-            base.Close();
-        });
+        CommandClose = new ReactiveCommand(_ => base.Close());
 
         this.WhenActivated(disposables =>
         {

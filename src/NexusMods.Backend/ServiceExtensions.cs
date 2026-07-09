@@ -112,12 +112,10 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddTracking(this IServiceCollection serviceCollection, TrackingSettings? settings)
     {
-        if (settings is null || !settings.EnableTracking) return serviceCollection;
-
-        return serviceCollection
-            .AddSingleton<EventTracker>()
-            .AddSingleton<IEventTracker, EventTracker>(provider => provider.GetRequiredService<EventTracker>())
-            .AddHostedService<EventTracker>(provider => provider.GetRequiredService<EventTracker>());
+        // Apocrypha: telemetry removed (KIRO-HANDOFF §23.4). The EventTracker is never
+        // registered, regardless of settings; its Mixpanel endpoint and project tokens are
+        // gone from the source as well.
+        return serviceCollection;
     }
 
     public static IServiceCollection AddSettingsManager(this IServiceCollection serviceCollection)

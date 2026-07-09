@@ -15,7 +15,7 @@ namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
 
 public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
 {
-    private static readonly Uri MissingGamesUri = new("https://nexus-mods.github.io/NexusMods.App/users/games/CompatibleGames/");
+    private static readonly Uri MissingGamesUri = new("https://github.com/Jeagermeister/Apocrypha");
 
     public MiniGameWidgetViewModel(ILogger<MiniGameWidgetViewModel> logger, IOSInterop osInterop)
     {

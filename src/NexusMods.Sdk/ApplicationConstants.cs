@@ -177,7 +177,7 @@ public static class ApplicationConstants
     /// <summary>
     /// Default user agent application name.
     /// </summary>
-    private const string DefaultUserAgentName = "NexusModsApp";
+    private const string DefaultUserAgentName = "Apocrypha";
 
 #endregion
 }
