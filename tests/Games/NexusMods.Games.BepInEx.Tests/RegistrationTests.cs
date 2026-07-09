@@ -69,8 +69,11 @@ public class RegistrationTests
             game.TileImage.Should().NotBeNull();
         });
 
-        // The two installers are shared singletons across the whole family.
-        var installers = games.SelectMany(g => g.LibraryItemInstallers).Distinct().ToArray();
-        installers.Should().HaveCount(2);
+        // The pack installer is one shared singleton; plugin installers are per-game
+        // (each carries its game's schema installRules).
+        var packInstallers = games.Select(g => g.LibraryItemInstallers[0]).Distinct().ToArray();
+        packInstallers.Should().HaveCount(1);
+        var pluginInstallers = games.Select(g => g.LibraryItemInstallers[1]).Distinct().ToArray();
+        pluginInstallers.Should().HaveCount(games.Length);
     }
 }
