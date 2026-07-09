@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
@@ -22,6 +23,8 @@ namespace NexusMods.Games.BepInEx;
 /// </summary>
 public class GenericBepInExGame : IGame
 {
+    private const string GcdnAssetsBaseUrl = "https://gcdn.thunderstore.io/assets/";
+
     private readonly BepInExGameData _data;
 
     public BepInExGameData Data => _data;
@@ -33,11 +36,12 @@ public class GenericBepInExGame : IGame
     public StoreIdentifiers StoreIdentifiers { get; }
 
     /// <remarks>
-    /// Shared placeholder art until the runtime art pipeline (design §10, PR H') serves the
-    /// schema's per-game covers.
+    /// Runtime-fetched art (design §10): the community's 192×192 icon and the game's 360×480
+    /// cover, disk-cached on first read; the shared placeholder serves when offline or when
+    /// the schema carries no asset.
     /// </remarks>
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.tile.webp");
+    public IStreamFactory IconImage { get; }
+    public IStreamFactory TileImage { get; }
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -53,6 +57,11 @@ public class GenericBepInExGame : IGame
         {
             SteamAppIds = data.SteamAppIds,
         };
+
+        IconImage = CreateArtFactory(provider, data.CommunityIconUrl,
+            new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.thumbnail.webp"));
+        TileImage = CreateArtFactory(provider, data.CoverUrl,
+            new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.tile.webp"));
 
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new DefaultSynchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
@@ -73,6 +82,28 @@ public class GenericBepInExGame : IGame
             // Per-game instance: routing follows this game's schema installRules (design §6).
             new BepInExPluginInstaller(provider, data.InstallRules, data.RelativeFileExclusions),
         ];
+    }
+
+    /// <summary>
+    /// Art is best-effort by design (§10): the placeholder serves when the schema carries no
+    /// asset and in containers without HTTP or a filesystem (lean test hosts); the factory
+    /// itself falls back per-read when the CDN is unreachable.
+    /// </summary>
+    private static IStreamFactory CreateArtFactory(IServiceProvider provider, string? gcdnPath, IStreamFactory placeholder)
+    {
+        if (gcdnPath is null) return placeholder;
+
+        var httpClient = provider.GetService<HttpClient>();
+        var fileSystem = provider.GetService<IFileSystem>();
+        if (httpClient is null || fileSystem is null) return placeholder;
+
+        return new CachedHttpStreamFactory(
+            httpClient,
+            new Uri(GcdnAssetsBaseUrl + gcdnPath),
+            GameArtCache.GetCacheFile(fileSystem, gcdnPath),
+            placeholder,
+            provider.GetService<ILogger<GenericBepInExGame>>()
+        );
     }
 
     public ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)

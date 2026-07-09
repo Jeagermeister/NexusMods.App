@@ -44,8 +44,14 @@ public record BepInExGameData
     /// <summary>The Thunderstore community slug, derived from the schema's packageIndex URL.</summary>
     public required string CommunitySlug { get; init; }
 
-    /// <summary>Cover art path relative to <c>https://gcdn.thunderstore.io/assets/</c> (PR H' consumes this).</summary>
-    public string? IconUrl { get; init; }
+    /// <summary>The game's 360×480 cover, relative to <c>https://gcdn.thunderstore.io/assets/</c> — the tile image.</summary>
+    public string? CoverUrl { get; init; }
+
+    /// <summary>
+    /// The community's 192×192 icon, relative to <c>https://gcdn.thunderstore.io/assets/</c> —
+    /// the thumbnail/spine image. Null where the community has no icon (legacy communities).
+    /// </summary>
+    public string? CommunityIconUrl { get; init; }
 
     /// <summary>The Unity data folder name (empty for non-Unity games); future backup-ignore input.</summary>
     public string? DataFolderName { get; init; }

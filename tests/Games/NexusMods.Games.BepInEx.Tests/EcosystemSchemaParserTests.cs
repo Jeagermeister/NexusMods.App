@@ -39,6 +39,11 @@ public class EcosystemSchemaParserTests
             game.SteamAppIds.Should().NotBeEmpty();
             game.DisplayName.Should().NotBeNullOrEmpty();
         });
+
+        games.Should().AllSatisfy(game => game.CoverUrl.Should().NotBeNullOrEmpty(
+            "every instance in the snapshot carries a cover — tiles never fall back when online"));
+        games.Count(game => game.CommunityIconUrl is not null).Should().BeGreaterThan(100,
+            "most (not all) communities carry a 192×192 icon; legacy communities have no block");
     }
 
     [Fact]
@@ -54,6 +59,8 @@ public class EcosystemSchemaParserTests
         subnautica.PrimaryExeName.Should().Be("Subnautica.exe");
         subnautica.CommunitySlug.Should().Be("subnautica");
         subnautica.InstallRules.Should().NotBeEmpty("Subnautica has deviant state/QMods rules the PR F engine consumes");
+        subnautica.CoverUrl.Should().Be("subnautica/subnautica-cover-360x480.webp");
+        subnautica.CommunityIconUrl.Should().BeNull("subnautica is a legacy community with no community block");
 
         var valheim = games["Valheim"];
         valheim.SteamAppIds.Should().Contain(892970u);
@@ -66,6 +73,8 @@ public class EcosystemSchemaParserTests
         lethalCompany.SteamAppIds.Should().Equal(1966720u);
         lethalCompany.NexusModsGameId.Value.Value.Should().Be(5848u);
         lethalCompany.CommunitySlug.Should().Be("lethal-company", "slugs come from packageIndex, never from display names");
+        lethalCompany.CoverUrl.Should().Be("lethal-company/lethal-company-cover-360x480.webp");
+        lethalCompany.CommunityIconUrl.Should().Be("lethal-company/lethal-company-icon-192x192.webp");
 
         games["H3VR"].NexusModsGameId.HasValue.Should().BeFalse("H3VR has no Nexus domain — zero-sentinel path");
     }
@@ -109,6 +118,26 @@ public class EcosystemSchemaParserTests
     }
 
     [Fact]
+    public void Parse_ResolvesCoverFromInstanceAndIconFromCommunity()
+    {
+        var schema = SyntheticSchemaWithCommunities(
+            communities: """ "gamea": { "meta": { "icon": "gamea/gamea-icon-192x192.webp" } }, "gameb": {} """,
+            Instance("GameA", steam: "100", loader: "bepinex", iconUrl: "gamea/gamea-cover-360x480.webp"),
+            Instance("GameB", steam: "200", loader: "bepinex"),
+            Instance("GameC", steam: "300", loader: "bepinex"));
+
+        var games = Parse(schema, mappings: "{}", excluded: []).ToDictionary(g => g.SettingsIdentifier);
+
+        games["GameA"].CoverUrl.Should().Be("gamea/gamea-cover-360x480.webp");
+        games["GameA"].CommunityIconUrl.Should().Be("gamea/gamea-icon-192x192.webp");
+
+        games["GameB"].CoverUrl.Should().BeNull();
+        games["GameB"].CommunityIconUrl.Should().BeNull("the community block exists but carries no icon");
+
+        games["GameC"].CommunityIconUrl.Should().BeNull("no community block at all (legacy communities)");
+    }
+
+    [Fact]
     public void Parse_PrefersWindowsExeAsPrimaryFile()
     {
         var schema = SyntheticSchema(
@@ -137,11 +166,14 @@ public class EcosystemSchemaParserTests
         return EcosystemSchemaParser.Parse(schemaStream, mappingStream, excluded.ToHashSet());
     }
 
-    private static string SyntheticSchema(params string[] instances)
+    private static string SyntheticSchema(params string[] instances) => SyntheticSchemaWithCommunities(communities: null, instances);
+
+    private static string SyntheticSchemaWithCommunities(string? communities, params string[] instances)
     {
         // One synthetic game entry per instance keeps the fixture simple; the parser flattens anyway.
         var games = instances.Select((instance, i) => $"\"game-{i}\": {{ \"uuid\": \"u{i}\", \"label\": \"game-{i}\", \"meta\": {{ \"displayName\": \"Game {i}\" }}, \"r2modman\": [{instance}] }}");
-        return $$"""{ "schemaVersion": "0.3.0", "games": { {{string.Join(",", games)}} } }""";
+        var communitiesJson = communities is null ? "" : $$""", "communities": { {{communities}} }""";
+        return $$"""{ "schemaVersion": "0.3.0", "games": { {{string.Join(",", games)}} }{{communitiesJson}} }""";
     }
 
     private static string Instance(
@@ -152,12 +184,14 @@ public class EcosystemSchemaParserTests
         string displayMode = "visible",
         string? displayName = null,
         string trackingMethod = "subdir",
-        string? exeNames = null)
+        string? exeNames = null,
+        string? iconUrl = null)
     {
         var distributions = steam.Length == 0 ? "[]" : $$"""[{ "platform": "steam", "identifier": "{{steam}}" }]""";
+        var iconUrlJson = iconUrl is null ? "" : $$""", "iconUrl": "{{iconUrl}}" """;
         return $$"""
         {
-            "meta": { "displayName": "{{displayName ?? settingsIdentifier}}" },
+            "meta": { "displayName": "{{displayName ?? settingsIdentifier}}"{{iconUrlJson}} },
             "distributions": {{distributions}},
             "settingsIdentifier": "{{settingsIdentifier}}",
             "packageIndex": "https://thunderstore.io/c/{{settingsIdentifier.ToLowerInvariant()}}/api/v1/package-listing-index/",

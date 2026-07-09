@@ -1,7 +1,10 @@
+using System.Net.Http;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.IO;
 using Xunit;
 
 namespace NexusMods.Games.BepInEx.Tests;
@@ -75,5 +78,44 @@ public class RegistrationTests
         packInstallers.Should().HaveCount(1);
         var pluginInstallers = games.Select(g => g.LibraryItemInstallers[1]).Distinct().ToArray();
         pluginInstallers.Should().HaveCount(games.Length);
+    }
+
+    [Fact]
+    public void FamilyGames_WireRuntimeArtWhenHttpAndFilesystemAreAvailable()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new HttpClient());
+        services.AddSingleton<IFileSystem>(new InMemoryFileSystem());
+        services.AddBepInExGames();
+        using var provider = services.BuildServiceProvider();
+        var games = provider.GetServices<IGame>().Cast<GenericBepInExGame>().ToArray();
+
+        // Every row in the snapshot carries a cover, so every tile is runtime-fetched.
+        games.Should().AllSatisfy(game => game.TileImage.Should().BeOfType<CachedHttpStreamFactory>());
+
+        var lethalCompany = games.Single(g => g.GameId == GameId.From("LethalCompany"));
+        ((CachedHttpStreamFactory)lethalCompany.TileImage).Uri.Should().Be(
+            new Uri("https://gcdn.thunderstore.io/assets/lethal-company/lethal-company-cover-360x480.webp"));
+        ((CachedHttpStreamFactory)lethalCompany.IconImage).Uri.Should().Be(
+            new Uri("https://gcdn.thunderstore.io/assets/lethal-company/lethal-company-icon-192x192.webp"));
+
+        var subnautica = games.Single(g => g.GameId == GameId.From("Subnautica"));
+        subnautica.IconImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>(
+            "legacy communities carry no icon — the thumbnail stays the placeholder");
+    }
+
+    [Fact]
+    public void FamilyGames_FallBackToPlaceholderArtInLeanContainers()
+    {
+        // No HttpClient/IFileSystem registered (headless verbs, lean test hosts).
+        using var provider = Build();
+        var games = provider.GetServices<IGame>().Cast<GenericBepInExGame>().ToArray();
+
+        games.Should().AllSatisfy(game =>
+        {
+            game.TileImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>();
+            game.IconImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>();
+        });
     }
 }
