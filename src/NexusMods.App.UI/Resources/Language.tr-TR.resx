@@ -36,7 +36,7 @@
         <value>Tanılama ve kullanım verileri</value>
     </data>
     <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>Performansı iyileştirmek ve deneyiminizi geliştirmek için tanılama ve kullanım verileri toplamak istiyoruz. Bu veriler sorunları tespit etmemize, özellikleri optimize etmemize ve Nexus Mods uygulamasının herkes için daha iyi çalışmasını sağlamamıza yardımcı olur.&amp;#x0a;&amp;#x0a;Verileriniz Gizlilik Politikamız doğrultusunda işlenecektir. Tercihinizi istediğiniz zaman ayarlardan değiştirebilirsiniz.&amp;#x0a;&amp;#x0a;Veri toplamayı etkinleştirmek ister misiniz?</value>
+        <value>Performansı iyileştirmek ve deneyiminizi geliştirmek için tanılama ve kullanım verileri toplamak istiyoruz. Bu veriler sorunları tespit etmemize, özellikleri optimize etmemize ve Apocrypha uygulamasının herkes için daha iyi çalışmasını sağlamamıza yardımcı olur.&amp;#x0a;&amp;#x0a;Verileriniz Gizlilik Politikamız doğrultusunda işlenecektir. Tercihinizi istediğiniz zaman ayarlardan değiştirebilirsiniz.&amp;#x0a;&amp;#x0a;Veri toplamayı etkinleştirmek ister misiniz?</value>
     </data>
     <data name="MetricsOptIn_ALLOW" xml:space="preserve">
         <value>İzin ver</value>
@@ -728,7 +728,7 @@
         <value>Mod(ları) Sil</value>
     </data>
     <data name="Updated_ViewUninstallDocs" xml:space="preserve">
-        <value>Nexus Mods uygulaması nasıl kaldırılır</value>
+        <value>Apocrypha uygulaması nasıl kaldırılır</value>
     </data>
     <data name="HumanizedDateTime_Never" xml:space="preserve">
         <value>Asla</value>

@@ -37,7 +37,7 @@
         <value>Diagnostics and usage data</value>
     </data>
     <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-        <value>We’d like to collect diagnostics and usage data to improve performance and enhance your experience. This data helps us identify issues, optimize features, and ensure the Nexus Mods app works better for everyone.&#x0a;&#x0a;Your data will be processed in accordance with our Privacy Policy. You can change your preference anytime in settings.&#x0a;&#x0a;Would you like to enable data collection?</value>
+        <value>We’d like to collect diagnostics and usage data to improve performance and enhance your experience. This data helps us identify issues, optimize features, and ensure Apocrypha works better for everyone.&#x0a;&#x0a;Your data will be processed in accordance with our Privacy Policy. You can change your preference anytime in settings.&#x0a;&#x0a;Would you like to enable data collection?</value>
     </data>
     <data name="MetricsOptIn_ALLOW" xml:space="preserve">
         <value>Allow</value>
@@ -764,7 +764,7 @@
     </data>
 
     <data name="Updated_ViewUninstallDocs" xml:space="preserve">
-        <value>How to uninstall the Nexus Mods app</value>
+        <value>How to uninstall Apocrypha</value>
     </data>
     <data name="HumanizedDateTime_Never" xml:space="preserve">
         <value>Never</value>
