@@ -144,7 +144,8 @@ public static class Services
         Games.Larian.BaldursGate3.Services.AddBaldursGate3(services);
         Games.CreationEngine.Services.AddCreationEngine(services);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
-    Games.RiskOfRain2.Services.AddRiskOfRain2(services);
+        Games.BepInEx.Services.AddBepInExGames(services);
+        Games.RiskOfRain2.Services.AddRiskOfRain2(services);
         return services;
     }
 }

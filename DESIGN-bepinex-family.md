@@ -280,15 +280,18 @@ sentinel path (recognizer declines them; both are <5GB so the backup fuse is a n
 ## 9. Models + RoR2 migration (PR G)
 
 The `NexusMods.RiskOfRain2.*` attribute namespaces are persisted in MnemonicDB (Brian's live
-RoR2 loadout has them). Plan:
-- Family models use fresh `NexusMods.BepInEx.*` namespaces.
-- PR G deletes the RoR2 *project* but keeps its two model classes (relocated, `[Obsolete]`,
-  original attribute strings) so existing datoms stay resolvable; `MissingBepInExEmitter`
-  queries the union of old+new markers. New installs write family markers only.
-- RoR2 becomes a table row (`RiskOfRain2`, GameId-identical — §3), its art moves to the family
-  `Resources/`, `RunRiskOfRain2Game`/installers/emitter/Services are deleted in favor of the
-  family versions. Loadout continuity: GameId string unchanged ⇒ `GameInstallMetadata`
-  (Path+Store matched) and loadout `Game` resolution (DisplayName unchanged) both hold.
+RoR2 loadout has them). **Implementation finding (PR E): the original "fresh
+`NexusMods.BepInEx.*` namespace + legacy shim" plan is impossible** — MnemonicDB's query
+engine keys attributes by `{final namespace segment}/{attribute name}`, so
+`NexusMods.BepInEx.BepInExLoadoutItem/Version` and the legacy
+`NexusMods.RiskOfRain2.BepInExLoadoutItem/Version` collide at startup (duplicate-key crash).
+Resolution, simpler than the plan: the family's models keep the **historical attribute
+strings verbatim** (one model set, no shims, no union queries, no migration; the string is an
+internal DB key never shown to users). Commented at the definition site.
+- PR G then only: RoR2 becomes a table row (`RiskOfRain2`, GameId-identical — §3), its art
+  moves to the family `Resources/`, and `RunRiskOfRain2Game`/Services/the project are deleted.
+  Loadout continuity: GameId string unchanged ⇒ `GameInstallMetadata` (Path+Store matched)
+  and loadout `Game` resolution (DisplayName unchanged) both hold; marker data needs nothing.
 
 ## 10. Art (decision §14.3: runtime fetch + cache)
 

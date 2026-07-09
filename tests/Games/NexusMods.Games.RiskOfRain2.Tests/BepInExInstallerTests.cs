@@ -1,7 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Thunderstore;
-using NexusMods.Games.RiskOfRain2.Installers;
+using NexusMods.Games.BepInEx;
+using NexusMods.Games.BepInEx.Installers;
 using NexusMods.Games.TestFramework;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
@@ -19,6 +20,7 @@ public class BepInExInstallerTests(ITestOutputHelper outputHelper) : ALibraryArc
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
+            .AddBepInExGames()
             .AddRiskOfRain2()
             .AddThunderstoreModels()
             .AddUniversalGameLocator<RiskOfRain2Game>(new Version("1.3.9"));

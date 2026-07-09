@@ -3,7 +3,7 @@ using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
 using NexusMods.Abstractions.Loadouts;
 
-namespace NexusMods.Games.RiskOfRain2.Models;
+namespace NexusMods.Games.BepInEx.Models;
 
 /// <summary>
 /// Marks a loadout item group as an installed BepInEx plugin package.
@@ -12,6 +12,7 @@ namespace NexusMods.Games.RiskOfRain2.Models;
 [Include<LoadoutItemGroup>]
 public partial class BepInExPluginLoadoutItem : IModelDefinition
 {
+    // Historical value from the Phase 1 RoR2 pilot, kept verbatim — see BepInExLoadoutItem.
     private const string Namespace = "NexusMods.RiskOfRain2.BepInExPluginLoadoutItem";
 
     /// <summary>

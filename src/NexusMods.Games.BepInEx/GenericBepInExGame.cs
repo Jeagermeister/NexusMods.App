@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using DynamicData.Kernel;
-using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
@@ -12,36 +11,33 @@ using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
 
-namespace NexusMods.Games.RiskOfRain2;
+namespace NexusMods.Games.BepInEx;
 
 /// <summary>
-/// Risk of Rain 2 — the fork's pilot for the Thunderstore/BepInEx mod-source work
-/// (DESIGN-modsources.md §8). Notably it has NO Nexus Mods presence: modding is
-/// Thunderstore-exclusive, making it the first game this app supports that the
-/// upstream app never could.
+/// One Thunderstore/BepInEx game, constructed from a <see cref="BepInExGameData"/> row of the
+/// vendored ecosystem schema — the data-driven family that generalizes the Phase 1 RoR2 pilot
+/// (DESIGN-bepinex-family.md §5). Deliberately implements plain <see cref="IGame"/>, not
+/// <c>IGameData&lt;TSelf&gt;</c>: the static-abstract members are a per-class convention, and this
+/// class is instantiated once per game row.
 /// </summary>
-/// <remarks>
-/// Since Phase 2 this module consumes the generic BepInEx family's installers and emitter
-/// (NexusMods.Games.BepInEx); the game class itself folds into the family in PR G
-/// (DESIGN-bepinex-family.md §9) — it is excluded from the schema-driven registration
-/// until then.
-/// </remarks>
-[UsedImplicitly]
-public class RiskOfRain2Game : IGame, IGameData<RiskOfRain2Game>
+public class GenericBepInExGame : IGame
 {
-    public static GameId GameId { get; } = GameId.From("RiskOfRain2");
-    public static string DisplayName => "Risk of Rain 2";
+    private readonly BepInExGameData _data;
 
-    /// <remarks>Thunderstore-exclusive; the game is not on Nexus Mods.</remarks>
-    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
+    public BepInExGameData Data => _data;
 
-    public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
-    {
-        SteamAppIds = [632360u],
-    };
+    public GameId GameId => _data.GameId;
+    public string DisplayName => _data.DisplayName;
+    public Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => _data.NexusModsGameId;
 
-    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<RiskOfRain2Game>("NexusMods.Games.RiskOfRain2.Resources.thumbnail.webp");
-    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<RiskOfRain2Game>("NexusMods.Games.RiskOfRain2.Resources.tile.webp");
+    public StoreIdentifiers StoreIdentifiers { get; }
+
+    /// <remarks>
+    /// Shared placeholder art until the runtime art pipeline (design §10, PR H') serves the
+    /// schema's per-game covers.
+    /// </remarks>
+    public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.thumbnail.webp");
+    public IStreamFactory TileImage { get; } = new EmbeddedResourceStreamFactory<GenericBepInExGame>("NexusMods.Games.BepInEx.Resources.tile.webp");
 
     private readonly Lazy<ILoadoutSynchronizer> _synchronizer;
     public ILoadoutSynchronizer Synchronizer => _synchronizer.Value;
@@ -50,8 +46,14 @@ public class RiskOfRain2Game : IGame, IGameData<RiskOfRain2Game>
     public ISortOrderManager SortOrderManager => _sortOrderManager.Value;
     public IDiagnosticEmitter[] DiagnosticEmitters { get; }
 
-    public RiskOfRain2Game(IServiceProvider provider)
+    public GenericBepInExGame(IServiceProvider provider, BepInExGameData data)
     {
+        _data = data;
+        StoreIdentifiers = new StoreIdentifiers(data.GameId)
+        {
+            SteamAppIds = data.SteamAppIds,
+        };
+
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new DefaultSynchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
@@ -62,7 +64,7 @@ public class RiskOfRain2Game : IGame, IGameData<RiskOfRain2Game>
 
         DiagnosticEmitters =
         [
-            new MissingBepInExEmitter(communitySlug: "riskofrain2"),
+            new MissingBepInExEmitter(data.CommunitySlug),
         ];
 
         LibraryItemInstallers =
@@ -80,5 +82,5 @@ public class RiskOfRain2Game : IGame, IGameData<RiskOfRain2Game>
         }.ToImmutableDictionary();
     }
 
-    public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, "Risk of Rain 2.exe");
+    public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, _data.PrimaryExeName);
 }

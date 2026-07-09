@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Thunderstore.Models;
-using NexusMods.Games.RiskOfRain2.Models;
+using NexusMods.Games.BepInEx.Models;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -10,7 +10,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
 
-namespace NexusMods.Games.RiskOfRain2.Installers;
+namespace NexusMods.Games.BepInEx.Installers;
 
 /// <summary>
 /// Installs a Thunderstore plugin package into the BepInEx folder tree, following the

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Thunderstore;
+using NexusMods.Games.BepInEx;
 using NexusMods.Backend;
 using NexusMods.Games.TestFramework;
 using NexusMods.Sdk;
@@ -17,6 +18,7 @@ public class Startup
         container
             .AddDefaultServicesForTesting()
             .AddUniversalGameLocator<RiskOfRain2Game>(new Version("1.3.9"))
+            .AddBepInExGames()
             .AddRiskOfRain2()
             .AddThunderstoreModels()
             .AddLogging(builder => builder.AddXUnit())
