@@ -70,7 +70,8 @@ public class GenericBepInExGame : IGame
         LibraryItemInstallers =
         [
             provider.GetRequiredService<BepInExPackInstaller>(),
-            provider.GetRequiredService<BepInExPluginInstaller>(),
+            // Per-game instance: routing follows this game's schema installRules (design §6).
+            new BepInExPluginInstaller(provider, data.InstallRules, data.RelativeFileExclusions),
         ];
     }
 

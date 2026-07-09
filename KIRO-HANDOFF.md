@@ -1168,3 +1168,79 @@ PR F: schema-driven installRules engine in `BepInExPluginInstaller` (Subnautica'
 rules become correct) + Subnautica pilot end-to-end. PR G: RoR2 folds into the family (delete
 project, enable table row). PR H': runtime art fetch+cache (gcdn covers; groundwork for §20.7
 mod icons). Later: native-Linux doorstop slice; runtime schema refresh.
+
+---
+
+## 22. Session log — 2026-07-08 (cont.) — PR F rule engine + a CRITICAL data-loss bug found and fixed
+
+> Two intertwined deliverables: the Phase 2 install-rules engine (PR F), whose live pilot
+> uncovered — and then validated the fix for — the worst bug in the fork's history.
+
+### 22.1 ⚠️ CRITICAL BUG (pre-existing since the §12 recognition work): applying an
+### overlay-recognized loadout DELETED THE ENTIRE GAME INSTALL
+- **Trigger:** the PR F pilot — `loadouts manage -g Subnautica` (new verb) → install two mods
+  → `loadout synchronize` → all 15,556 vanilla files deleted; only mods + saves survived.
+- **Root cause:** the synchronizer's desired-state game layer came from SQL
+  (`synchronizer.WinningFiles` → `file_hashes.loadout_files` → `MDB_*(DBName=>"hashes")`).
+  The MnemonicDB query engine resolves a DBName to the FIRST connection registered under it —
+  and the local-recognition overlay ALSO registered as "hashes", so it was silently shadowed.
+  Version resolution/backup decisions use the C# FileHashesService union (which DOES see the
+  overlay) — so the app said "version known, files restorable, no backup needed" while the
+  sync said "zero game files wanted": every vanilla file → delete-without-backup. Armed since
+  PRs #2–#5 for every overlay-recognized game (= every game newer than the frozen shipped DB);
+  never triggered because no overlay-recognized loadout had ever been APPLIED.
+- **Fix (PR #11, three layers):** (1) `BuildSyncTree` now sources game files from the C#
+  hash-service API — one read path, one truth; SQL game layer ignored; a winning Deleted item
+  suppresses the game file at its path. (2) Overlay registers as `hashes_overlay` and ALL
+  FileHashesQueries.sql macros resolve per-database then union (entity ids are DB-scoped —
+  joins must never cross DBs); stub registers an empty overlay stand-in. (3)
+  `GuardAgainstVanishedGameFiles`: known version + zero game files in tree → refuse loudly.
+- **The test harness reproduced the bug by construction:** the stub locator id
+  ("StubbedGameState.zip") can't resolve through SQL either, so every synchronizer snapshot's
+  synced state was MISSING the vanilla game files. Post-fix they appear as `{Game, …}` rows —
+  6 Verify snapshots updated; that diff is the bug made visible.
+- **Recovery:** Subnautica restored via `steam steam://validate/264710` (15,964 files,
+  StateFlags 4); Steam left the deployed mod files untouched. The wounded loadout then
+  synchronized cleanly on the fixed build: 0 extracted, 0 deleted, converged.
+- **Lesson recorded:** never introduce a second read path for data the synchronizer acts on;
+  registered-name lookups (query engine, DI) fail silently when names collide — grep for
+  every consumer of a name before reusing it.
+
+### 22.2 PR F — schema-driven installRules engine (branch `feature/bepinex-rules`)
+- **`InstallRuleRouter`** (pure, precomputed, per-game): route-prefix match (full route or
+  bare final segment, longest wins) → extension routing (longest ext wins, `.mm.dll` beats
+  `.dll`) → default-location fallback. Placement by trackingMethod: `subdir`/
+  `subdir-no-flatten` → `route/{Namespace-Name}/…`; **`state`/`none` → loose into the route**
+  (r2modman needs state files because it lacks ownership tracking — our loadouts have it
+  natively, so `state` collapses to loose deploy by construction). Explicit `BepInEx/` prefix
+  that matches no route is normalized away (Phase 1 parity). Canonical-5 rules are the
+  fallback for games without rules.
+- `BepInExPluginInstaller` is routed by the router; `GenericBepInExGame` constructs a
+  per-game instance with its rules + `relativeFileExclusions`; the parameterless DI singleton
+  keeps canonical behavior for RoR2. `IsRouteSegment` keeps meaningful top folders (QMods/)
+  safe from wrapper-stripping.
+- **`loadouts manage -g <gameId>`** — new CLI verb, the headless Add-game button.
+- Tests: **48/48 family** (22 router tests against REAL schema rule sets: canonical parity,
+  Subnautica state/QMods, GTFO GameData+Assets, ULTRAKILL "UMM Mods", H3VR .hotmod/.h3mod
+  extension routes, Valheim SlimVML, all-201-games compile sweep; 4 harness integration tests
+  through a real schema-driven Subnautica `GenericBepInExGame`) + RoR2 5/5 unchanged.
+
+### 22.3 Subnautica pilot — END-TO-END on the fixed build (headless, real install)
+`loadouts manage -g Subnautica` (21s — recognition made the first-manage backup near-zero;
+this was a 7GB copy pre-recognition) → `loadout install` of real Thunderstore packages
+(BepInExPack_Subnautica 5.4.1901 + Tobey-SnapBuilder 1.4.1, a genuine QMods-layout package)
+→ apply → verified on disk: pack hoisted to game root (winhttp.dll, doorstop_config.ini,
+BepInEx/core, BepInEx/config), **SnapBuilder routed by the deviant rules to
+`QMods/SnapBuilder/{mod.json,dll}` loose** (metadata + relativeFileExclusions skipped) →
+group items deleted + re-apply → **clean vanilla restored by the app** (15,939 files, all
+mod files gone, game intact). The first schema-driven game to complete the full
+manage→mod→apply→unmod lifecycle.
+
+### 22.4 Findings / follow-ups
+- **`loadout revert` CLI verb does not actually restore the target revision** (created new
+  revisions but ModCount stayed 2; cleanup was done via `loadout group items delete` + sync).
+  Investigate UndoService.RevertTo vs the verb's revision indexing.
+- Bannerlord's loadout was armed with the same bug — safe now, but it must only be applied on
+  builds containing PR #11.
+- The §22.1 lesson candidates for upstreaming to MnemonicDB: duplicate-name registration on
+  the query engine should throw instead of shadowing.

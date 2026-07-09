@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Thunderstore.Models;
 using NexusMods.Games.BepInEx.Models;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Games.BepInEx.Schema;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
@@ -13,18 +14,36 @@ using NexusMods.Sdk.Loadouts;
 namespace NexusMods.Games.BepInEx.Installers;
 
 /// <summary>
-/// Installs a Thunderstore plugin package into the BepInEx folder tree, following the
-/// r2modman conventions: plugin files land in <c>BepInEx/plugins/{PackageName}/</c>,
-/// <c>patchers/</c> and <c>monomod/</c> get the same per-package subfolder, <c>config/</c>
-/// deploys without one, and package metadata (manifest.json, README, icon) is skipped.
+/// Installs a Thunderstore plugin package into the BepInEx folder tree, routed by the game's
+/// ecosystem-schema <c>installRules</c> (canonical BepInEx rules when a game carries none) —
+/// see <see cref="InstallRuleRouter"/>. Package metadata (manifest.json, README, icon) and the
+/// game's <c>relativeFileExclusions</c> are skipped.
 /// </summary>
 public class BepInExPluginInstaller : ALibraryArchiveInstaller
 {
-    private static readonly string[] CategoryFolders = ["plugins", "patchers", "monomod", "core", "config"];
+    private readonly InstallRuleRouter _router;
+    private readonly string[] _relativeFileExclusions;
 
+    /// <summary>
+    /// Canonical-rules instance (the DI singleton the hand-written RoR2 module resolves).
+    /// </summary>
     public BepInExPluginInstaller(IServiceProvider serviceProvider)
+        : this(serviceProvider, rules: [], relativeFileExclusions: null)
+    {
+    }
+
+    /// <summary>
+    /// Per-game instance with the game's schema rules (constructed by
+    /// <see cref="GenericBepInExGame"/>).
+    /// </summary>
+    public BepInExPluginInstaller(
+        IServiceProvider serviceProvider,
+        IReadOnlyList<EcosystemInstallRule> rules,
+        IReadOnlyList<string>? relativeFileExclusions)
         : base(serviceProvider, serviceProvider.GetRequiredService<ILogger<BepInExPluginInstaller>>())
     {
+        _router = new InstallRuleRouter(rules);
+        _relativeFileExclusions = relativeFileExclusions?.ToArray() ?? [];
     }
 
     /// <summary>
@@ -54,11 +73,11 @@ public class BepInExPluginInstaller : ALibraryArchiveInstaller
             .Select(entry => (Entry: entry, Parts: entry.Path.ToString().Split('/')))
             .ToArray();
 
-        // Strip a single wrapping folder when every file shares it and it isn't meaningful on its own.
+        // Strip a single wrapping folder when every file shares it and it isn't meaningful on
+        // its own (a route folder like QMods/ or BepInEx/ must survive).
         var stripRoot = false;
         var firstSegments = entries.Select(x => x.Parts[0]).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        if (firstSegments.Length == 1 && entries.All(x => x.Parts.Length > 1) &&
-            !IsCategoryFolder(firstSegments[0]) && !firstSegments[0].Equals("BepInEx", StringComparison.OrdinalIgnoreCase))
+        if (firstSegments.Length == 1 && entries.All(x => x.Parts.Length > 1) && !_router.IsRouteSegment(firstSegments[0]))
         {
             stripRoot = true;
         }
@@ -70,34 +89,12 @@ public class BepInExPluginInstaller : ALibraryArchiveInstaller
 
             var parts = stripRoot ? rawParts[1..] : rawParts;
             if (parts.Length == 0) continue;
+            if (IsExcluded(parts)) continue;
 
-            // Skip package metadata at the package root.
-            if (parts.Length == 1 && InstallerHelpers.IsMetadataFileName(parts[0])) continue;
+            var target = _router.Route(parts, packageName);
+            if (target.ToString().Length == 0) continue;
 
-            // Normalize an explicit BepInEx/ prefix away so category rules apply either way.
-            if (parts[0].Equals("BepInEx", StringComparison.OrdinalIgnoreCase)) parts = parts[1..];
-            if (parts.Length == 0) continue;
-
-            string target;
-            if (parts[0].Equals("config", StringComparison.OrdinalIgnoreCase))
-            {
-                // Config files are shared, no per-package subfolder.
-                target = $"BepInEx/config/{string.Join('/', parts[1..])}";
-            }
-            else if (IsCategoryFolder(parts[0]))
-            {
-                // plugins/patchers/monomod/core → per-package subfolder inside that category.
-                target = $"BepInEx/{parts[0].ToLowerInvariant()}/{packageName}/{string.Join('/', parts[1..])}";
-            }
-            else
-            {
-                // Everything else (loose DLLs, asset folders) → the package's plugins folder.
-                target = $"BepInEx/plugins/{packageName}/{string.Join('/', parts)}";
-            }
-
-            if (target.EndsWith('/')) continue;
-
-            InstallerHelpers.AddLoadoutFile(transaction, loadout, loadoutGroup, fileEntry, new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(target)));
+            InstallerHelpers.AddLoadoutFile(transaction, loadout, loadoutGroup, fileEntry, new GamePath(LocationId.Game, target));
             installedCount++;
         }
 
@@ -113,8 +110,18 @@ public class BepInExPluginInstaller : ALibraryArchiveInstaller
         return ValueTask.FromResult<InstallerResult>(new Success());
     }
 
-    private static bool IsCategoryFolder(string segment)
-        => CategoryFolders.Any(folder => folder.Equals(segment, StringComparison.OrdinalIgnoreCase));
+    private bool IsExcluded(string[] parts)
+    {
+        // Package metadata at the package root.
+        if (parts.Length == 1 && InstallerHelpers.IsMetadataFileName(parts[0])) return true;
+
+        // The game's schema exclusions: root file names or full relative paths.
+        if (_relativeFileExclusions.Length == 0) return false;
+        var relativePath = string.Join('/', parts);
+        return _relativeFileExclusions.Any(exclusion =>
+            exclusion.Equals(relativePath, StringComparison.OrdinalIgnoreCase) ||
+            (parts.Length == 1 && exclusion.Equals(parts[0], StringComparison.OrdinalIgnoreCase)));
+    }
 
     private static string GetPackageName(LibraryArchive.ReadOnly libraryArchive)
     {

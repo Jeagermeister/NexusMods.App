@@ -38,6 +38,7 @@ public static class LoadoutManagementVerbs
             .AddModule("loadout group", "Commands for managing a specific group of files in a loadout")
             .AddModule("loadout group items", "Commands for managing the items in a group of files in a loadout")
             .AddModule("loadout version", "Commands for managing the version of a loadout")
+            .AddVerb(() => ManageGame)
             .AddVerb(() => DeleteOrphanedLoadouts)
             .AddVerb(() => SetVersion)
             .AddVerb(() => Synchronize)
@@ -50,6 +51,36 @@ public static class LoadoutManagementVerbs
             .AddVerb(() => DeleteGroupItems)
             .AddVerb(() => ListRevisions)
             .AddVerb(() => Revert);
+
+    [Verb("loadouts manage", "Creates a loadout for an installed game (the headless equivalent of the Add-game button) and prints its id")]
+    private static async Task<int> ManageGame(
+        [Injected] IRenderer renderer,
+        [Injected] IGameRegistry gameRegistry,
+        [Injected] ILoadoutManager loadoutManager,
+        [Option("g", "gameId", "The app-native game id, e.g. 'Subnautica' or 'RiskOfRain2'")] string gameId,
+        [Injected] CancellationToken token)
+    {
+        var installations = gameRegistry.LocateGameInstallations()
+            .Where(installation => installation.Game.GameId == GameId.From(gameId))
+            .ToArray();
+
+        if (installations.Length == 0)
+        {
+            await renderer.TextLine("No installed game found with game id '{0}'.", gameId);
+            return 1;
+        }
+
+        var installation = installations[0];
+        if (installations.Length > 1)
+            await renderer.TextLine("Multiple installs found; managing the first: {0}", installation.LocatorResult.Path);
+
+        await renderer.TextLine("Managing {0} at {1} (first manage backs up unrecognized files — this can take a while) ...",
+            installation.Game.DisplayName, installation.LocatorResult.Path);
+
+        var loadout = await loadoutManager.CreateLoadout(installation);
+        await renderer.TextLine("Created loadout '{0}' ({1}) for {2}.", loadout.Name, loadout.LoadoutId, installation.Game.DisplayName);
+        return 0;
+    }
 
     [Verb("loadouts delete-orphaned", "Deletes loadouts whose game installation can no longer be located (uninstalled, moved, or a stale manage of a broken install); never touches game folders")]
     private static async Task<int> DeleteOrphanedLoadouts(
