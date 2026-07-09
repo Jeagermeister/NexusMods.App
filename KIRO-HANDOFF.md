@@ -1348,34 +1348,80 @@ harbor. Key findings:
 
 ---
 
-## 24. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+## 25. Session log — 2026-07-09 (Claude Code / Fable 5) — PR H': runtime game art (fetch + cache)
 
-**Everything is merged.** `linux-fork` @ the PR #14 merge; working trees clean; no open PRs.
-The repo is **`github.com/Jeagermeister/Apocrypha`** (renamed; old URLs redirect; local
-clone still lives at `~/Source/NexusMods.App` — the on-disk folder name was deliberately
-left alone until R3/R4 settle identifiers).
+> Brian picked PR H' from the §24 menu ("start with this one as it should be quick; then
+> each issue, each improvement, one by one"). Branch `feature/bepinex-art`, **PR #16** into
+> linux-fork. Design §10 / decision §14.3 as written: a caching stream factory at the game
+> layer — zero UI changes, all four `IStreamFactory` consumers (GameWidget tile,
+> LoadoutCard, Spine, ImageHelper) light up at once.
+
+### 25.1 What landed
+- **`NexusMods.Sdk/IO/CachedHttpStreamFactory`** (reusable — the natural carrier for the
+  §20.7 Thunderstore *mod* icons later): first read downloads → temp file → atomic
+  `MoveToAsync` publish; later reads serve the disk cache; a semaphore dedups concurrent
+  downloads; ANY failure (offline/404/timeout/mid-body abort) serves the fallback factory,
+  leaves NO cache entry, and retries on the next read. 30s internal timeout (the shared
+  HttpClient's 100s default + 3× Polly retries is UI-hostile for best-effort art).
+- **Schema/parser:** the vendored schema's `communities` section is now modeled.
+  `BepInExGameData.IconUrl` renamed → `CoverUrl` (the instance's 360×480 cover; every row
+  has one) + new `CommunityIconUrl` (the community's 192×192 icon; **162** of the rows'
+  communities have one — subnautica/valheim are legacy communities without a block).
+- **`GenericBepInExGame`:** `TileImage` ← cover, `IconImage` ← community icon; embedded
+  placeholders remain the fallback AND the whole story in lean containers (art wires via
+  `GetService` — headless verbs / DI tests without HttpClient+IFileSystem keep
+  placeholders). Cache: `~/.local/share/NexusMods.App/Cache/GameArt/{asset-name}` via
+  `GameArtCache` — carries a `TODO(linux-fork)` marker: one MORE base-dir-name derivation
+  for R3's §23.2 inventory (pure cache; the R3 move-migration may skip it).
+
+### 25.2 Verification
+- **Tests** (BepInEx.Tests 51/51, Sdk.Tests 42/42): +6 factory tests (TUnit,
+  InMemoryFileSystem + counting handler — caches once, serves without HTTP, pre-seeded
+  cache, 404→fallback→retry-heals, 8-way concurrency = 1 request, mid-body abort leaves no
+  debris); parser art-resolution pins (synthetic + bundled: lethal-company both URLs,
+  subnautica icon-less); registration wiring (full container → factories with the right
+  gcdn URIs, lean container → placeholders).
+- **Live on the box:** one launch with a cleared cache → **162 assets atomically cached**
+  (160 icons + covers for the games installed here: subnautica, cities-skylines-ii), all
+  valid webp, 0 leftover `.tmp`, 0 fallback log lines, 1.1 MB total.
+
+### 25.3 Found while verifying (pre-existing, NOT this PR)
+- **`linux-fork` full-solution build is RED:** `tests/NexusMods.Backend.Tests/
+  EventTrackerTests.cs:52` still calls `EventTracker.PrepareRequest()`, which R2 (#14)
+  deleted with the Mixpanel loop. One orphaned test (+ Verify snapshot) to remove — queued
+  as the next quick fix. (Everything else in the 96-project solution builds clean.)
+
+---
+
+## 26. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+
+`linux-fork` @ the PR #15 merge; **PR #16 open** (`feature/bepinex-art`, §25 — runtime
+game art). The repo is **`github.com/Jeagermeister/Apocrypha`** (old URLs redirect; local
+clone still lives at `~/Source/NexusMods.App` — the on-disk folder name deliberately waits
+for R3/R4 to settle identifiers).
 
 Shipped, in order: Phase 1 (PRs #1–#9, Thunderstore→RoR2 end-to-end) → Phase 2 PR E
 (#10, ~200-game BepInEx family) → the critical sync-wipe fix (#11) + PR F rules engine
 (#12, Subnautica pilot verified live) → **the fork is named APOCRYPHA** → rebrand R1
 (#13, strings + Brian's tome icon) → repo rename → rebrand R2 (#14, telemetry ripped out,
-fork links, fork README).
+fork links, fork README) → handoff restore (#15) → PR H' runtime art (#16, §25).
 
-**Next up (pick one):**
-1. **Rebrand R3** — the careful slice: AppId `io.github.jeagermeister.apocrypha` across
-   .desktop/metainfo/pupnet + StartupWMClass + Windows registry + unify the SIX
-   independently-derived `NexusMods.App` data-dir constants behind one name **with a
-   one-time move-migration** (loadouts/Library/overlay/configs/logs) and old-registration
-   cleanup. Inventory + risks: §23.2/§23.3.
-2. **Rebrand R4 / packaging** — pupnet AppBaseName/PackageName, workflows (drop the
+**Next up (Brian's mode: "each issue, each improvement, one by one"):**
+1. **Quick fix — remove the orphaned EventTracker test** (§25.3): full-solution builds
+   stay red on linux-fork until it's gone.
+2. **Rebrand R3** — the careful slice: AppId `io.github.jeagermeister.apocrypha` across
+   .desktop/metainfo/pupnet + StartupWMClass + Windows registry + unify the
+   independently-derived `NexusMods.App` data-dir constants (SIX in §23.2, +1 §25.1)
+   behind one name **with a one-time move-migration** (loadouts/Library/overlay/configs/
+   logs) and old-registration cleanup. Inventory + risks: §23.2/§23.3.
+3. **Rebrand R4 / packaging** — pupnet AppBaseName/PackageName, workflows (drop the
    release-to-nexusmods job), releases-to-appstream.py OWNER/REPO, NuGet.Build.props, wire
    Brian's icon ladders (kit: `~/Source/VortexApp_Artwork/apocrypha_app_icon_set/`) →
    ends in an installable AppImage (roadmap step 10).
-3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (delete the hand-written module;
+4. **Phase 2 PR G** — RoR2 folds into the BepInEx family (delete the hand-written module;
    plan §21/design doc §9 — models already compatible, GameId identity-preserving).
-4. **Phase 2 PR H'** — runtime art fetch+cache (game tiles from the schema's gcdn covers;
-   groundwork for §20.7 mod icons).
 
 Standing follow-up queue: §20.7 backlog (Installed badge, clean-install dialog, Nexus-less
-recognition, multi-version Library UX), `loadout revert` verb doesn't restore (§22.4),
-localization of new strings, GUI checks (recognition toast, ~200 placeholder-art games).
+recognition, multi-version Library UX; mod icons can now ride `CachedHttpStreamFactory`),
+`loadout revert` verb doesn't restore (§22.4), localization of new strings, GUI check of
+the recognition toast.
