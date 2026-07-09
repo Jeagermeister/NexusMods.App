@@ -16,6 +16,28 @@ public class EcosystemSchema
 
     [JsonPropertyName("games")]
     public required Dictionary<string, EcosystemGame> Games { get; init; }
+
+    /// <summary>
+    /// Keyed by community slug. Absent for the 46 legacy games whose community predates the
+    /// schema's community blocks.
+    /// </summary>
+    [JsonPropertyName("communities")]
+    public Dictionary<string, EcosystemCommunity> Communities { get; init; } = new();
+}
+
+[PublicAPI]
+public class EcosystemCommunity
+{
+    [JsonPropertyName("meta")]
+    public EcosystemCommunityMeta? Meta { get; init; }
+}
+
+[PublicAPI]
+public class EcosystemCommunityMeta
+{
+    /// <summary>The community's 192×192 icon, relative to <c>https://gcdn.thunderstore.io/assets/</c>.</summary>
+    [JsonPropertyName("icon")]
+    public string? Icon { get; init; }
 }
 
 [PublicAPI]
@@ -44,7 +66,7 @@ public class EcosystemMeta
     [JsonPropertyName("displayName")]
     public required string DisplayName { get; init; }
 
-    /// <summary>Relative to <c>https://gcdn.thunderstore.io/assets/</c>.</summary>
+    /// <summary>The game's 360×480 cover, relative to <c>https://gcdn.thunderstore.io/assets/</c>.</summary>
     [JsonPropertyName("iconUrl")]
     public string? IconUrl { get; init; }
 }

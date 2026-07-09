@@ -82,6 +82,9 @@
         <Compile Update="IO\NativeFileStreamFactory.cs">
           <DependentUpon>IStreamFactory.cs</DependentUpon>
         </Compile>
+        <Compile Update="IO\CachedHttpStreamFactory.cs">
+          <DependentUpon>IStreamFactory.cs</DependentUpon>
+        </Compile>
         <Compile Update="IO\MemoryStreamFactory.cs">
           <DependentUpon>IStreamFactory.cs</DependentUpon>
         </Compile>
