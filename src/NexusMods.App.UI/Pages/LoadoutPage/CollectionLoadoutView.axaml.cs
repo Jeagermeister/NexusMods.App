@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.ReactiveUI;
 using Humanizer;
 using NexusMods.App.UI.Controls;
+using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using R3;
 using ReactiveUI;
@@ -70,6 +71,23 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
                 .AddTo(disposables);
             this.BindCommand(ViewModel, vm => vm.CommandViewCollectionDownloadPage, view => view.ViewCollectionDownloadMenuItem)
                 .AddTo(disposables);
+            this.BindCommand(ViewModel, vm => vm.CommandUpdateCollection, view => view.ButtonUpdateCollection)
+                .AddTo(disposables);
+
+            this.WhenAnyValue(
+                    view => view.ViewModel!.IsUpdateAvailable.Value,
+                    view => view.ViewModel!.NewestRevisionNumber.Value
+                )
+                .Subscribe(tuple =>
+                    {
+                        var (isUpdateAvailable, newestRevisionNumber) = tuple;
+
+                        ButtonUpdateCollection.IsVisible = isUpdateAvailable;
+                        if (newestRevisionNumber.HasValue)
+                            ButtonUpdateCollection.Text = string.Format(Language.CollectionDownloadViewModel_UpdateCollection, newestRevisionNumber.Value);
+                    }
+                )
+                .DisposeWith(disposables);
 
 
             

@@ -88,6 +88,15 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+
+                <!-- update available -->
+                <controls:StandardButton IsVisible="False" x:Name="ButtonUpdateCollection"
+                                         Text="{x:Static resources:Language.CollectionDownloadViewModel_UpdateCollection}"
+                                         Size="Toolbar"
+                                         Type="Primary"
+                                         Fill="Weak"
+                                         LeftIcon="{x:Static icons:IconValues.Update}"
+                                         ShowIcon="Left" />
             </controls:Statusbar>
 
             <Border x:Name="DownloadsTreeContainer"

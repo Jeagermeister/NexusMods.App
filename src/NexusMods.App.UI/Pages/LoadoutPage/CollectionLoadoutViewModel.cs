@@ -18,6 +18,7 @@ using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.Collections;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Networking.NexusWebApi;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.Paths;
@@ -142,6 +143,29 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
             }
         );
 
+        CommandUpdateCollection = IsUpdateAvailable.ToReactiveCommand<Unit>(
+            executeAsync: async (_, cancellationToken) =>
+            {
+                var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
+                var newestRevisionNumber = NewestRevisionNumber.Value.Value;
+                var revision = await collectionDownloader.GetOrAddRevision(revisionMetadata.Value.Collection.Slug, newestRevisionNumber, cancellationToken);
+
+                var pageData = new PageData
+                {
+                    FactoryId = CollectionDownloadPageFactory.StaticId,
+                    Context = new CollectionDownloadPageContext
+                    {
+                        TargetLoadout = pageContext.LoadoutId,
+                        CollectionRevisionMetadataId = revision,
+                    },
+                };
+
+                var workspaceController = GetWorkspaceController();
+                var behavior = workspaceController.GetOpenPageBehavior(pageData, NavigationInformation.From(OpenPageBehaviorType.NewTab));
+                workspaceController.OpenPage(WorkspaceId, pageData, behavior);
+            }, awaitOperation: AwaitOperation.Drop, configureAwait: false
+        );
+
         CommandMakeLocalEditableCopy = new ReactiveCommand(
             executeAsync: async (_, _) =>
             {
@@ -206,6 +230,24 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
 
             if (revisionMetadata.HasValue)
             {
+                // one-shot check for a newer published revision, mirroring CollectionDownloadViewModel
+                var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
+                R3.Observable.Return(revisionMetadata.Value)
+                    .ObserveOnThreadPool()
+                    .SelectAwait((revision, cancellationToken) => nexusModsLibrary.GetLastPublishedRevisionNumber(revision.Collection, cancellationToken))
+                    .ObserveOnUIThreadDispatcher()
+                    .Subscribe(this, static (graphQlResult, self) =>
+                        {
+                            // errors (e.g. offline) just mean no nudge this time
+                            if (!graphQlResult.TryGetData(out var lastPublishedRevisionNumber)) return;
+                            if (!lastPublishedRevisionNumber.HasValue) return;
+
+                            var isUpdateAvailable = lastPublishedRevisionNumber.Value > self.RevisionNumber;
+                            self.IsUpdateAvailable.Value = isUpdateAvailable;
+                            self.NewestRevisionNumber.Value = isUpdateAvailable ? lastPublishedRevisionNumber : Optional<RevisionNumber>.None;
+                        }
+                    ).AddTo(disposables);
+
                 ImagePipelines
                     .CreateObservable(revisionMetadata.Value.CollectionId, tilePipeline)
                     .ObserveOnUIThreadDispatcher()
@@ -280,9 +322,13 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
     
     [Reactive] public int InstalledModsCount { get; private set; }
     
+    public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new(value: false);
+    public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new(value: Optional<RevisionNumber>.None);
+
     public ReactiveCommand<Unit> CommandToggle { get; }
     public ReactiveCommand<Unit> CommandDeleteCollection { get; }
-    
+
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; }
+    public ReactiveCommand<Unit> CommandUpdateCollection { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; }
 }
