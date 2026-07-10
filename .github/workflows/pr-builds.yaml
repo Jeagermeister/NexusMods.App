@@ -2,7 +2,7 @@ name: PR Builds
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, linux-fork ]
     paths:
       - ".github/workflows/pr-builds.yaml"
       - "src/**"
