@@ -2,6 +2,9 @@
     <PropertyGroup>
         <!-- Target WinExe so that a console isn't automatically created on Windows -->
         <OutputType>WinExe</OutputType>
+        <!-- The executable is the app's identity (WM_CLASS, process name, scripts) — the
+             project/namespace names deliberately stay NexusMods.* (Phase 1 §14 decision). -->
+        <AssemblyName>Apocrypha</AssemblyName>
         <ApplicationIcon>icon.ico</ApplicationIcon>
         <ApplicationManifest>app.manifest</ApplicationManifest>
     </PropertyGroup>

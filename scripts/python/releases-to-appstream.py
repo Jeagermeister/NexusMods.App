@@ -5,8 +5,8 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from datetime import datetime
 
-OWNER = "Nexus-Mods"
-REPO = "NexusMods.App"
+OWNER = "Jeagermeister"
+REPO = "Apocrypha"
 GITHUB_API = f"https://api.github.com/repos/{OWNER}/{REPO}/releases"
 
 def fetch_releases():

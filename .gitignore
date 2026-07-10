@@ -42,3 +42,6 @@ coverage.json
 
 # python virtual environment
 .venv
+
+# PupNet output
+src/NexusMods.App/Deploy/

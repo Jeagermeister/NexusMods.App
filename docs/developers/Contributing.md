@@ -34,12 +34,12 @@ but some features may not work as expected. To add a supported game manually:
 2. After building the project, go to your terminal and change the directory to the `src/NexusMods.App/bin/Debug/net9.0` folder.
 3. Enter the following CLI command and replace the arguments: 
    ```bash
-   NexusMods.App as-main add-game -g "Game Name" -v [Version] -p "Path"
+   Apocrypha as-main add-game -g "Game Name" -v [Version] -p "Path"
    ```
 4. Save the `EntityID` provided and run the app to check if the game is listed in the "My Games" section.
 5. Later on, you can remove the game by running the following CLI command:
    ```bash
-   NexusMods.App as-main remove-game -g "Game Name" -id "EntityID"
+   Apocrypha as-main remove-game -g "Game Name" -id "EntityID"
    ```
 
 ### Testing with Nexus API Integration
