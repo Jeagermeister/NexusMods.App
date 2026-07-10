@@ -280,8 +280,8 @@ Nobody has this. That's the fork's identity and moat.
     hosts SHARE MANIFESTS (KB of JSON: mod refs, versions, load order, configs) + room codes
     (`join.<domain>/PLAY42`) — this gives Thunderstore games the sharing layer they lack
     (r2modman profile-code equivalent) and free friends the full one-click dream, legally.
-    Phases: **v1** — DigitalOcean droplet ($4–6/mo tier is plenty; Caddy + small API +
-    SQLite), NO accounts (possession of room code = access), static site + manifests + room
+    Phases: **v1** — DigitalOcean droplet (**$6/mo 1GB tier — DECIDED 2026-07-10**; Caddy +
+    small API + SQLite), NO accounts (possession of room code = access), static site + manifests + room
     codes; testing with bare IP before a domain is fine (HTTP or self-signed during the
     friend test; Caddy auto-HTTPS once the domain lands; keep the service base URL a client
     setting so IP→domain is one config change). **v2 (social MVP)** — accounts via Discord
@@ -292,9 +292,12 @@ Nobody has this. That's the fork's identity and moat.
     (v3). **Hard rules carried forward:** premium/free tier is NEVER stored server-side —
     the app's LoginManager already branches per user at download time (Premium = API
     auto-download, free = guided browser flow) and that stays client-side; data-minimal by
-    default (the no-telemetry brand extends to the website). Stack decision: no Apache/PHP —
-    Caddy in front; API in ASP.NET Core minimal-API (shares manifest DTOs/parsers with the
-    app) or Node/Fastify (Brian's Vortex-era TS comfort) — Brian's pick at design time.
+    default (the no-telemetry brand extends to the website). **Stack DECIDED (2026-07-10):
+    Caddy in front (Brian's keen to learn it; auto-HTTPS once the domain lands) + ASP.NET
+    Core minimal-API backend** — his professional C# background, and the server can share
+    manifest DTOs/parsers with the app. Fits the 1GB tier comfortably: minimal API on
+    Kestrel idles ~50–120MB, Caddy ~40MB, SQLite in-process; Native AOT publish is the
+    escape hatch if the box ever feels tight (~40MB working set, instant start).
     Domain candidates RDAP-checked 2026-07-10: apocrypha.app and apocrypha.dev TAKEN;
     **apocrypha.games, apocryphamods.com, getapocrypha.com AVAILABLE**; apocrypha.gg
     probably available (.gg RDAP coverage spotty — verify at registrar). Registrar recs:
