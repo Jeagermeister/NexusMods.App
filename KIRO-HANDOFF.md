@@ -271,6 +271,50 @@ Nobody has this. That's the fork's identity and moat.
       legitimate standalone feature, good first milestone for the transport.
     - **The server never stores or relays mod archive bytes** — the moment it does, we
       are the distributor (DMCA exposure on our domain). Signaling + manifests only.
+    **Web-service phasing (Brian + Fable 5 conversation, 2026-07-10).** Brian's original
+    "stream mods to free-tier friends" instinct was redirected (streaming = redistribution,
+    same landmine); the friction problem is solved legitimately by three lanes: (1) guided
+    download queue for Nexus-locked mods — auto-advance the browser to the next mod page as
+    each free-tier click lands, "14 of 20" progress (Wabbajack precedent: human click stays
+    human); (2) Thunderstore lane is zero-click for everyone already; (3) the web service
+    hosts SHARE MANIFESTS (KB of JSON: mod refs, versions, load order, configs) + room codes
+    (`join.<domain>/PLAY42`) — this gives Thunderstore games the sharing layer they lack
+    (r2modman profile-code equivalent) and free friends the full one-click dream, legally.
+    Phases: **v1** — DigitalOcean droplet ($4–6/mo tier is plenty; Caddy + small API +
+    SQLite), NO accounts (possession of room code = access), static site + manifests + room
+    codes; testing with bare IP before a domain is fine (HTTP or self-signed during the
+    friend test; Caddy auto-HTTPS once the domain lands; keep the service base URL a client
+    setting so IP→domain is one config change). **v2 (social MVP)** — accounts via Discord
+    OAuth (friend groups already live there; imports the social graph for free), saved/
+    shared collections, friends list. **Future enhancements backlog:** profiles, collection
+    discovery/browse, comments/ratings, per-group spaces, moderation+abuse tooling (REQUIRED
+    before any public v2), TURN relay w/ bandwidth caps (P2P fallback), P2P signaling rooms
+    (v3). **Hard rules carried forward:** premium/free tier is NEVER stored server-side —
+    the app's LoginManager already branches per user at download time (Premium = API
+    auto-download, free = guided browser flow) and that stays client-side; data-minimal by
+    default (the no-telemetry brand extends to the website). Stack decision: no Apache/PHP —
+    Caddy in front; API in ASP.NET Core minimal-API (shares manifest DTOs/parsers with the
+    app) or Node/Fastify (Brian's Vortex-era TS comfort) — Brian's pick at design time.
+    Domain candidates RDAP-checked 2026-07-10: apocrypha.app and apocrypha.dev TAKEN;
+    **apocrypha.games, apocryphamods.com, getapocrypha.com AVAILABLE**; apocrypha.gg
+    probably available (.gg RDAP coverage spotty — verify at registrar). Registrar recs:
+    Cloudflare Registrar (at-cost) or Porkbun; avoid GoDaddy. Design doc
+    `DESIGN-webservice.md` when work starts.
+13. **mod.io as the third mod source (Brian, 2026-07-10 — "I LOVE that idea").** Elevated
+    from DESIGN-modsources.md §15's future-sources ranking (mod.io > GameBanana > Steam
+    Workshop) to a real roadmap item. Why it's ranked first: open REST API (OpenAPI spec,
+    api.mod.io), OAuth2 + API keys, **free automated downloads for everyone — no premium
+    gate**, cross-platform (it's the mod backend consoles use). Directly hits Brian's
+    friend-group catalog: **Baldur's Gate 3 uses mod.io natively** (official in-game mod
+    support since patch 7) and **Ready or Not's in-game mod browser is mod.io**; also Deep
+    Rock Galactic, SnowRunner, Bonelab, Mordhau, Insurgency: Sandstorm. Combined with step
+    12's manifest service, mod.io games become zero-click for free-tier friends like
+    Thunderstore games. Architecture cost is low: the mod-source abstraction is proven
+    (Thunderstore Phase 1: ILibraryDownloadJob seam, per-source data provider, protocol
+    handler pattern, per-source library-file resolver) — mod.io slots into the same seams.
+    Design-doc-first like Thunderstore (pilot game candidate: BG3 or Ready or Not, both
+    owned by the friend group). Cross-source identity rule from DESIGN-modsources.md §15
+    applies (games exist on Nexus AND mod.io with diverging versions — no fuzzy merging).
 
 ## 9. Local reference paths
 
