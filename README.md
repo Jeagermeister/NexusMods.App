@@ -41,9 +41,20 @@ Subnautica, GTFO, ULTRAKILL, Content Warning, R.E.P.O., PEAK, and many more) dri
 [Thunderstore ecosystem schema](https://github.com/thunderstore-io/ecosystem-schema) —
 loader packs, plugin routing, and per-game install rules included.
 
-> ⚠️ Apocrypha is under heavy development and has not shipped a packaged release yet.
-> Debug builds expose all games; release gating, AppImage/AUR packaging, and first releases
-> are actively being worked on.
+## Download
+
+Grab the latest **AppImage** from [Releases](https://github.com/Jeagermeister/Apocrypha/releases):
+
+```sh
+chmod +x Apocrypha.x86_64.AppImage
+./Apocrypha.x86_64.AppImage
+```
+
+Self-contained — no .NET or other dependencies needed. On first run the app registers
+itself as the `nxm://` and `ror2mm://` one-click handler.
+
+> ⚠️ Apocrypha is in alpha and under heavy development. Some supported games are
+> release-gated pending QA; Windows builds are not yet provided. Issues welcome!
 
 ## Building from source
 
