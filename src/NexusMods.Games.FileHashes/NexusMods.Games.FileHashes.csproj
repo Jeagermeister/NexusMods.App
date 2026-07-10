@@ -43,6 +43,8 @@
                Text="Assets/game_hashes_db.zip is missing. Did the checkout fail?" />
         <Error Condition="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Assets/game_hashes_db.zip').StartsWith('version https://git-lfs'))"
                Text="Assets/game_hashes_db.zip is a git-lfs pointer file, not the real database. Install git-lfs and run 'git lfs install --local &amp;&amp; git lfs pull', then rebuild." />
+        <!-- Runs before PrepareForBuild has created the obj directories, so create the path first. -->
+        <MakeDir Directories="$(IntermediateOutputPath)" />
         <Touch Files="$(IntermediateOutputPath)game_hashes_db.verified" AlwaysCreate="true" />
     </Target>
     
