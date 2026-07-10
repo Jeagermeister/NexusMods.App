@@ -14,11 +14,12 @@ namespace NexusMods.Games.BepInEx;
 public static class Services
 {
     /// <summary>
-    /// Games that still have a hand-written module claiming their Steam app id; the family
-    /// must not double-register them (the Steam locator throws on duplicate app ids).
-    /// RoR2 folds into the family in PR G (DESIGN-bepinex-family.md §9).
+    /// Games with a hand-written module claiming their Steam app id; the family must not
+    /// double-register them (the Steam locator throws on duplicate app ids). Empty since
+    /// PR G folded RoR2 — the Phase 1 pilot — into the family (DESIGN-bepinex-family.md §9);
+    /// kept as the seam for any future hand-written override.
     /// </summary>
-    private static readonly IReadOnlySet<string> HandWrittenGames = new HashSet<string> { "RiskOfRain2" };
+    private static readonly IReadOnlySet<string> HandWrittenGames = new HashSet<string>();
 
     /// <summary>
     /// Adds the whole Thunderstore/BepInEx game family to the DI container: one

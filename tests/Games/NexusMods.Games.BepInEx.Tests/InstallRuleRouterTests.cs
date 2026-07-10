@@ -16,7 +16,7 @@ public class InstallRuleRouterTests
     private const string Pkg = "Author-Package";
 
     private static readonly IReadOnlyDictionary<string, BepInExGameData> Games =
-        EcosystemSchemaParser.LoadBundledGames(new HashSet<string> { "RiskOfRain2" })
+        EcosystemSchemaParser.LoadBundledGames(new HashSet<string>())
             .ToDictionary(g => g.SettingsIdentifier);
 
     private static string Route(InstallRuleRouter router, string path)

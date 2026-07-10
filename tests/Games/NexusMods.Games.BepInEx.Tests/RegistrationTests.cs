@@ -94,6 +94,11 @@ public class RegistrationTests
         // Every row in the snapshot carries a cover, so every tile is runtime-fetched.
         games.Should().AllSatisfy(game => game.TileImage.Should().BeOfType<CachedHttpStreamFactory>());
 
+        // Since PR G the RoR2 row is in the family; riskofrain2 is a legacy community with
+        // no community block, so like Subnautica its thumbnail stays the placeholder.
+        var riskOfRain2 = games.Single(g => g.GameId == GameId.From("RiskOfRain2"));
+        riskOfRain2.IconImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>();
+
         var lethalCompany = games.Single(g => g.GameId == GameId.From("LethalCompany"));
         ((CachedHttpStreamFactory)lethalCompany.TileImage).Uri.Should().Be(
             new Uri("https://gcdn.thunderstore.io/assets/lethal-company/lethal-company-cover-360x480.webp"));
