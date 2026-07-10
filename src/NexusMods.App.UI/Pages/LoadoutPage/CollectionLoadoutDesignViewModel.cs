@@ -31,6 +31,9 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public ReactiveCommand<Unit> CommandToggle { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandDeleteCollection { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; } = new ReactiveCommand();
+    public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new(value: false);
+    public BindableReactiveProperty<DynamicData.Kernel.Optional<RevisionNumber>> NewestRevisionNumber { get; } = new(value: DynamicData.Kernel.Optional<RevisionNumber>.None);
+    public ReactiveCommand<Unit> CommandUpdateCollection { get; } = new ReactiveCommand();
 
     public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; } 
         = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>(_ => System.Reactive.Unit.Default);

@@ -44,12 +44,11 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                         view.RulesTabItem.IsVisible = vm?.HasRulesSection ?? false;
 
                         var isCollection = vm?.IsCollection ?? true;
-                        var enableCollectionSharing = vm?.EnableCollectionSharing ?? false;
 
                         view.AllPageHeader.IsVisible = !isCollection;
                         view.Statusbar.IsVisible = isCollection;
-                        view.PanelShare.IsVisible = isCollection && enableCollectionSharing;
-                        view.PanelPublish.IsVisible = isCollection && enableCollectionSharing;
+                        view.PanelShare.IsVisible = isCollection;
+                        view.PanelPublish.IsVisible = isCollection;
 
                         view.ButtonShareCollection.IsVisible = isCollection;
                         view.WritableCollectionPageHeader.IsVisible = isCollection;
@@ -132,6 +131,9 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                 this.BindCommand(ViewModel, vm => vm.CommandOpenRevisionUrl, view => view.ButtonOpenRevisionUrl)
                     .AddTo(disposables);
 
+                this.BindCommand(ViewModel, vm => vm.CommandCopyRevisionUrl, view => view.ButtonCopyRevisionUrl)
+                    .AddTo(disposables);
+
                 this.BindCommand(ViewModel, vm => vm.CommandRenameGroup, view => view.MenuItemRenameCollection)
                     .AddTo(disposables);
 
@@ -147,12 +149,10 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                 this.ObserveViewModelProperty(static view => view.BindableViewModel, static vm => vm.IsCollectionUploaded)
                     .Subscribe(this, static (isCollectionUploaded, self) =>
                         {
-                            var enableCollectionSharing = self.BindableViewModel.Value?.EnableCollectionSharing ?? false;
-
                             self.ButtonShareCollection.IsVisible = !isCollectionUploaded;
                             self.SplitButtonPublishCollection.IsVisible = isCollectionUploaded;
                             self.VisibilityButtonStack.IsVisible = isCollectionUploaded;
-                            self.PanelPublish.IsVisible = isCollectionUploaded && enableCollectionSharing;
+                            self.PanelPublish.IsVisible = isCollectionUploaded;
 
                             self.ButtonAddTileImage.IsVisible = isCollectionUploaded;
                             self.UnpublishedHeaderBorder.IsVisible = !isCollectionUploaded;

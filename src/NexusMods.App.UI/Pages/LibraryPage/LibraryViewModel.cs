@@ -15,6 +15,8 @@ using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.NexusWebApi;
+using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.CLI.Types;
 using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.UI.Controls;
@@ -73,6 +75,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
 
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
+    public ReactiveCommand<Unit> AddCollectionFromLinkCommand { get; }
 
     [Reactive] public int SelectionCount { get; private set; }
     
@@ -246,6 +249,61 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             var gameUri = NexusModsUrlBuilder.GetBrowseCollectionsUri(gameDomain);
             osInterop.OpenUri(gameUri);
         });
+
+        AddCollectionFromLinkCommand = new ReactiveCommand<Unit>(async (_, cancellationToken) =>
+        {
+            var dialog = LibraryDialogs.AddCollectionFromLink();
+            var dialogResult = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
+            if (dialogResult.ButtonId != ButtonDefinitionId.Accept) return;
+
+            if (!CollectionUrlParser.TryParse(dialogResult.InputText, out var parsed))
+            {
+                _notificationService.ShowToast("That doesn't look like a Nexus Mods collection link.", ToastNotificationVariant.Failure);
+                return;
+            }
+
+            // the nxm handler below needs a concrete revision; links shared from the app or
+            // website usually don't have one, so resolve to the latest published revision
+            var handedOffToNxmHandler = false;
+            try
+            {
+                var revision = parsed.Revision;
+                if (revision is null)
+                {
+                    var graphQlClient = serviceProvider.GetRequiredService<IGraphQlClient>();
+                    var revisionNumbersResult = await graphQlClient.QueryCollectionRevisionNumbers(parsed.Slug, GameDomain.From(parsed.GameDomain), cancellationToken);
+                    if (revisionNumbersResult.TryGetData(out var revisionNumbers))
+                    {
+                        revision = revisionNumbers
+                            .Where(static tuple => tuple.Status == RevisionStatus.Published)
+                            .Select(static tuple => (RevisionNumber?)tuple.Number)
+                            .FirstOrDefault();
+                    }
+                }
+
+                if (revision is null)
+                {
+                    _notificationService.ShowToast("Couldn't find a published revision for that collection — check the link and try again.", ToastNotificationVariant.Failure);
+                    return;
+                }
+
+                // hand off to the same code path the website's "Add" button uses, so login
+                // checks, game checks, and progress/success/failure toasts all behave identically
+                var nxmUrl = $"nxm://{parsed.GameDomain}/collections/{parsed.Slug.Value}/revisions/{revision.Value.Value}";
+                var nxmHandler = serviceProvider.GetServices<IIpcProtocolHandler>().Single(static handler => handler.Protocol == "nxm");
+
+                handedOffToNxmHandler = true;
+                await nxmHandler.Handle(nxmUrl, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>().LogError(e, "Failed to add collection `{Slug}` from link", parsed.Slug);
+
+                // the nxm handler reports its own failures via the event bus, don't double-toast those
+                if (!handedOffToNxmHandler)
+                    _notificationService.ShowToast("Something went wrong adding that collection.", ToastNotificationVariant.Failure);
+            }
+        }, configureAwait: false);
 
         this.WhenActivated(disposables =>
         {
