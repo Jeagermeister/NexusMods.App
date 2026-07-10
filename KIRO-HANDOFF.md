@@ -1525,6 +1525,22 @@ keeps the request-a-game path visible. View: plain `TextBox` + `IconValues.Searc
 hardcoded section title — both on the §20.7 localization sweep), two-way bound in
 code-behind. With this, **all four §28.1 asks are closed** (item 4 was research-only).
 
+### 29.2 The layout design session (Brian live, 2026-07-09) → `DESIGN-app-layout.md`
+
+Brian raised two directions: add Minecraft via his Prism Launcher clone, and a design
+session on carrying multiple mod functionalities pleasantly. Session outcomes (full
+rationale + slicing in **`DESIGN-app-layout.md`** at repo root):
+- **Minecraft/Prism PARKED** by Brian ("Java may not be best; Nexus + Thunderstore covers
+  99%"). Future third-leg candidates ranked: mod.io > GameBanana > Steam Workshop.
+- Principle locked: **games organize the app; sources are supply lines** (badges/filters/
+  buttons, never top-level sections).
+- Decisions: spine groups by GAME with a loadout flyout; Home becomes a DASHBOARD
+  (jump-back-in tiles + recent-activity feed; health strip + news box deferred);
+  "Get Mods" split-button per source; Library rolls up ONE row per mod with version
+  expander + Installed badge (absorbs two §20.7 wishes); **R4 ships before the layout
+  work**. Slicing: PRs L1 (quick wins incl. the tile-misalignment bug) → L2 (split-
+  button) → L3 (Library rollup) → L4 (spine) → L5 (dashboard).
+
 ---
 
 ## 30. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
@@ -1533,12 +1549,14 @@ code-behind. With this, **all four §28.1 asks are closed** (item 4 was research
 purple accent, tome Home icon; login was research-only). Brian's box runs on
 `~/.local/share/Apocrypha`; the local repo folder `~/Source/NexusMods.App` can be renamed
 anytime. One new bug in the standing queue: the MyGames tile misalignment (Brian,
-2026-07-09).
+2026-07-09). The app's multi-source layout is now DESIGNED and reviewed —
+`DESIGN-app-layout.md` (§29.2) — implementation deliberately follows R4.
 
 Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
 rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
 handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
-**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1).
+**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1) →
+layout design locked (§29.2).
 
 **Next up (Brian's mode: one by one):**
 1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
@@ -1547,7 +1565,9 @@ handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#1
    NuGet.Build.props, icon ladders (kit: `~/Source/VortexApp_Artwork/
    apocrypha_app_icon_set/`, desktop Icon= already the new id) → installable AppImage
    (roadmap step 10). Windows registry QA (§27.1) rides here.
-2. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
+2. **Layout epic** — `DESIGN-app-layout.md` PRs L1→L5 (quick wins → split-button →
+   Library rollup → spine grouping → dashboard).
+3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
 
 Backlogs: §28.1 (UI — all closed; localization rides the §20.7 sweep) and the standing
 queue at the end of §28.
