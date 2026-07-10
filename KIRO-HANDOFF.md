@@ -1479,9 +1479,13 @@ had silently survived a `kill` (verify process death, not just send the signal).
    Apocrypha-own accounts would only matter for a future sync/sharing service — nothing
    blocks on it. Related: §20.7 multi-source login dropdown.
 
-Standing follow-up queue: Backend.Tests real-FS hygiene (§27.3), Brian deletes the
-`Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge, clean-install dialog,
-Nexus-less recognition, multi-version Library UX; mod icons can ride
+Standing follow-up queue: **MyGames tile misalignment** (Brian, 2026-07-09: one game's
+icon+tile sits slightly HIGHER than its row neighbors — suspects: a two-line game name or
+the `IsFound` extra info row making one `MiniGameWidget` taller inside the FlexPanel row
+(`MiniGameWidget.axaml` rows 42-70, `MyGamesView.axaml` FlexPanel `Wrap`); fix = pin a
+uniform widget height or set FlexPanel `AlignItems`), Backend.Tests real-FS hygiene
+(§27.3), Brian deletes the `Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge,
+clean-install dialog, Nexus-less recognition, multi-version Library UX; mod icons can ride
 `CachedHttpStreamFactory`), `loadout revert` verb doesn't restore (§22.4), localization of
 new strings, GUI check of the recognition toast.
 
@@ -1525,17 +1529,16 @@ code-behind. With this, **all four §28.1 asks are closed** (item 4 was research
 
 ## 30. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
 
-`linux-fork` @ the PR #20 merge (purple accent + Apocrypha Home icon, §29; the #19 docs
-merged just before). **Open: PR #21** (`feature/games-search`, §29.1 — the "Other
-supported games" search box; with it all four §28.1 asks are closed). Brian's box runs on
+**Everything is merged through PR #21.** All four §28.1 UI asks are closed (search box,
+purple accent, tome Home icon; login was research-only). Brian's box runs on
 `~/.local/share/Apocrypha`; the local repo folder `~/Source/NexusMods.App` can be renamed
-anytime.
+anytime. One new bug in the standing queue: the MyGames tile misalignment (Brian,
+2026-07-09).
 
 Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
 rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
 handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
-**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1,
-pending merge).
+**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1).
 
 **Next up (Brian's mode: one by one):**
 1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
