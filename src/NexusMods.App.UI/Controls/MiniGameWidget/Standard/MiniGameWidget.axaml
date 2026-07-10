@@ -39,7 +39,10 @@
             </Panel>
 
             <!-- Details -->
-            <StackPanel Grid.Row="1" Spacing="4" Margin="0 0 0 8">
+            <!-- MinHeight = name line (21) + 3 store rows (3×21) + 3×Spacing (12): store-row
+                 count varies per game (Steam/GOG/Epic), and without a reserved height the
+                 cards come out unequal and misalign inside the FlexPanel wrap rows. -->
+            <StackPanel Grid.Row="1" Spacing="4" Margin="0 0 0 8" MinHeight="96">
                 <TextBlock x:Name="NameTextBlock"
                            Text="Stardew Valley"
                            Theme="{StaticResource BodyMDSemiTheme}"

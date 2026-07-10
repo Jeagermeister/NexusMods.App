@@ -85,7 +85,10 @@
 
         <Style Selector="^.Home /template/ icons|UnifiedIcon#Icon">
             <Setter Property="Value" Value="{x:Static icons:IconValues.Apocrypha}" />
-            <Setter Property="Size" Value="28" />
+            <!-- 32 is the ceiling: the square tome art must stay inside the 48px circular
+                 hover ring (32×√2 ≈ 45 diagonal). The SVG viewBox is cropped to the book's
+                 bounds, so the mark fills the glyph box edge to edge. -->
+            <Setter Property="Size" Value="32" />
         </Style>
 
         <Style Selector="^.Inactive icons|UnifiedIcon#Icon">
