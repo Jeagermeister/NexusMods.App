@@ -1,6 +1,5 @@
 <div align="center">
-	<h1>Apocrypha</h1>
-	<img src="docs/apocrypha-icon.png" width="150" align="center" />
+	<img src="docs/apocrypha-readme-banner.png" alt="Apocrypha Mod Manager" />
 	<br/> <br/>
     <b>Canon is just the beginning.</b>
     <br/>
