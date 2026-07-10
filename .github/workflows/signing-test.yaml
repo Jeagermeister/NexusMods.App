@@ -1,12 +1,10 @@
 name: Signing Test
 
+# Fork note: this lane needs upstream infrastructure/secrets Apocrypha does not have
+# (self-hosted runner / NEXUS_API_KEY / ES_* signing / NUGET_KEY). Manual-only until the
+# fork stands up its own equivalents.
 on:
-  schedule:
-    # At 14:05 on Wednesday
-    # https://crontab.guru
-    - cron: '5 14 * * 3'
   workflow_dispatch:
-
 env:
   ProjectFile: "src/NexusMods.App/NexusMods.App.csproj"
 

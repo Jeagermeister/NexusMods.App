@@ -1,10 +1,10 @@
 name: Publish NuGet Packages
 
+# Fork note: this lane needs upstream infrastructure/secrets Apocrypha does not have
+# (self-hosted runner / NEXUS_API_KEY / ES_* signing / NUGET_KEY). Manual-only until the
+# fork stands up its own equivalents.
 on:
-  push:
-    tags:
-      - 'v*'
-
+  workflow_dispatch:
 jobs:
   get-version:
     runs-on: ubuntu-latest

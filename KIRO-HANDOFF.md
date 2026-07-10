@@ -1579,7 +1579,19 @@ rationale + slicing in **`DESIGN-app-layout.md`** at repo root):
   AppImage) — last-runner-wins registration is upstream behavior; fine for a single
   user, worth revisiting before public release.
 
-### 31.3 Verification
+### 31.3 CI hygiene (follow-up PR #24, same day — Brian: "if we don't need this check, fix it")
+
+Brian asked what the Networking Tests job was: upstream's live-API integration lane
+(`RequiresNetworking=True` tests, self-hosted runner + `NEXUS_API_KEY`) — a ZOMBIE on the
+fork (queued forever on every push; one cancelled). Audit found four workflows needing
+upstream infra/secrets: networking_tests, mod_install_tests (NEXUS_API_KEY),
+signing-test (ES_* signing creds), publish-nuget-packages (NUGET_KEY — would have FAILED
+our first release tag). All four switched to `workflow_dispatch`-only with a fork-note
+comment; lanes stay available if the fork ever stands up equivalents. Untouched:
+clean_environment_tests (the real CI), pr/issue-maintenance bots, mkdocs (dormant,
+main-branch-gated), git-builds, and the pupnet build/release chain.
+
+### 31.4 Verification
 Full solution 0 errors with the renamed binary; dev run + AppImage run both opened the
 real datom store ("existing state found"); AppImage self-registered handlers (desktop
 file Exec/TryExec point at the AppImage); WM_CLASS `("AppRun", "Apocrypha")` groups
