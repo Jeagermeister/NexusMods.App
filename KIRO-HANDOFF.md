@@ -1479,13 +1479,19 @@ had silently survived a `kill` (verify process death, not just send the signal).
    Apocrypha-own accounts would only matter for a future sync/sharing service — nothing
    blocks on it. Related: §20.7 multi-source login dropdown.
 
-Standing follow-up queue: **MyGames tile misalignment** (Brian, 2026-07-09: one game's
-icon+tile sits slightly HIGHER than its row neighbors — suspects: a two-line game name or
-the `IsFound` extra info row making one `MiniGameWidget` taller inside the FlexPanel row
-(`MiniGameWidget.axaml` rows 42-70, `MyGamesView.axaml` FlexPanel `Wrap`); fix = pin a
-uniform widget height or set FlexPanel `AlignItems`), Backend.Tests real-FS hygiene
-(§27.3), Brian deletes the `Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge,
-clean-install dialog, Nexus-less recognition, multi-version Library UX; mod icons can ride
+Standing follow-up queue: **OAuth session-expiry UX** (Brian hit "Invalid new token in
+OAuth2MessageFactory" at every launch: an expired Nexus session whose refresh fails —
+`OAuth.RefreshToken` (`Auth/OAuth.cs:89-91`) never checks the HTTP status and blindly
+deserializes Nexus's error body → null-field token → cryptic log, user never told they're
+logged out; fix = check status, log the OAuth error body, surface a "Nexus session
+expired — log in again" toast; remedy meanwhile: re-login in-app), **MyGames tile
+misalignment** (Brian, 2026-07-09: one game's icon+tile sits slightly HIGHER than its row
+neighbors — suspects: a two-line game name or the `IsFound` extra info row making one
+`MiniGameWidget` taller inside the FlexPanel row (`MiniGameWidget.axaml` rows 42-70,
+`MyGamesView.axaml` FlexPanel `Wrap`); fix = pin a uniform widget height or set FlexPanel
+`AlignItems`), Backend.Tests real-FS hygiene (§27.3), Brian deletes the
+`Apocrypha.fresh-discard` dirs, §20.7 backlog (Installed badge, clean-install dialog,
+Nexus-less recognition, multi-version Library UX; mod icons can ride
 `CachedHttpStreamFactory`), `loadout revert` verb doesn't restore (§22.4), localization of
 new strings, GUI check of the recognition toast.
 
@@ -1603,26 +1609,34 @@ release.
 
 ## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
 
-**Merged through PR #22; PR #23 (rebrand R4, §31) open.** The fork now produces an
-installable **`Apocrypha.x86_64.AppImage`** (roadmap step 10 COMPLETE pending merge) —
-built and verified live on the box. Brian's data at `~/.local/share/Apocrypha`; repo
-folder `~/Source/NexusMods.App` can be renamed anytime. Layout design reviewed and locked
-in `DESIGN-app-layout.md` (§29.2).
+**🚀 APOCRYPHA v0.1.0 IS RELEASED:**
+**github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
+prerelease flag, sha256 published), tagged on `linux-fork`, built locally with
+`pupnet -v 0.1.0 -k appimage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE` and
+smoke-tested (opened the real Library) before upload. The binary version matches the
+tag so the in-app updater stays quiet until a genuinely newer release exists. Merged
+through PR #24 (R4 + CI hygiene); PR #25 (README Download section + this pointer +
+OAuth queue entry) open.
 
 Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
 rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
 handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
 **rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1)
-→ layout design locked (§29.2, #22) → **rebrand R4 / FIRST APPIMAGE (#23, §31)**.
+→ layout design locked (§29.2, #22) → rebrand R4 / first AppImage (#23, §31) → CI
+hygiene (#24, §31.3) → **v0.1.0 RELEASED**.
 
 **Next up (Brian's mode: one by one):**
-1. **First tagged release** — run the Release workflow (version, changelog), publish the
-   AppImage on GitHub Releases; then claim AUR `apocrypha` (§23.1). Community re-home
-   items (move internal docs out of the repo, announcement) become live considerations.
-2. **Layout epic** — `DESIGN-app-layout.md` PRs L1→L5 (quick wins incl. the MyGames
+1. **AUR `apocrypha` claim** (§23.1) + release cadence: future releases should go through
+   the Release workflow (workflow_dispatch; Linux artifacts fine, Windows job untested —
+   may need the sign step gated before the workflow path works end-to-end).
+2. **OAuth session-expiry UX fix** (standing queue — Brian hits the cryptic log line at
+   every launch until he re-logs into Nexus in-app).
+3. **Layout epic** — `DESIGN-app-layout.md` PRs L1→L5 (quick wins incl. the MyGames
    tile-misalignment bug → split-button → Library rollup → spine grouping → dashboard).
-3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
-4. **Windows QA pass** — registry/ProgID changes (§27.1) + Inno/sign path (§31.3) on a
+4. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
+5. **Windows QA pass** — registry/ProgID changes (§27.1) + Inno/sign path (§31.3) on a
    real Windows box.
+6. Community re-home becomes LIVE: move KIRO-HANDOFF/FABLE5-TASKS/DESIGN-* internal notes
+   out of the repo before announcing anywhere (§20.7 note — they mention AI sessions).
 
 Backlogs: §28.1 (UI — closed) and the standing queue at the end of §28.
