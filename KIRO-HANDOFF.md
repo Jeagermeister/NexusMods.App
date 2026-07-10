@@ -1746,3 +1746,66 @@ step-summary notice when absent, issue reporting wrapped in try/catch. Verified:
 green with test skipped. **Workflow re-disabled until #6 merges**; after merge
 re-enable and it stays silently green — add a personal Nexus API key as the
 `NEXUS_API_KEY` secret whenever the extension tests should actually run.
+
+## 36. Session log — 2026-07-10 (cont.) — Roadmap step 11 MVP: share/join/update-nudge, live-verified
+
+**Roadmap steps 11 (multiplayer mod sync) + 12 (gated P2P transfer, website-era) added to §8**
+— PR #33 (docs-only, Brian merges). Step 12's guardrails are the design: never redistribute
+permission-locked archives (Wabbajack precedent, API-revocation risk), P2P eligibility gated
+per file, server relays signaling/manifests only, same-user device sync unrestricted.
+
+**The MVP shipped in one session because upstream had already built ~70% and hidden it.**
+Survey findings (Explore agent, verified by hand):
+- `CollectionCreator` (src/NexusMods.Collections) has the full authoring pipeline: local
+  collection → manifest → upload → publish revision (auto-changelog) → listed/unlisted toggle.
+  `CollectionStatus.Unlisted = 0` is the enum default; collections are born unlisted.
+- The complete share/publish UI existed on LoadoutPage behind
+  `ExperimentalSettings.EnableCollectionSharing` (default false, "TODO: remove for GA").
+- `CommandCopyRevisionUrl` was implemented but bound to no control (dead code).
+- Friend side had NO in-app entry point: collection install required the website's Add
+  button (nxm:// handoff). `NXMCollectionUrl` requires an explicit revision.
+
+**PR #34 — branch `feat/loadout-share`, 3 commits:**
+1. Sharing is GA: `EnableCollectionSharing` setting REMOVED (per upstream's TODO), share UI
+   always on. Lesson: flipping the default wasn't enough — Brian's own
+   `ExperimentalSettings.json` had frozen `false` from an earlier save; removal sidesteps
+   every existing install. Copy-link button (+ toast) bound to the orphaned command.
+2. Friend side: "Collection from link" in the Library Add dropdown (always visible — the
+   Collections tab, where a second button lives, only renders once you HAVE a collection)
+   → dialog → `CollectionUrlParser` (Abstractions.NexusWebApi, 23 tests; accepts
+   www/next/no-scheme/games-prefix/revisions-suffix/nxm) → revision-less links resolve
+   latest published via `IGraphQlClient.QueryCollectionRevisionNumbers` → constructed
+   nxm:// URL handed to the SAME `NxmIpcProtocolHandler` the website uses (identical
+   login/game checks + toasts + page-open behavior).
+3. Update nudge: installed-collection page (CollectionLoadoutViewModel) now runs the same
+   one-shot newest-revision check the download page had, shows "Update collection to
+   revision N" in the status bar → opens the download page for the new revision.
+
+**Live verification rig (Wayland/GNOME box, no sudo):** mutter EATS XTEST pointer injection
+into the session's XWayland (:0) — clicks silently vanish; python-xlib + `import` alone are
+useless there. Working rig: `Xwayland :99 -geometry 1600x900` (rootful, no `-rootful` flag on
+this build — it's the default), launch app with `DISPLAY=:99 WAYLAND_DISPLAY=`, then XTEST
+works natively. Dialogs are separate X windows — screenshot root or the dialog id, not the
+main window. Typing needs a shift map (':' = Shift+';') — cost one false alarm where the
+parser "failed" on `https;//`. Driver script: scratchpad drive.py pattern (session-local).
+**Verified live:** Share button on My Mods toolbar (disabled-while-empty ✓), Add-menu entry,
+dialog, invalid-link toast, and the full friend flow with a real revision-less link
+(`next.nexusmods.com/stardewvalley/collections/htknoa`) → resolved rev 1 → manifest
+downloaded → CollectionDownloadPage opened → "Collection added successfully" toast.
+That collection was left in Brian's Stardew library deliberately (demo artifact; 1-click
+delete). Kill stray app instances before relaunching — RocksDB LOCK errors mean one lives.
+
+**Known gaps / next for step 11:** friend-side dedicated-loadout install (collection group
+in active loadout is isolated enough for MVP; a "fresh loadout on join" option is phase 2);
+manifest upload silently skips non-Nexus/non-downloaded items (`LoadoutItemGroupToCollectionManifest`
+— needs a pre-upload warning); upload-path error handling is TODO-level upstream; my new
+dialog/toast strings are literals, not Language.resx entries; free users still get per-mod
+browser round-trips on Nexus (policy; Thunderstore via step 6 has no gate).
+
+**Brian's new backlog item (2026-07-10):** per-row "update available" indicator on mod rows
+with the NEW version number shown. Note: the Library page already has the update pipeline
+(`ModUpdateService`, RefreshUpdatesCommand, Update All, per-row update actions via
+`LibraryItemModel` update columns) — the ask is likely (a) surfacing an indicator + new
+version on LOADOUT/collection page rows too, and (b) making the Library's existing
+indicator more prominent (highlight/badge). Scope before building: check what
+`ILibraryItemWithUpdateAction`/update columns already render per row.
