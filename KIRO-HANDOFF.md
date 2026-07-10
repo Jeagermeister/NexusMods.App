@@ -223,6 +223,54 @@ Nobody has this. That's the fork's identity and moat.
     AUR package for the CachyOS/Arch daily driver, Flatpak later. Gated on the re-brand
     (step 2) for naming; our vendored-assets work (§10.1) already removed the
     build-time-download steps that would have complicated CI.
+11. **Multiplayer mod sync — "play together" (Brian, 2026-07-10).** The #1 complaint from
+    his friend group: co-op/multiplayer modding breaks unless everyone has the *same exact
+    mods and config*, and friends span the full range of technical skill. Goal: host clicks
+    "share", friends click "join", and the app fetches + installs the host's exact mod set
+    automatically — kept separate from each friend's single-player setup.
+    **Most of the plumbing already exists upstream:**
+    - `CollectionCreator.LoadoutItemGroupToCollectionManifest` + `CreateCollection` /
+      `UploadDraftRevision` / `UploadAndPublishRevision` — turn a local loadout group into
+      a Nexus collection and push it (`src/NexusMods.Collections/CollectionCreator.cs`).
+    - `CollectionStatus.Unlisted` is fully supported (create + `ChangeCollectionStatus`),
+      so a friend group can share via unlisted link without publishing publicly.
+    - The friend side is the already-verified-live collections download/install pipeline
+      (v0.1.1 headline): `CollectionDownloader` → `InstallCollectionJob`.
+    - Loadouts already give per-context separation (multiplayer loadout ≠ solo loadout);
+      collections install as their own group.
+    **The new work is the UX seam + sync loop:** one-button "share this loadout" (create/
+    update unlisted collection revision, hand back a link/code), one-button "join" (paste
+    link → download → install into a dedicated loadout), and drift handling (host pushes a
+    new revision → friends get an "out of date, update?" prompt — revisions exist upstream,
+    the nudge loop doesn't). Config files are part of the contract: bundle user-authored
+    configs in the manifest (collections support bundled files); never redistribute mod
+    archives themselves — reference Nexus file IDs.
+    **Honest constraint:** Nexus API auto-download is Premium-only; `CollectionDownloader`
+    falls back to opening the browser per mod for free users (one click per mod on the
+    website — everything else automated). This is Nexus policy, not fixable app-side. Big
+    synergy with step 6: multiplayer-heavy games (Valheim, Lethal Company, V Rising…) live
+    on Thunderstore, which has no premium gate — under the mod-source abstraction this
+    feature becomes truly one-click for everyone there. Design doc when work starts.
+12. **P2P loadout transfer (Brian, 2026-07-10 — future, website/server era).** Extend
+    step 11 so the host machine serves files directly to friends, peer-to-peer (WebRTC
+    data channels; the webserver does signaling/matchmaking + manifest storage ONLY).
+    Technically routine — Syncthing/Resilio shape; the content-addressed file store gives
+    the host clean hash-verified archives to serve and receivers free integrity checks.
+    **Hard guardrails (these ARE the design):**
+    - **Never redistribute mod archives whose permissions forbid it** — even friend-to-
+      friend. This is the modding community's oldest landmine; it's why Wabbajack
+      automates source downloads instead of redistributing, and why collections reference
+      file IDs. An app-level bypass of Nexus downloads also invites API-access revocation
+      (fork depends on that API). Gate P2P eligibility per file:
+      (a) user-authored content (configs, load order, FOMOD choices, own patches) — always
+      eligible, zero restrictions; this alone solves the "same exact config" half;
+      (b) mods with redistribution-permissive permissions/licenses (Nexus exposes
+      machine-readable permission flags; most BepInEx/Thunderstore mods are OSS) — eligible;
+      (c) everything else — falls back to the step 11 Nexus flow.
+    - **Same-user multi-device sync is unrestricted** (desktop ↔ Steam Deck LAN sync) —
+      legitimate standalone feature, good first milestone for the transport.
+    - **The server never stores or relays mod archive bytes** — the moment it does, we
+      are the distributor (DMCA exposure on our domain). Signaling + manifests only.
 
 ## 9. Local reference paths
 
