@@ -21,6 +21,8 @@ namespace NexusMods.Games.BepInEx.Installers;
 /// </summary>
 public class BepInExPluginInstaller : ALibraryArchiveInstaller
 {
+    private static readonly Extension DllExtension = new(".dll");
+
     private readonly InstallRuleRouter _router;
     private readonly string[] _relativeFileExclusions;
 
@@ -33,29 +35,45 @@ public class BepInExPluginInstaller : ALibraryArchiveInstaller
     }
 
     /// <summary>
-    /// Per-game instance with the game's schema rules (constructed by
-    /// <see cref="GenericBepInExGame"/>).
+    /// Per-game instance with the game's schema rules.
     /// </summary>
     public BepInExPluginInstaller(
         IServiceProvider serviceProvider,
         IReadOnlyList<EcosystemInstallRule> rules,
         IReadOnlyList<string>? relativeFileExclusions)
+        : this(serviceProvider, new InstallRuleRouter(rules), relativeFileExclusions)
+    {
+    }
+
+    /// <summary>
+    /// Per-game instance sharing the game's router (constructed by
+    /// <see cref="GenericBepInExGame"/>, which also derives its collection fallback
+    /// directory from it).
+    /// </summary>
+    public BepInExPluginInstaller(
+        IServiceProvider serviceProvider,
+        InstallRuleRouter router,
+        IReadOnlyList<string>? relativeFileExclusions)
         : base(serviceProvider, serviceProvider.GetRequiredService<ILogger<BepInExPluginInstaller>>())
     {
-        _router = new InstallRuleRouter(rules);
+        _router = router;
         _relativeFileExclusions = relativeFileExclusions?.ToArray() ?? [];
     }
 
     /// <summary>
     /// Loader packs (winhttp.dll) belong to <see cref="BepInExPackInstaller"/>; everything that
     /// looks like a Thunderstore package (metadata manifest or Thunderstore library identity)
-    /// is claimed here.
+    /// or a Nexus-hosted plugin archive (a .dll anywhere, or rooted in a route folder — Nexus
+    /// zips carry no manifest.json, and collections install through this path) is claimed here.
     /// </summary>
     public override bool IsSupportedLibraryArchive(LibraryArchive.ReadOnly libraryArchive)
     {
         if (BepInExPackInstaller.TryFindPackRoot(libraryArchive, out _)) return false;
         if (libraryArchive.AsLibraryFile().AsLibraryItem().TryGetAsThunderstoreLibraryItem(out _)) return true;
-        return libraryArchive.Children.Any(entry => entry.Path.FileName.Equals("manifest.json"));
+        return libraryArchive.Children.Any(entry =>
+            entry.Path.FileName.Equals("manifest.json") ||
+            entry.Path.Extension == DllExtension ||
+            _router.IsRouteSegment(entry.Path.ToString().Split('/')[0]));
     }
 
     public override ValueTask<InstallerResult> ExecuteAsync(

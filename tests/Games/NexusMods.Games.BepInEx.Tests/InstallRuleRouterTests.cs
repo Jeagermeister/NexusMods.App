@@ -136,4 +136,24 @@ public class InstallRuleRouterTests
             target.Should().NotBeNullOrEmpty($"{game.SettingsIdentifier} must route loose files somewhere");
         }
     }
+
+    // --- DefaultRoute: the collection fallback install directory (upstream #2553) ---
+
+    [Fact]
+    public void DefaultRoute_CanonicalRules_IsPlugins()
+    {
+        new InstallRuleRouter([]).DefaultRoute.Should().Be("BepInEx/plugins");
+        RouterFor("Subnautica").DefaultRoute.Should().Be("BepInEx/plugins");
+    }
+
+    [Fact]
+    public void DefaultRoute_FollowsTheSchemaDefaultRule()
+    {
+        // Shimloader-style rules (Palworld and friends in the schema) default off-plugins.
+        var router = new InstallRuleRouter([
+            new EcosystemInstallRule { Route = "shimloader/mod", DefaultFileExtensions = [".pak"], TrackingMethod = "subdir", IsDefaultLocation = true },
+            new EcosystemInstallRule { Route = "shimloader/cfg", DefaultFileExtensions = [], TrackingMethod = "none", IsDefaultLocation = false },
+        ]);
+        router.DefaultRoute.Should().Be("shimloader/mod");
+    }
 }
