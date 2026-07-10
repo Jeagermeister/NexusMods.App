@@ -13,7 +13,7 @@ jobs:
     steps:
       # 1. Checkout the repository
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           # Disable automatic token usage to allow `create-pull-request` to handle authentication
           persist-credentials: false
@@ -21,7 +21,7 @@ jobs:
 
       # 2. Set up Python environment
       - name: Set Up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'  # Specify the Python version you need
 
