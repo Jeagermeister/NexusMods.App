@@ -32,6 +32,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.UI.Sdk;
+using NexusMods.UI.Sdk.Dialog;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -46,6 +47,7 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
     private readonly IConnection _connection;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWindowNotificationService _notificationService;
+    private readonly ILoginManager _loginManager;
 
     public ReactiveUI.ReactiveCommand<System.Reactive.Unit, bool> BringWindowToFront { get; }
     public ReactiveUI.ReactiveCommand<IStorageProvider, System.Reactive.Unit> RegisterStorageProvider { get; }
@@ -64,6 +66,7 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
         var avaloniaInterop = serviceProvider.GetRequiredService<IAvaloniaInterop>();
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _notificationService = notificationService;
+        _loginManager = loginManager;
 
         // NOTE(erri120): can't use DI for VMs that require an active Window because
         // those VMs would be instantiated before this constructor gets called.
@@ -199,7 +202,27 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
                             );
                             return;
                     }
-                })  
+                })
+                .DisposeWith(d);
+
+            eventBus
+                .ObserveMessages<OAuthMessages.SessionExpired>()
+                .ObserveOnUIThreadDispatcher()
+                .Subscribe(this, static (message, self) =>
+                {
+                    var loginButtonId = ButtonDefinitionId.From("nexus-session-expired-login");
+                    self._notificationService.ShowToast(
+                        Language.ToastNotification_Nexus_session_expired___please_log_in_again,
+                        ToastNotificationVariant.Failure,
+                        // Sticky: this usually fires right after launch, before the user is looking.
+                        expiration: TimeSpan.Zero,
+                        buttonDefinitions: [new DialogButtonDefinition(Language.ToastNotification_Nexus_session_expired__Log_in, loginButtonId)],
+                        buttonHandler: id =>
+                        {
+                            if (id == loginButtonId) _ = self._loginManager.LoginAsync();
+                        }
+                    );
+                })
                 .DisposeWith(d);
 
             eventBus

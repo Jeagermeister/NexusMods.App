@@ -132,6 +132,45 @@ public class OAuthTests
         #endregion
     }
 
+    [Fact]
+    public async Task RefreshToken_RejectedRefresh_ThrowsSessionExpired()
+    {
+        // Nexus rejects a dead session with 400 + an OAuth error body; blindly deserializing
+        // it used to produce a null-field token and the cryptic "Invalid new token" log.
+        var messageHandler = Substitute.ForPartsOf<MockHttpMessageHandler>();
+        messageHandler
+            .SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Content = new StringContent("""{"error":"invalid_grant","error_description":"The provided authorization grant is invalid"}"""),
+            }));
+
+        var oauth = new OAuth(_jobMonitor, _logger, new HttpClient(messageHandler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>());
+
+        Func<Task> call = () => oauth.RefreshToken("refresh_token", CancellationToken.None);
+        await call.Should().ThrowAsync<OAuthSessionExpiredException>();
+    }
+
+    [Fact]
+    public async Task RefreshToken_TransientServerError_DoesNotCountAsExpired()
+    {
+        var messageHandler = Substitute.ForPartsOf<MockHttpMessageHandler>();
+        messageHandler
+            .SendMock(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.InternalServerError,
+                Content = new StringContent("<html>upstream error</html>"),
+            }));
+
+        var oauth = new OAuth(_jobMonitor, _logger, new HttpClient(messageHandler), Substitute.For<IIDGenerator>(), Substitute.For<IOSInterop>());
+
+        // A Nexus outage must NOT log the user out — it surfaces as a plain HTTP failure.
+        Func<Task> call = () => oauth.RefreshToken("refresh_token", CancellationToken.None);
+        await call.Should().ThrowAsync<HttpRequestException>();
+    }
+
     // TODO: requires jobs to be cancellable
     // [Fact]
     // public async Task AuthorizationCanBeCanceled()
