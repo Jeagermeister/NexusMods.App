@@ -149,6 +149,14 @@
                                                          LeftIcon="{x:Static icons:IconValues.OpenInNew}"
                                                          ShowIcon="Left"
                                                          ShowLabel="False" />
+                                <controls:StandardButton x:Name="ButtonCopyRevisionUrl"
+                                                         ToolTip.Tip="Copy shareable link"
+                                                         Size="Toolbar"
+                                                         Fill="Weak"
+                                                         Type="Tertiary"
+                                                         LeftIcon="{x:Static icons:IconValues.Copy}"
+                                                         ShowIcon="Left"
+                                                         ShowLabel="False" />
                             </StackPanel>
                         </StackPanel>
 

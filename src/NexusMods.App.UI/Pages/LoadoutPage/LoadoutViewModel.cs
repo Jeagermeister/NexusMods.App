@@ -92,7 +92,6 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     public ReactiveCommand<Unit> CommandChangeVisibility { get; }
     public ReactiveCommand<Unit> CommandDeleteGroup { get; }
 
-    public bool EnableCollectionSharing { get; }
 
     private readonly IServiceProvider _serviceProvider;
     private readonly NexusModsLibrary _nexusModsLibrary;
@@ -115,8 +114,6 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
 
-        var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
-        EnableCollectionSharing = settingsManager.Get<ExperimentalSettings>().EnableCollectionSharing;
 
         var loadoutFilter = new LoadoutFilter
         {
@@ -382,6 +379,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
 
                     // copy to clipboard instead of opening the URL directly
                     await _avaloniaInterop.SetClipboardTextAsync(uri.AbsoluteUri);
+
+                    _notificationService.ShowToast("Collection link copied — send it to your friends", ToastNotificationVariant.Success);
                 }, configureAwait: false
             );
 
