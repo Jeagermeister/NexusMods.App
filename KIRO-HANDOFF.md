@@ -1803,9 +1803,12 @@ dialog/toast strings are literals, not Language.resx entries; free users still g
 browser round-trips on Nexus (policy; Thunderstore via step 6 has no gate).
 
 **Brian's new backlog item (2026-07-10):** per-row "update available" indicator on mod rows
-with the NEW version number shown. Note: the Library page already has the update pipeline
-(`ModUpdateService`, RefreshUpdatesCommand, Update All, per-row update actions via
-`LibraryItemModel` update columns) — the ask is likely (a) surfacing an indicator + new
-version on LOADOUT/collection page rows too, and (b) making the Library's existing
-indicator more prominent (highlight/badge). Scope before building: check what
-`ILibraryItemWithUpdateAction`/update columns already render per row.
+with the NEW version number shown. SCOPED: the Library page already does this —
+`LibraryComponents.NewVersionAvailable` renders current + new version in the Version column
+and `LibraryComponents.UpdateAction` gives the per-row update button, fed by
+`NexusModsDataProvider`/`ModUpdateService`. The actual gap: LOADOUT/collection page rows
+(LoadoutPage/CollectionLoadout grids) reference NONE of these components — installed-mods
+rows show no update state at all. Work = wire `NewVersionAvailable`+`UpdateAction` (or a
+lighter indicator variant) into the loadout data provider path (`LoadoutDataProviderHelper`
+→ composite item models), plus optionally a row highlight in the Library. Good first-PR-size
+follow-up to #34.
