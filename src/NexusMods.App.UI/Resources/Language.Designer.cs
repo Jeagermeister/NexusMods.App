@@ -3426,6 +3426,24 @@ namespace NexusMods.App.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Your Nexus Mods session has expired — please log in again.
+        /// </summary>
+        public static string ToastNotification_Nexus_session_expired___please_log_in_again {
+            get {
+                return ResourceManager.GetString("ToastNotification_Nexus_session_expired___please_log_in_again", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Log in.
+        /// </summary>
+        public static string ToastNotification_Nexus_session_expired__Log_in {
+            get {
+                return ResourceManager.GetString("ToastNotification_Nexus_session_expired__Log_in", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Download skipped: file already exists - {0} .
         /// </summary>
         public static string ToastNotification_Download_skipped__file_already_exists____0__ {

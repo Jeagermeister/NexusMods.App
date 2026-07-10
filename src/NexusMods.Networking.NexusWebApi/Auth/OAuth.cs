@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using DynamicData.Kernel;
 using Microsoft.AspNetCore.WebUtilities;
@@ -75,6 +76,8 @@ public class OAuth
     /// <param name="refreshToken">the refresh token</param>
     /// <param name="cancel"></param>
     /// <returns>a new token reply</returns>
+    /// <exception cref="OAuthSessionExpiredException">the backend rejected the refresh token — the session is dead and the user must log in again</exception>
+    /// <exception cref="HttpRequestException">transient failure (5xx etc.) — the session may still be valid</exception>
     public async Task<JwtTokenReply?> RefreshToken(string refreshToken, CancellationToken cancel)
     {
         var request = new Dictionary<string, string>
@@ -88,6 +91,22 @@ public class OAuth
 
         var response = await _http.PostAsync($"{ClientConfig.OAuthUrl}/token", content, cancel);
         var responseString = await response.Content.ReadAsStringAsync(cancel);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // 4xx = the backend rejected the session itself (expired/revoked refresh token,
+            // e.g. {"error":"invalid_grant",...}); anything else is transient and must NOT
+            // count as a dead session.
+            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                _logger.LogWarning("OAuth token refresh rejected with {StatusCode}: {Body}", (int)response.StatusCode, responseString);
+                throw new OAuthSessionExpiredException($"OAuth token refresh rejected with {(int)response.StatusCode}: {responseString}");
+            }
+
+            _logger.LogWarning("OAuth token refresh failed with {StatusCode}: {Body}", (int)response.StatusCode, responseString);
+            response.EnsureSuccessStatusCode();
+        }
+
         return JsonSerializer.Deserialize<JwtTokenReply>(responseString);
     }
 
