@@ -1,18 +1,10 @@
 ﻿name: Mod Install Tests
 
+# Fork note: this lane needs upstream infrastructure/secrets Apocrypha does not have
+# (self-hosted runner / NEXUS_API_KEY / ES_* signing / NUGET_KEY). Manual-only until the
+# fork stands up its own equivalents.
 on:
-  schedule:
-    - cron: '0 6 * * *'
   workflow_dispatch:
-  push:
-    branches: [ main ]
-    paths:
-      - ".github/workflows/mod_install_tests.yaml"
-      - "./src/**"
-      - "./tests/**"
-      - "**.props"
-      - "**.targets"
-
 jobs:
   build:
 
