@@ -23,7 +23,7 @@ public class SubnauticaInstallerTests(ITestOutputHelper outputHelper)
     : ALibraryArchiveInstallerTests<SubnauticaInstallerTests, GenericBepInExGame>(outputHelper)
 {
     private static readonly BepInExGameData SubnauticaData =
-        EcosystemSchemaParser.LoadBundledGames(new HashSet<string> { "RiskOfRain2" })
+        EcosystemSchemaParser.LoadBundledGames(new HashSet<string>())
             .Single(g => g.SettingsIdentifier == "Subnautica");
 
     protected override IServiceCollection AddServices(IServiceCollection services)

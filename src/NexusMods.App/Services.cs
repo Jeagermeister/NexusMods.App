@@ -145,7 +145,6 @@ public static class Services
         Games.CreationEngine.Services.AddCreationEngine(services);
         Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         Games.BepInEx.Services.AddBepInExGames(services);
-        Games.RiskOfRain2.Services.AddRiskOfRain2(services);
         return services;
     }
 }

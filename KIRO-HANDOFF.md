@@ -1607,7 +1607,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §33 (collections fix)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §34 (pre-0.1.1 sweep)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -1669,3 +1669,51 @@ no-nesting, fallback-dir). 56/56 BepInEx, 5/5 RoR2 pass; NexusMods.Collections.T
 Follow-up queued: verify a real Subnautica collection end-to-end in the running app
 (premium account = automated downloads; the earlier session-expiry caveat from the
 OAuth queue entry still applies).
+
+**QA CLOSED (same day): Brian installed the Subnautica collection end-to-end — no
+popups — and reports downloads/installs/game-boot noticeably faster than Vortex on
+Windows 11.** Collections work on Apocrypha; launch-announcement material.
+
+## 34. Session log — 2026-07-09 (cont.) — Pre-0.1.1 sweep: OAuth expiry, L1, PR G
+
+Brian's directive: knock out queue items 2/3/4 (OAuth UX, layout L1, PR G) + one ask
+(make the Home-button tome fill its space), then cut v0.1.1. Three PRs:
+
+**PR #27 — OAuth session expiry (`fix/oauth-session-expiry`).** `OAuth.RefreshToken`
+now checks HTTP status: 4xx → new `OAuthSessionExpiredException` (error body logged);
+5xx/network stay `HttpRequestException` so an outage can't log anyone out.
+`OAuth2MessageFactory` catches it, drops the JWTToken like Logout does (retract →
+LoginManager's datom observation flips the UI to logged-out → excise), and sends
+`OAuthMessages.SessionExpired` (new, Abstractions.NexusWebApi) once — interlocked
+flag, reset on live session. MainWindowViewModel: sticky Failure toast + “Log in”
+button → `LoginAsync`. Two new strings in Language.resx (+ hand-added Designer
+accessors — the PublicResXFileCodeGenerator is IDE-only). Tests: 400→typed throw,
+500→transient. NEEDS LIVE QA: next launch with a stale session.
+
+**PR #28 — L1 quick wins (`ui/l1-quick-wins`).** (1) MyGames mini-tile misalignment:
+MiniGameWidget height varied with visible store rows; details block now reserves
+3-row height (MinHeight=96 from BodyMD LineHeight 21) → uniform cards. (2) Home tome:
+apocrypha-logo.svg viewBox cropped to the book's measured bright-pixel bounds
+(74 88 892 892 — margins were ~90px dark padding) + spine icon Size 28→32 (ceiling:
+32×√2 ≈ 45 < 48px hover ring) → visible book ~35% larger. NEEDS GUI LOOK.
+
+**PR G (this branch, `feature/ror2-family-fold`) — RoR2 folds into the family (§21
+plan / design §9).** `HandWrittenGames` exclusion emptied (kept as the seam);
+`src/NexusMods.Games.RiskOfRain2` + its test project DELETED (App reference/
+registration/sln pruned). Identity continuity verified three ways: schema row is
+identity-preserving (settingsIdentifier RiskOfRain2 == GameId, displayName, exe,
+Steam 632360 — locked in by the new `FamilyRow_PreservesHandWrittenIdentity` test);
+the 5 hand-written installer tests ported verbatim to `RiskOfRain2InstallerTests`
+through the family row (canonical rules); and the live headless boot lists Brian's
+real RoR2 loadout cleanly against the 33GB store with the module gone. RoR2's
+embedded art was byte-identical to the family placeholders (md5-verified) — no art
+regression; riskofrain2 is a legacy community (no block in the schema) so like
+Subnautica it keeps the placeholder THUMBNAIL but gets a real runtime-fetched cover
+(parser reads covers from the instance's own meta.iconUrl — RegistrationTests
+updated accordingly). Deltas vs hand-written: family row also carries Steam id
+1180760 (RoR2 Dedicated Server — schema-consistent with other rows); run tool is
+the family's `RunBepInExGameTool`. Suites: BepInEx 62/62, DataModel 232/232,
+Library 3/3, Thunderstore 54/54, solution 0 errors.
+
+**Next:** v0.1.1 once Brian merges + GUI-checks #27/#28 (Release workflow with the
+untested-Windows-job caveat, or the known-good local pupnet path).

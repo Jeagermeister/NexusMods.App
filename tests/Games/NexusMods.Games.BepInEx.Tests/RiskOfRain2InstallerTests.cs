@@ -1,29 +1,59 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Thunderstore;
-using NexusMods.Games.BepInEx;
 using NexusMods.Games.BepInEx.Installers;
+using NexusMods.Games.BepInEx.Models;
+using NexusMods.Games.BepInEx.Schema;
 using NexusMods.Games.TestFramework;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NexusMods.Games.RiskOfRain2.Tests;
+namespace NexusMods.Games.BepInEx.Tests;
 
 /// <summary>
-/// Synthetic-archive tests for the BepInEx loader-pack and plugin installers, covering the
-/// r2modman routing conventions (per-package plugins subfolder, shared config, metadata skipped).
+/// The Phase 1 pilot's installer tests, ported verbatim from the deleted hand-written
+/// RoR2 module (PR G, DESIGN-bepinex-family.md §9): the same r2modman routing conventions
+/// (per-package plugins subfolder, shared config, metadata skipped), now exercised through
+/// the schema-driven family row — RoR2 carries the canonical 5 rules.
 /// </summary>
-public class BepInExInstallerTests(ITestOutputHelper outputHelper) : ALibraryArchiveInstallerTests<BepInExInstallerTests, RiskOfRain2Game>(outputHelper)
+public class RiskOfRain2InstallerTests(ITestOutputHelper outputHelper)
+    : ALibraryArchiveInstallerTests<RiskOfRain2InstallerTests, GenericBepInExGame>(outputHelper)
 {
+    private static readonly BepInExGameData RiskOfRain2Data =
+        EcosystemSchemaParser.LoadBundledGames(new HashSet<string>())
+            .Single(g => g.SettingsIdentifier == "RiskOfRain2");
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
-            .AddBepInExGames()
-            .AddRiskOfRain2()
+            .AddSingleton<GenericBepInExGame>(sp => new GenericBepInExGame(sp, RiskOfRain2Data))
+            .AddSingleton<IGame>(sp => sp.GetRequiredService<GenericBepInExGame>())
+            .AddSingleton<IGameData>(sp => sp.GetRequiredService<GenericBepInExGame>())
+            .AddSingleton<BepInExPackInstaller>()
+            .AddBepInExLoadoutItemModel()
+            .AddBepInExPluginLoadoutItemModel()
             .AddThunderstoreModels()
-            .AddUniversalGameLocator<RiskOfRain2Game>(new Version("1.3.9"));
+            .AddUniversalGameLocator<GenericBepInExGame>(new Version("1.3.9"));
+    }
+
+    /// <summary>
+    /// The migration contract: the schema row must be indistinguishable from the deleted
+    /// hand-written module wherever identity is persisted (Brian's live loadout!) —
+    /// GameId, display name, primary file, Steam id, and the Nexus-less zero-sentinel path.
+    /// </summary>
+    [Fact]
+    public void FamilyRow_PreservesHandWrittenIdentity()
+    {
+        RiskOfRain2Data.GameId.Should().Be(GameId.From("RiskOfRain2"));
+        RiskOfRain2Data.DisplayName.Should().Be("Risk of Rain 2");
+        RiskOfRain2Data.PrimaryExeName.Should().Be("Risk of Rain 2.exe");
+        RiskOfRain2Data.SteamAppIds.Should().Contain(632360u);
+        RiskOfRain2Data.NexusModsGameId.HasValue.Should().BeFalse("RoR2 is Thunderstore-exclusive");
+        RiskOfRain2Data.CommunitySlug.Should().Be("riskofrain2");
     }
 
     [Fact]
