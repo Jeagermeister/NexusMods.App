@@ -26,6 +26,7 @@ public class GenericBepInExGame : IGame
     private const string GcdnAssetsBaseUrl = "https://gcdn.thunderstore.io/assets/";
 
     private readonly BepInExGameData _data;
+    private readonly InstallRuleRouter _installRuleRouter;
 
     public BepInExGameData Data => _data;
 
@@ -76,13 +77,21 @@ public class GenericBepInExGame : IGame
             new MissingBepInExEmitter(data.CommunitySlug),
         ];
 
+        _installRuleRouter = new InstallRuleRouter(data.InstallRules);
         LibraryItemInstallers =
         [
             provider.GetRequiredService<BepInExPackInstaller>(),
             // Per-game instance: routing follows this game's schema installRules (design §6).
-            new BepInExPluginInstaller(provider, data.InstallRules, data.RelativeFileExclusions),
+            new BepInExPluginInstaller(provider, _installRuleRouter, data.RelativeFileExclusions),
         ];
     }
+
+    /// <summary>
+    /// Collections install downloads that no installer claims into the schema's default route
+    /// (Vortex parity, upstream #2553) instead of raising one advanced-installer dialog per mod.
+    /// </summary>
+    public Optional<GamePath> GetFallbackCollectionInstallDirectory(GameInstallation installation)
+        => new GamePath(LocationId.Game, RelativePath.FromUnsanitizedInput(_installRuleRouter.DefaultRoute));
 
     /// <summary>
     /// Art is best-effort by design (§10): the placeholder serves when the schema carries no

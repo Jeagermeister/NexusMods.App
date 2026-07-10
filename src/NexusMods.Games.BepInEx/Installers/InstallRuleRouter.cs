@@ -43,6 +43,12 @@ public sealed class InstallRuleRouter
     private readonly CompiledRule[] _rules;
     private readonly CompiledRule _defaultRule;
 
+    /// <summary>
+    /// The default rule's route — where unrouted files land, and the game's collection
+    /// fallback install directory (upstream #2553 semantics).
+    /// </summary>
+    public string DefaultRoute => _defaultRule.Route;
+
     public InstallRuleRouter(IReadOnlyList<EcosystemInstallRule> rules)
     {
         var source = rules.Count > 0 ? rules : CanonicalRules;

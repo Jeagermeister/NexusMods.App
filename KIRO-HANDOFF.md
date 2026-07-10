@@ -1607,7 +1607,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §33 (collections fix)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -1640,3 +1640,32 @@ hygiene (#24, §31.3) → **v0.1.0 RELEASED**.
    out of the repo before announcing anywhere (§20.7 note — they mention AI sessions).
 
 Backlogs: §28.1 (UI — closed) and the standing queue at the end of §28.
+
+## 33. Session log — 2026-07-09 (cont.) — Collections fix: the Subnautica popup storm
+
+Brian installed a Subnautica collection: downloads fine, then one Advanced Installer
+dialog **per mod** (all at once — `InstallCollectionJob` installs mods with
+`Parallel.ForEachAsync`) and the collection left disabled. Two root causes, both ours:
+
+1. **No collection fallback directory.** Collections suppress the advanced installer by
+   design (upstream #2553, Vortex parity: unknown stuff → default folder), but only for
+   games implementing `GetFallbackCollectionInstallDirectory` — upstream, only Stardew.
+   `GenericBepInExGame` didn't → `FallbackCollectionDownloadInstaller.Create` returned
+   null → `InstallLoadoutItemJob` line 92 `?? AdvancedManualInstaller` = the dialog.
+2. **Nexus archives were never claimed.** `BepInExPluginInstaller.IsSupportedLibraryArchive`
+   required Thunderstore identity or `manifest.json`. Nexus zips (what collections
+   download) have neither → nearly every mod fell to the (null) fallback.
+
+Fix (PR — `fix/collections-bepinex-fallback`): the family game now derives the fallback
+dir from its schema default route (`InstallRuleRouter.DefaultRoute`, router instance now
+shared game↔installer), and the plugin installer additionally claims archives carrying a
+`.dll` anywhere or rooted in a route folder — so Nexus mods route *properly* (QMods,
+state/subdir semantics intact) rather than landing flat in the fallback. RoR2 module
+untouched (Thunderstore-only, no Nexus collections; folds into the family in PR G).
+Tests: +2 router facts, +3 Subnautica e2e (Nexus no-manifest, game-root-packaged
+no-nesting, fallback-dir). 56/56 BepInEx, 5/5 RoR2 pass; NexusMods.Collections.Tests
+5 failures are pre-existing env-only (`NEXUS_API_KEY` live-API tests).
+
+Follow-up queued: verify a real Subnautica collection end-to-end in the running app
+(premium account = automated downloads; the earlier session-expiry caveat from the
+OAuth queue entry still applies).

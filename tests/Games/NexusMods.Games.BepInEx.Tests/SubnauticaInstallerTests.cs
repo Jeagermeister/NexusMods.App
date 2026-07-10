@@ -6,6 +6,7 @@ using NexusMods.Games.BepInEx.Installers;
 using NexusMods.Games.BepInEx.Models;
 using NexusMods.Games.BepInEx.Schema;
 using NexusMods.Games.TestFramework;
+using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.StandardGameLocators.TestHelpers;
 using Xunit;
@@ -104,5 +105,55 @@ public class SubnauticaInstallerTests(ITestOutputHelper outputHelper)
         var targets = ChildrenFilesAndHashes(group).Select(x => x.GamePath.Path.ToString()).ToArray();
 
         targets.Should().ContainSingle().Which.Should().Be("QMods/MyMod/MyMod.dll");
+    }
+
+    // --- Nexus-hosted archives (the collection install path): no Thunderstore manifest ---
+
+    [Fact]
+    public async Task NexusArchive_NoManifest_IsClaimedAndRoutedToPlugins()
+    {
+        var loadout = await CreateLoadout();
+        var archive = await AddFromPaths(
+            "CoolMod/CoolMod.dll",
+            "CoolMod/assets/tex.png");
+
+        var group = await Install(typeof(BepInExPluginInstaller), loadout, archive);
+        var targets = ChildrenFilesAndHashes(group).Select(x => x.GamePath.Path.ToString()).OrderBy(x => x).ToArray();
+
+        // Wrapper stripped, .dll extension-routes to plugins, the loose asset follows the
+        // default rule — structure between the two is preserved.
+        targets.Should().BeEquivalentTo(
+            "BepInEx/plugins/CoolMod.dll",
+            "BepInEx/plugins/assets/tex.png");
+    }
+
+    [Fact]
+    public async Task NexusArchive_PackagedFromGameRoot_RoutesWithoutNesting()
+    {
+        var loadout = await CreateLoadout();
+        // Nexus zips are often packaged from the game root; these must not double up
+        // into BepInEx/plugins/BepInEx/….
+        var archive = await AddFromPaths(
+            "BepInEx/plugins/CoolMod/CoolMod.dll",
+            "BepInEx/config/CoolMod.cfg");
+
+        var group = await Install(typeof(BepInExPluginInstaller), loadout, archive);
+        var targets = ChildrenFilesAndHashes(group).Select(x => x.GamePath.Path.ToString()).OrderBy(x => x).ToArray();
+
+        targets.Should().BeEquivalentTo(
+            "BepInEx/config/CoolMod.cfg",
+            "BepInEx/plugins/CoolMod/CoolMod.dll");
+    }
+
+    [Fact]
+    public void FallbackCollectionInstallDirectory_IsTheSchemaDefaultRoute()
+    {
+        // Collections install downloads no installer claims into this directory (Vortex
+        // parity, upstream #2553) — when it's absent every unclaimed mod raises an
+        // advanced-installer dialog instead.
+        var fallback = Game.GetFallbackCollectionInstallDirectory(GameInstallation);
+
+        fallback.HasValue.Should().BeTrue();
+        fallback.Value.Should().Be(new GamePath(LocationId.Game, "BepInEx/plugins"));
     }
 }
