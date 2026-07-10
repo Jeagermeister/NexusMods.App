@@ -150,6 +150,12 @@
                                                 <icons:UnifiedIcon Value="{x:Static icons:IconValues.NexusColor}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem x:Name="AddCollectionFromLinkMenuItem"
+                                                  Header="Collection from link">
+                                            <MenuItem.Icon>
+                                                <icons:UnifiedIcon Value="{x:Static icons:IconValues.Link}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </controls:StandardButton.Flyout>
                             </controls:StandardButton>
@@ -225,6 +231,15 @@
                                 Fill="None"
                                 ShowIcon="Left"
                                 LeftIcon="{x:Static icons:IconValues.NexusColor}"/>
+                            <controls:StandardButton
+                                x:Name="AddCollectionFromLinkButton"
+                                Text="Add collection from link"
+                                ToolTip.Tip="Install a collection from a shared link, like one a friend sent you"
+                                Type="Tertiary"
+                                Size="Toolbar"
+                                Fill="None"
+                                ShowIcon="Left"
+                                LeftIcon="{x:Static icons:IconValues.Link}"/>
                         </ItemsControl>
                     </controls:Toolbar>
 

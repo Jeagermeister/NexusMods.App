@@ -119,6 +119,12 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsCollectionsCommand, view => view.GetCollectionFromNexusButton)
                     .AddTo(disposables);
 
+                this.BindCommand(ViewModel, vm => vm.AddCollectionFromLinkCommand, view => view.AddCollectionFromLinkButton)
+                    .AddTo(disposables);
+
+                this.BindCommand(ViewModel, vm => vm.AddCollectionFromLinkCommand, view => view.AddCollectionFromLinkMenuItem)
+                    .AddTo(disposables);
+
                 this.OneWayBind(ViewModel, vm => vm.Adapter.Source.Value, view => view.TreeDataGridLibrary.Source)
                     .AddTo(disposables);
 
