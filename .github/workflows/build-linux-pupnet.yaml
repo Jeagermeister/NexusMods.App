@@ -68,6 +68,7 @@ jobs:
         with:
           ref: ${{ inputs.Target || github.sha }}
           submodules: "recursive"
+          lfs: true
           
       - name: Setup .NET 9.x
         uses: actions/setup-dotnet@v4
@@ -131,6 +132,7 @@ jobs:
         with:
           ref: ${{ inputs.Target || github.sha }}
           submodules: "recursive"
+          lfs: true
           
       - name: Setup .NET 9.x
         uses: actions/setup-dotnet@v4

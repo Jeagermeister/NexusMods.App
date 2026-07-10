@@ -1607,7 +1607,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §34 (pre-0.1.1 sweep)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §35 (CI failure-email triage)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -1717,3 +1717,32 @@ Library 3/3, Thunderstore 54/54, solution 0 errors.
 
 **Next:** v0.1.1 once Brian merges + GUI-checks #27/#28 (Release workflow with the
 untested-Windows-job caveat, or the known-good local pupnet path).
+
+## 35. Session log — 2026-07-10 — CI triage: the three failure-email workflows
+
+Brian got three "failed workflow" emails (Git Builds + Validate NuGet packages here,
+Game Extension Test on the Vortex fork) and disabled all three as a stopgap. All
+diagnosed and fixed; **merges are his** (auto-mode blocks self-merging PRs):
+
+**Apocrypha — PR #31 (`ci/lfs-checkouts`), VERIFIED GREEN via branch dispatch.** Both
+scheduled workflows died at our own guard: since 264dcd73c vendored the hashes DB via
+git-lfs, any checkout without LFS smudging fails the pointer-file check.
+networking_tests.yaml got `lfs: true` back then; git-builds' two pupnet workflows
+(4 checkouts) and validate-nupkgs were missed. Fix: `lfs: true` everywhere, plus
+validate-nupkgs triggers main→linux-fork (never fired here) and checkout v3→v4.
+Bonus bug the CI run exposed: the guard's `<Touch>` runs BeforeTargets=PrepareForBuild
+— before MSBuild creates obj dirs — so clean builds failed MSB3371 (local always had
+obj/ already). Fixed with a `<MakeDir>`; clean local Release build + dispatched runs
+confirm. **Both workflows re-disabled until #31 merges** (else tomorrow's crons fail
+again off the unfixed default branch): after merge, run
+`gh workflow enable git-builds.yaml && gh workflow enable validate-nupkgs.yaml`.
+
+**Vortex fork — PR #6 (`ci/game-ext-test-fork-safe`), VERIFIED GREEN via dispatch.**
+Nightly game-extension-test fails unconditionally on the fork: the harness hard-exits
+without a `NEXUS_API_KEY` secret (repo has zero secrets), then rollup 410s filing its
+rolling issue because issues are disabled on the fork. Fix: discover exports
+`has_key` (secrets context is unusable in job-level `if`), test matrix skips with a
+step-summary notice when absent, issue reporting wrapped in try/catch. Verified: run
+green with test skipped. **Workflow re-disabled until #6 merges**; after merge
+re-enable and it stays silently green — add a personal Nexus API key as the
+`NEXUS_API_KEY` secret whenever the extension tests should actually run.
