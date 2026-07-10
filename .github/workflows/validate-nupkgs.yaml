@@ -5,12 +5,12 @@ on:
     - cron: '0 9 * * *'
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ linux-fork ]
     paths:
       - '.github/workflows/validate-nupkgs.yaml'
       - '**.csproj'
   pull_request:
-    branches: [ main ]
+    branches: [ linux-fork ]
     paths:
       - '.github/workflows/validate-nupkgs.yaml'
       - '**.csproj'
@@ -20,9 +20,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
+          lfs: true
 
       - name: Setup .NET 9.x
         uses: actions/setup-dotnet@v4
