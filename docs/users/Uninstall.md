@@ -27,8 +27,8 @@ If you installed the Nexus Mods app from the installer (most common), you can re
 This part only applies if you are using Linux, have a portable install or have built the app from source and are running a development build. 
 
 - Open a terminal and run the following command (case-sensitive):
-  - On Windows `./NexusMods.App.exe uninstall-app`
-  - On Linux `./NexusMods.App uninstall-app`
+  - On Windows `./Apocrypha.exe uninstall-app`
+  - On Linux `./Apocrypha uninstall-app`
 
 
 ## Manual Uninstall (Fallback)

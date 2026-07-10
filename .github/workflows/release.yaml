@@ -22,11 +22,6 @@ on:
         required: false
         type: boolean
         default: true
-      release-nexus-mods:
-        description: "Release on Nexus Mods?"
-        required: false
-        type: boolean
-        default: false
       notify-discord:
         description: "Notify on Discord?"
         required: false
@@ -147,18 +142,9 @@ jobs:
           files: bin/**/*
           fail_on_unmatched_files: true
 
-  release-nexus-mods:
-    runs-on: ubuntu-latest
-    needs: [ transformInputs, build-linux, build-windows ]
-
-    steps:
-      - name: Empty
-        if: inputs.release-nexus-mods == true
-        run: exit 0
-
   notify-discord:
     runs-on: ubuntu-latest
-    needs: [ release-github, release-nexus-mods ]
+    needs: [ release-github ]
 
     steps:
       - name: Send Discord notification
@@ -172,7 +158,7 @@ jobs:
 
   notify-slack:
     runs-on: ubuntu-latest
-    needs: [ release-github, release-nexus-mods ]
+    needs: [ release-github ]
 
     steps:
       - name: Empty

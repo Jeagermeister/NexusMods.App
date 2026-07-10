@@ -1,1 +1,1 @@
-NexusMods.App.exe uninstall-app
+Apocrypha.exe uninstall-app

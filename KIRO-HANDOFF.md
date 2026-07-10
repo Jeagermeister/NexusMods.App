@@ -1543,31 +1543,74 @@ rationale + slicing in **`DESIGN-app-layout.md`** at repo root):
 
 ---
 
-## 30. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+## 31. Session log — 2026-07-09 (cont.) — Rebrand R4: packaging — THE FIRST APPIMAGE
 
-**Everything is merged through PR #21.** All four §28.1 UI asks are closed (search box,
-purple accent, tome Home icon; login was research-only). Brian's box runs on
-`~/.local/share/Apocrypha`; the local repo folder `~/Source/NexusMods.App` can be renamed
-anytime. One new bug in the standing queue: the MyGames tile misalignment (Brian,
-2026-07-09). The app's multi-source layout is now DESIGNED and reviewed —
-`DESIGN-app-layout.md` (§29.2) — implementation deliberately follows R4.
+> Roadmap step 10. Branch `rebrand/r4-packaging`, **PR #23**. Verified end-to-end on the
+> box: `Apocrypha.x86_64.AppImage` (234MB, self-contained) built, launched, opened Brian's
+> real Library, and self-registered as the nxm/ror2mm handler.
+
+### 31.1 What landed
+- **The binary is `Apocrypha`**: `<AssemblyName>` in NexusMods.App.csproj (project/
+  namespace names stay NexusMods.* per the Phase 1 §14 decision). Verified live:
+  `WM_CLASS = "Apocrypha"` matches the desktop file's now-uncommented
+  `StartupWMClass=Apocrypha`. Followers updated: `X-AppImage-Name`, uninstall.bat,
+  uninstall-helper.ps1 (`Stop-Process -Name Apocrypha`), app.manifest win32 identity,
+  docs (Uninstall.md exe names, Contributing.md CLI examples). No CI or code referenced
+  the old exe name (checked).
+- **pupnet conf**: `AppBaseName`/`PackageName = Apocrypha`; icon ladder from Brian's kit
+  wired as `apocrypha.{16..512}.png` (PupNet REQUIRES `name.size.png` naming — the kit's
+  `apocrypha-N.png` files are renamed on copy).
+- **CI/metadata**: `release-nexus-mods` job + input deleted from release.yaml (notify
+  jobs' `needs` fixed); `releases-to-appstream.py` OWNER/REPO → Jeagermeister/Apocrypha;
+  NuGet.Build.props → Apocrypha authors/URLs/icon (dangling `Nexus-Icon.png` reference
+  replaced by `Apocrypha-Icon.png` at repo root); docs landing icon → the in-repo
+  apocrypha icon (NOT into `docs/Nexus` — that's the upstream mkdocs-theme SUBMODULE,
+  briefly polluted and cleaned); `src/NexusMods.App/Deploy/` gitignored.
+- CI reviewed: build-linux-pupnet.yaml builds PupNet from a pinned commit and needs no
+  appimagetool on the runner; the AppImage job passes
+  `-p DefineConstants=INSTALLATION_METHOD_APPIMAGE` (matched locally for verification).
+
+### 31.2 Local-build quirks worth remembering
+- PupNet 1.10.0 (dotnet tool) invokes the literal binary name
+  `appimagetool-x86_64.AppImage`; the AUR package installs `appimagetool` → symlink
+  needed for local builds. Brian installed `appimagetool` via paru (note: `libappimage`
+  is a parsing library, NOT the tool).
+- Each app start rewrites the desktop file's Exec to WHOEVER ran (source run vs
+  AppImage) — last-runner-wins registration is upstream behavior; fine for a single
+  user, worth revisiting before public release.
+
+### 31.3 Verification
+Full solution 0 errors with the renamed binary; dev run + AppImage run both opened the
+real datom store ("existing state found"); AppImage self-registered handlers (desktop
+file Exec/TryExec point at the AppImage); WM_CLASS `("AppRun", "Apocrypha")` groups
+correctly under the desktop entry. Windows packaging path (Inno setup, sign.bat,
+registry) remains code-only — **needs a real-Windows QA pass** before any Windows
+release.
+
+---
+
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09)
+
+**Merged through PR #22; PR #23 (rebrand R4, §31) open.** The fork now produces an
+installable **`Apocrypha.x86_64.AppImage`** (roadmap step 10 COMPLETE pending merge) —
+built and verified live on the box. Brian's data at `~/.local/share/Apocrypha`; repo
+folder `~/Source/NexusMods.App` can be renamed anytime. Layout design reviewed and locked
+in `DESIGN-app-layout.md` (§29.2).
 
 Shipped, in order: Phase 1 (PRs #1–#9) → Phase 2 PR E (#10) → sync-wipe fix (#11) + PR F
 rules engine (#12) → **APOCRYPHA** → rebrand R1 (#13) → repo rename → rebrand R2 (#14) →
 handoff restore (#15) → PR H' runtime art (#16, §25) → build-health fix (#17, §25.3) →
-**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1) →
-layout design locked (§29.2).
+**rebrand R3 (#18, §27)** → UI de-Nexus face (#19+#20, §29) → games search (#21, §29.1)
+→ layout design locked (§29.2, #22) → **rebrand R4 / FIRST APPIMAGE (#23, §31)**.
 
 **Next up (Brian's mode: one by one):**
-1. **Rebrand R4 / packaging** — pupnet `AppBaseName`/`PackageName` (binary rename →
-   StartupWMClass/X-AppImage-Name/uninstall scripts/app.manifest flip with it), workflows
-   (drop the release-to-nexusmods job), releases-to-appstream.py OWNER/REPO,
-   NuGet.Build.props, icon ladders (kit: `~/Source/VortexApp_Artwork/
-   apocrypha_app_icon_set/`, desktop Icon= already the new id) → installable AppImage
-   (roadmap step 10). Windows registry QA (§27.1) rides here.
-2. **Layout epic** — `DESIGN-app-layout.md` PRs L1→L5 (quick wins → split-button →
-   Library rollup → spine grouping → dashboard).
+1. **First tagged release** — run the Release workflow (version, changelog), publish the
+   AppImage on GitHub Releases; then claim AUR `apocrypha` (§23.1). Community re-home
+   items (move internal docs out of the repo, announcement) become live considerations.
+2. **Layout epic** — `DESIGN-app-layout.md` PRs L1→L5 (quick wins incl. the MyGames
+   tile-misalignment bug → split-button → Library rollup → spine grouping → dashboard).
 3. **Phase 2 PR G** — RoR2 folds into the BepInEx family (§21 plan / design §9).
+4. **Windows QA pass** — registry/ProgID changes (§27.1) + Inno/sign path (§31.3) on a
+   real Windows box.
 
-Backlogs: §28.1 (UI — all closed; localization rides the §20.7 sweep) and the standing
-queue at the end of §28.
+Backlogs: §28.1 (UI — closed) and the standing queue at the end of §28.
