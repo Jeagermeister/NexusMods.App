@@ -7,8 +7,6 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/London"
-    reviewers:
-      - "Nexus-Mods/nexusmods-app-developers"
     labels:
       - "area-dependencies"
     allow:
