@@ -1702,7 +1702,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §38 (the CI excavation)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §39 (v0.1.2 + Apocrypha.Server)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -2022,3 +2022,49 @@ no release yet), Windows .msi/.exe friend build (pipeline proven), DESIGN-webser
 web-service v1, per-row indicator follow-ups (Thunderstore update source, loadout Update
 button), code-level macOS cut (Brian's call), AUR claim, layout epic L2–L5, internal docs
 out of repo before announcing.
+
+## 39. Session log — 2026-07-11 (cont.) — v0.1.2 SHIPPED (Linux + Windows) and Apocrypha.Server born
+
+Brian's four-step plan, all four done in one stretch:
+
+**1. Code-level macOS cut — PR #40 (MERGED, 23 files, +36/−189).** MacOSInterop + DI
+registration deleted; all 14 `onOSX:` branches removed (`MatchPlatform`'s onOSX param is
+OPTIONAL → omission = automatic PlatformNotSupportedException, no stubs); the macOS-only
+`NexusMods_App` legacy-migration handling dropped; telemetry OS names trimmed. KEPT as
+external data: GOG's `osx` API field, hashes-DB `MacOS` enum + `steam --os` parsing, file
+signatures. Full suite green; CI validated on both shipping platforms.
+
+**2+3. v0.1.2 RELEASED — Linux AND Windows in one dispatch.** KEY DISCOVERY: the dormant
+`release.yaml` is a complete pipeline (version input → Linux archive+AppImage AND Windows
+archive+InnoSetup setup.exe → GitHub release with all four artifacts, draft+prerelease
+defaults). Only blocker was `SignExecutable: true` needing SSL.com eSigner secrets the fork
+lacks → PR #41 (MERGED) ships unsigned, the path PR-builds already proved. Dispatched after
+PR #42 (recentered README banner, Brian's new art). Draft got title
+"Apocrypha 0.1.2 — share your loadout, now on Windows too" + release notes
+(share/join headline, update-indicator column, SmartScreen warning note for the unsigned
+installer). **Brian published it as a FULL release (not prerelease) — a first.** Artifacts:
+AppImage 266MB, linux zip 259MB, `Apocrypha.x64.exe` installer 164MB, win zip 242MB.
+Binary version matches the tag (workflow passes RawVersion to pupnet) so the updater offers
+0.1.2 to 0.1.1 installs and stays quiet on fresh ones.
+
+**4. Apocrypha.Server — NEW repo (github.com/Jeagermeister/Apocrypha.Server, on disk
+~/Source/Apocrypha.Server).** Room-code loadout sharing (app roadmap step 12) spun into its
+own repo per Brian's directive. Contents: README (manifests-never-mods guarantee up front),
+DESIGN.md (v1 room codes `APOC-XXXX`/no accounts/droplet+Caddy+SQLite → v2 Discord identity
+→ v3 gated P2P design-only; the four redistribution guardrails as hard commitments; manifest
+JSON schema; abuse/expiry), and a WORKING minimal-API skeleton (in-memory store) —
+smoke-tested end-to-end: create→fetch→update(401/204 host-key auth)→delete→404.
+**Targets .NET 10 LTS** (not the app's 9: .NET 9 STS is past EOL, and Arch's
+`aspnet-runtime` ships 10). csproj sets `AllowMissingPrunePackageData=true` for Arch's
+split .NET packaging (NETSDK1226 otherwise). Brian created the GitHub repo himself (the
+auto-mode classifier blocks repo creation, like merges) and installed `aspnet-runtime`.
+
+**Post-release: PR #43 (open)** — the `Update AppStream release file` workflow has failed on
+EVERY release (second onion layer after #30's missing script arg): release events check out
+the TAG → detached HEAD → create-pull-request demands an explicit `base`. Fixed
+(`base: linux-fork`) + releases.xml regenerated to back-fill v0.1.2 as stable.
+
+**Next candidates:** server SQLite persistence + deploy notes → droplet friend test;
+app-side "Share → room code" / "Add → From room code" integration; Windows QA via the
+friend test (installer is live); AUR claim; layout epic L2–L5; internal docs out of repo
+before announcing.
