@@ -97,6 +97,15 @@
                                          Fill="Weak"
                                          LeftIcon="{x:Static icons:IconValues.Update}"
                                          ShowIcon="Left" />
+
+                <!-- optional mods offered by the collection (opens the download page on the Optional tab) -->
+                <navigation:NavigationControl IsVisible="False" x:Name="ButtonViewOptionalMods"
+                                              Size="Toolbar"
+                                              Type="Tertiary"
+                                              Fill="Weak"
+                                              LeftIcon="{x:Static icons:IconValues.ModsOutline}"
+                                              ShowIcon="Left"
+                                              ToolTip.Tip="Optional mods offered by this collection — download and install them from the Optional tab" />
             </controls:Statusbar>
 
             <Border x:Name="DownloadsTreeContainer"

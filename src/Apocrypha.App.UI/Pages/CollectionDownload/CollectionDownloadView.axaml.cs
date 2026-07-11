@@ -15,6 +15,8 @@ namespace Apocrypha.App.UI.Pages.CollectionDownload;
 
 public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDownloadViewModel>
 {
+    private bool _appliedFocusOptionalTab;
+
     public CollectionDownloadView()
     {
         InitializeComponent();
@@ -192,6 +194,14 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         if (hasSingleTab) TabControl.SelectedItem = RequiredTab;
                         OptionalTab.IsVisible = optionalDownloadsCount != 0;
                     }).DisposeWith(d);
+
+                // land on the Optional tab when the page was opened for it (once, so
+                // re-activations don't yank the user away from the Required tab)
+                if (!_appliedFocusOptionalTab && ViewModel!.FocusOptionalTab && ViewModel!.OptionalDownloadsCount > 0)
+                {
+                    _appliedFocusOptionalTab = true;
+                    TabControl.SelectedItem = OptionalTab;
+                }
                 
                 this.WhenAnyValue(view => view.ViewModel!.OverallRating)
                     .Select(rating =>

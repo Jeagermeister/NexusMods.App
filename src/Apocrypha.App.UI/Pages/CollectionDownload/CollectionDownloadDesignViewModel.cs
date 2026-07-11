@@ -51,6 +51,7 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public int CountDownloadedOptionalItems { get; } = 1;
     public int CountDownloadedRequiredItems { get; } = 1;
     public bool CanDownloadAutomatically { get; } = false;
+    public bool FocusOptionalTab => false;
 
     public BindableReactiveProperty<bool> IsInstalled { get; } = new(value: false);
     public BindableReactiveProperty<bool> IsDownloading { get; } = new();

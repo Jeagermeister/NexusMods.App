@@ -57,8 +57,10 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         IWindowManager windowManager,
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        LoadoutId targetLoadout) : base(windowManager)
+        LoadoutId targetLoadout,
+        bool focusOptionalTab = false) : base(windowManager)
     {
+        FocusOptionalTab = focusOptionalTab;
         _serviceProvider = serviceProvider;
         _overlayController = serviceProvider.GetRequiredService<IOverlayController>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
@@ -170,7 +172,12 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                 );
 
                 if (CollectionDownloader.IsFullyInstalled(items, group.AsCollectionGroup(), connection.Db))
-                    _notificationService.ShowToast(Language.ToastNotification_Collection_installed, ToastNotificationVariant.Success);
+                {
+                    var message = OptionalDownloadsCount > 0
+                        ? $"{Language.ToastNotification_Collection_installed} This collection also has {OptionalDownloadsCount} optional mods — see the Optional tab."
+                        : Language.ToastNotification_Collection_installed;
+                    _notificationService.ShowToast(message, ToastNotificationVariant.Success);
+                }
             },
             awaitOperation: AwaitOperation.Drop,
             configureAwait: false
@@ -527,6 +534,8 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     [Reactive] public string CollectionStatusText { get; private set; } = "";
 
     [Reactive] public bool CanDownloadAutomatically { get; private set; }
+
+    public bool FocusOptionalTab { get; }
 
     public ReactiveCommand<NavigationInformation> CommandViewCollection { get; }
     public ReactiveCommand<Unit> CommandDownloadRequiredItems { get; }

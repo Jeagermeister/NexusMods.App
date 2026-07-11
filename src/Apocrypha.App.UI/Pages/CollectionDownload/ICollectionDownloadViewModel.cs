@@ -95,6 +95,11 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
 
     bool CanDownloadAutomatically { get; }
 
+    /// <summary>
+    /// Whether the view should open with the Optional tab selected.
+    /// </summary>
+    bool FocusOptionalTab { get; }
+
     BindableReactiveProperty<bool> IsInstalled { get; }
     BindableReactiveProperty<bool> IsInstalling { get; }
     BindableReactiveProperty<bool> IsDownloading { get; }
