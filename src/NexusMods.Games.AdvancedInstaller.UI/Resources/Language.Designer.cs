@@ -60,15 +60,6 @@ namespace NexusMods.Games.AdvancedInstaller.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Manual Mod.
-        /// </summary>
-        public static string AdvancedInstaller_Manual_Mod {
-            get {
-                return ResourceManager.GetString("AdvancedInstaller_Manual_Mod", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to ALL FOLDERS.
         /// </summary>
         public static string AllFoldersAreaHeaderText_ALL_FOLDERS {
@@ -128,15 +119,6 @@ namespace NexusMods.Games.AdvancedInstaller.UI.Resources {
         public static string ExtraDescriptionTextBlock_If_you_are_confident {
             get {
                 return ResourceManager.GetString("ExtraDescriptionTextBlock_If_you_are_confident", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to All mod files.
-        /// </summary>
-        public static string FileTree_ALL_MOD_FILES {
-            get {
-                return ResourceManager.GetString("FileTree_ALL_MOD_FILES", resourceCulture);
             }
         }
         

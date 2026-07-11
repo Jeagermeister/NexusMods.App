@@ -117,33 +117,8 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Newsfeed" xml:space="preserve">
-    <value>Лента новостей</value>
-  </data>
   <data name="MyGames" xml:space="preserve">
     <value>Мои игры</value>
-  </data>
-  <data name="BrowseGames" xml:space="preserve">
-    <value>Обзор игр</value>
-  </data>
-  <data name="MetricsOptIn_OverlayTitle" xml:space="preserve">
-    <value>Данные диагностики и использования</value>
-  </data>
-  <data name="MetricsOptIn_MainMessage" xml:space="preserve">
-    <value>Мы хотели бы собирать данные диагностики и использования для улучшения производительности и вашего опыта. Эти данные помогают нам выявлять проблемы, оптимизировать функции и обеспечивать лучшую работу приложения Apocrypha для всех.
-
-Ваши данные будут обрабатываться в соответствии с нашей Политикой конфиденциальности. Вы можете изменить свои предпочтения в любое время в настройках.
-
-Хотите включить сбор данных?</value>
-  </data>
-  <data name="MetricsOptIn_ALLOW" xml:space="preserve">
-    <value>Разрешить</value>
-  </data>
-  <data name="MetricsOptIn_DENY" xml:space="preserve">
-    <value>Запретить</value>
-  </data>
-  <data name="Updater_UPDATE" xml:space="preserve">
-    <value>Посмотреть обновление</value>
   </data>
   <data name="Updater_UpdateAvailable" xml:space="preserve">
     <value>Доступно обновление {0}</value>
@@ -166,12 +141,6 @@
   <data name="LoadoutGridView_AddMod_FileType_Archive" xml:space="preserve">
     <value>Архив</value>
   </data>
-  <data name="DownloadTaskViewModel_Version_Unknown" xml:space="preserve">
-    <value>Неизвестно</value>
-  </data>
-  <data name="DownloadTaskViewModel_Field_Unknown" xml:space="preserve">
-    <value>Неизвестно</value>
-  </data>
   <data name="MessageBox_Button_Yes" xml:space="preserve">
     <value>Да</value>
   </data>
@@ -181,35 +150,14 @@
   <data name="MessageBox_Button_Ok" xml:space="preserve">
     <value>ОК</value>
   </data>
-  <data name="CancelDownloadOverlayView_Description_download_will_be_cancelled" xml:space="preserve">
-    <value>Загрузка {0} будет отменена, а файлы будут удалены.</value>
-  </data>
   <data name="CancelDownloadOverlayView_Title" xml:space="preserve">
     <value>Отменить и удалить загрузки?</value>
   </data>
   <data name="Helpers_GenerateHeader_NAME" xml:space="preserve">
     <value>ИМЯ</value>
   </data>
-  <data name="Helpers_GenerateHeader_VERSION" xml:space="preserve">
-    <value>ВЕРСИЯ</value>
-  </data>
-  <data name="Helpers_GenerateHeader_CATEGORY" xml:space="preserve">
-    <value>КАТЕГОРИЯ</value>
-  </data>
-  <data name="Helpers_GenerateHeader_INSTALLED" xml:space="preserve">
-    <value>УСТАНОВЛЕНО</value>
-  </data>
-  <data name="Helpers_GenerateHeader_MOD_NAME" xml:space="preserve">
-    <value>ИМЯ МОДА</value>
-  </data>
-  <data name="Helpers_GenerateHeader_GAME" xml:space="preserve">
-    <value>ИГРА</value>
-  </data>
   <data name="Helpers_GenerateHeader_SIZE" xml:space="preserve">
     <value>РАЗМЕР</value>
-  </data>
-  <data name="Helpers_GenerateHeader_STATUS" xml:space="preserve">
-    <value>СТАТУС</value>
   </data>
   <data name="LaunchButtonViewModel_LaunchGame_RUNNING" xml:space="preserve">
     <value>ИГРА ЗАПУЩЕНА...</value>
@@ -232,12 +180,6 @@
   <data name="StringFormatters__In_progress__numDownloads" xml:space="preserve">
     <value> ({0})</value>
   </data>
-  <data name="DownloadStatus_Idle" xml:space="preserve">
-    <value>Ожидание</value>
-  </data>
-  <data name="DownloadStatus_Progress" xml:space="preserve">
-    <value>Прогресс</value>
-  </data>
   <data name="Nexus_Premium_Status__Premium" xml:space="preserve">
     <value>ПРЕМИУМ</value>
   </data>
@@ -259,20 +201,8 @@
   <data name="GameWidget__Add_game" xml:space="preserve">
     <value>Добавить игру</value>
   </data>
-  <data name="DownloadsView__DOWNLOADS" xml:space="preserve">
-    <value>Загрузки</value>
-  </data>
-  <data name="DownloadsView__In_Progress" xml:space="preserve">
-    <value>В процессе</value>
-  </data>
   <data name="DownloadsView__Completed" xml:space="preserve">
     <value>Завершено</value>
-  </data>
-  <data name="DownloadsView__Download_history" xml:space="preserve">
-    <value>История загрузок</value>
-  </data>
-  <data name="DownloadsView_UnderDevelopment" xml:space="preserve">
-    <value>Страница загрузок в настоящее время перерабатывается и будет заменена в будущем обновлении. Приносим извинения за неудобства.</value>
   </data>
   <data name="NexusLoginOverlayView__Please_Click_Authorize" xml:space="preserve">
     <value>Пожалуйста, нажмите "Авторизовать" на веб-сайте</value>
@@ -283,48 +213,6 @@
   <data name="NexusLoginOverlayView_Please_copy_url" xml:space="preserve">
     <value>Пожалуйста, скопируйте следующий URL-адрес в окно вашего браузера. Мы поддерживаем Chrome, Safari, Firefox и Edge.</value>
   </data>
-  <data name="DownloadCompleted_COMPLETED" xml:space="preserve">
-    <value>Завершено</value>
-  </data>
-  <data name="DownloadCompleted_Clear_All" xml:space="preserve">
-    <value>Очистить все</value>
-  </data>
-  <data name="DownloadHistoryView__HISTORY" xml:space="preserve">
-    <value>История</value>
-  </data>
-  <data name="DownloadInProgressView__IN_PROGRESS" xml:space="preserve">
-    <value>В процессе</value>
-  </data>
-  <data name="DownloadInProgressView__Cancel" xml:space="preserve">
-    <value>Отменить</value>
-  </data>
-  <data name="DownloadInProgressView__Pause" xml:space="preserve">
-    <value>Пауза</value>
-  </data>
-  <data name="DownloadInProgressView__Pause_All" xml:space="preserve">
-    <value>Приостановить все</value>
-  </data>
-  <data name="InProgressTitleTextBlock" xml:space="preserve">
-    <value>Загрузки</value>
-  </data>
-  <data name="BoldMinutesRemainingTextBlock" xml:space="preserve">
-    <value>0 мин.</value>
-  </data>
-  <data name="MinutesRemainingTextBlock" xml:space="preserve">
-    <value>осталось</value>
-  </data>
-  <data name="InProgressView_InProgressView_Remaining" xml:space="preserve">
-    <value>осталось</value>
-  </data>
-  <data name="HomeView__We_found_games" xml:space="preserve">
-    <value>Мы нашли игры, готовые к моддингу!</value>
-  </data>
-  <data name="HomeView__CANT_SEE_YOUR_GAME" xml:space="preserve">
-    <value>Не видите свою игру?</value>
-  </data>
-  <data name="HomeView__BROWSE_ALL_GAMES" xml:space="preserve">
-    <value>Обзор всех игр</value>
-  </data>
   <data name="FileOriginPage_DeleteMod" xml:space="preserve">
     <value>Удалить</value>
   </data>
@@ -334,56 +222,11 @@
   <data name="FileOriginPage_AddModAdvanced" xml:space="preserve">
     <value>Расширенная установка</value>
   </data>
-  <data name="MyGamesView__Ready_to_mod" xml:space="preserve">
-    <value>Игры добавлены</value>
-  </data>
-  <data name="MyGamesView__Detected_games" xml:space="preserve">
-    <value>Поддерживаемые игры</value>
-  </data>
   <data name="MyGamesView__Page_Description" xml:space="preserve">
     <value>Добавьте игры, чтобы начать</value>
   </data>
-  <data name="Button_Manage" xml:space="preserve">
-    <value>Управлять</value>
-  </data>
-  <data name="ProgressBar_ProgressTextFormat__Total_1_0" xml:space="preserve">
-    <value>Всего {1:0}%</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Queued" xml:space="preserve">
-    <value>В очереди</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Paused" xml:space="preserve">
-    <value>Приостановлено</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Downloading" xml:space="preserve">
-    <value>Загрузка</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Installing" xml:space="preserve">
-    <value>Установка</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Complete" xml:space="preserve">
-    <value>Завершено</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Analyzing" xml:space="preserve">
-    <value>Анализ</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_Text_Queued_0_" xml:space="preserve">
-    <value>В очереди 0%</value>
-  </data>
   <data name="PanelTabHeaderViewModel_Title_New_Tab" xml:space="preserve">
     <value>Новая вкладка</value>
-  </data>
-  <data name="DownloadInProgressView__Resume" xml:space="preserve">
-    <value>Возобновить</value>
-  </data>
-  <data name="DownloadInProgressView__Resume_All" xml:space="preserve">
-    <value>Возобновить все</value>
-  </data>
-  <data name="CancelDownloadOverlayView_Description__Download" xml:space="preserve">
-    <value>загрузка</value>
-  </data>
-  <data name="CancelDownloadOverlayView_Description_downloads" xml:space="preserve">
-    <value>загрузки</value>
   </data>
   <data name="InProgress_NoDownloadsTextBlock" xml:space="preserve">
     <value>Нет загрузок</value>
@@ -403,50 +246,11 @@
   <data name="HomeWorkspace_Title" xml:space="preserve">
     <value>Главная</value>
   </data>
-  <data name="InProgressDownloadsPage_Title" xml:space="preserve">
-    <value>Загрузки</value>
-  </data>
   <data name="LoadoutGridView__View_Files" xml:space="preserve">
     <value>Просмотреть файлы мода</value>
   </data>
-  <data name="FileTreeNodeView__View" xml:space="preserve">
-    <value>Просмотр</value>
-  </data>
-  <data name="ViewModInfoPage_Title" xml:space="preserve">
-    <value>Информация о моде</value>
-  </data>
-  <data name="ViewModFilesView_Location" xml:space="preserve">
-    <value>Расположение:</value>
-  </data>
-  <data name="ViewModFilesView_Locations" xml:space="preserve">
-    <value>Расположения:</value>
-  </data>
-  <data name="ApplyControlViewModel__ACTIVATE_LOADOUT" xml:space="preserve">
-    <value>Активировать профиль</value>
-  </data>
-  <data name="ApplyControlViewModel__ACTIVATE_AND_APPLY" xml:space="preserve">
-    <value>Активировать и применить</value>
-  </data>
   <data name="ApplyControlViewModel__APPLY" xml:space="preserve">
     <value>ПРИМЕНИТЬ</value>
-  </data>
-  <data name="ApplyingControlView__ApplyingText" xml:space="preserve">
-    <value>Применение...</value>
-  </data>
-  <data name="Helpers_ERROR" xml:space="preserve">
-    <value>Ошибка</value>
-  </data>
-  <data name="ErrorView_Title" xml:space="preserve">
-    <value>Что-то пошло не так</value>
-  </data>
-  <data name="ErrorView_MissingMod_Description" xml:space="preserve">
-    <value>Мод, к которому вы пытаетесь получить доступ, был удален или отсутствует.</value>
-  </data>
-  <data name="ViewModInfoPage_NotFound_Title" xml:space="preserve">
-    <value>Мод не найден</value>
-  </data>
-  <data name="ErrorView_MissingMod_Subheader" xml:space="preserve">
-    <value>Мод не найден</value>
   </data>
   <data name="DiagnosticDetailsView_SeverityTitle_SUGGESTION" xml:space="preserve">
     <value>Предложение</value>
@@ -482,24 +286,8 @@
     <value>Предложения ({0})</value>
     <comment>0 is placeholder for a number</comment>
   </data>
-  <data name="DiagnosticListView_DiagnosticListView_There_are_no_diagnostics" xml:space="preserve">
-    <value>Диагностика не выявила проблем</value>
-  </data>
-  <data name="IngestButtonTextBlock_Text" xml:space="preserve">
-    <value>Загрузить</value>
-  </data>
-  <data name="ModFileTreeViewModel_StatusBar_Files__0__1" xml:space="preserve">
-    <value>Файлы: {0} ({1})</value>
-    <comment>{0} Represents a number, {1} represents a formatted size (e.g. 12GB)</comment>
-  </data>
   <data name="Helpers_GenerateHeader_File_Count" xml:space="preserve">
     <value>КОЛИЧЕСТВО ФАЙЛОВ</value>
-  </data>
-  <data name="MyGamesView__NoGamesDetectedText" xml:space="preserve">
-    <value>Все поддерживаемые игры были добавлены. Новых игр не обнаружено.</value>
-  </data>
-  <data name="MyGamesView__NoGamesManagedText" xml:space="preserve">
-    <value>Добавьте игры, чтобы начать моддинг</value>
   </data>
   <data name="GameWidget__Adding_game" xml:space="preserve">
     <value>Добавление игры</value>
@@ -512,9 +300,6 @@
   </data>
   <data name="GameWidget__Removing_game" xml:space="preserve">
     <value>Удаление игры</value>
-  </data>
-  <data name="ApplyDiff_Refresh" xml:space="preserve">
-    <value>Обновить</value>
   </data>
   <data name="Helpers_GenerateHeader_State" xml:space="preserve">
     <value>СОСТОЯНИЕ</value>
@@ -564,9 +349,6 @@
   <data name="SettingEntryView_NeedRestartMessage" xml:space="preserve">
     <value>Для применения этой настройки потребуется перезапуск приложения</value>
   </data>
-  <data name="FileOriginsPage_AddButtonText" xml:space="preserve">
-    <value>Добавить</value>
-  </data>
   <data name="DialogButton_Discard" xml:space="preserve">
     <value>Сброс</value>
   </data>
@@ -582,56 +364,14 @@
   <data name="LibraryPageTitleToolTip" xml:space="preserve">
     <value>Управление загруженными модами и коллекциями</value>
   </data>
-  <data name="FileOriginsPageView_NameHeader" xml:space="preserve">
-    <value>Имя мода</value>
-  </data>
-  <data name="FileOriginsPageView_VersionHeader" xml:space="preserve">
-    <value>Версия</value>
-  </data>
-  <data name="FileOriginsPageView_SizeHeader" xml:space="preserve">
-    <value>Размер</value>
-  </data>
-  <data name="FileOriginsPageView_DownloadedHeader" xml:space="preserve">
-    <value>Загружено</value>
-  </data>
-  <data name="FileOriginsPageView_InstalledHeader" xml:space="preserve">
-    <value>Установлено</value>
-  </data>
-  <data name="FileOriginsPageView_ActionHeader" xml:space="preserve">
-    <value>Действие</value>
-  </data>
-  <data name="DownloadStatusDesignViewModel_FormatStatus_Cancelled" xml:space="preserve">
-    <value>Отменено</value>
-  </data>
-  <data name="DownloadInProgressView__Clear" xml:space="preserve">
-    <value>Очистить</value>
-  </data>
-  <data name="DownloadInProgressView__Clear_completed" xml:space="preserve">
-    <value>Очистить завершенные</value>
-  </data>
-  <data name="DownloadInProgressView__View_in_library" xml:space="preserve">
-    <value>Просмотреть в библиотеке</value>
-  </data>
   <data name="LoadoutGridView__Remove" xml:space="preserve">
     <value>Удалить</value>
-  </data>
-  <data name="LoginMessageView_BodyTextBlock" xml:space="preserve">
-    <value>Для легкой загрузки модов с Nexus Mods вам необходимо войти в свою учетную запись Nexus Mods.  Для добавления модов вручную с вашего диска вход не требуется.</value>
-  </data>
-  <data name="LoginMessageView_Title" xml:space="preserve">
-    <value>Войдите, чтобы начать</value>
-  </data>
-  <data name="FileOriginsPage_GetMods" xml:space="preserve">
-    <value>Получить моды:</value>
   </data>
   <data name="FileOriginsPage_FromDrive" xml:space="preserve">
     <value>С диска</value>
   </data>
   <data name="FileOriginsPage_FromNexusMods" xml:space="preserve">
     <value>С Nexus Mods</value>
-  </data>
-  <data name="FileOriginsPage_ViewButtonText" xml:space="preserve">
-    <value>Просмотр</value>
   </data>
   <data name="AddPanelToolTip" xml:space="preserve">
     <value>Добавить панель для разделенного просмотра</value>
@@ -663,17 +403,8 @@
   <data name="ShowWelcomeMessageMenuItem.Header" xml:space="preserve">
     <value>О программе</value>
   </data>
-  <data name="OpenDiscordMenuItem.Header" xml:space="preserve">
-    <value>Discord</value>
-  </data>
   <data name="OpenGitHubMenuItem.Header" xml:space="preserve">
     <value>GitHub</value>
-  </data>
-  <data name="OpenForumsMenuItem.Header" xml:space="preserve">
-    <value>Форумы Nexus Mods</value>
-  </data>
-  <data name="OpenStatusPageMenuItem.Header" xml:space="preserve">
-    <value>Страница статуса</value>
   </data>
   <data name="NavigationControl_NavigationControl_Open_in_new_tab" xml:space="preserve">
     <value>Открыть в новой вкладке</value>
@@ -689,9 +420,6 @@
   </data>
   <data name="FileOriginPage_DeleteMod_ToolTip" xml:space="preserve">
     <value>Навсегда удалить этот мод из вашей Библиотеки</value>
-  </data>
-  <data name="FileOriginPage_AddModAdvanced_ToolTip" xml:space="preserve">
-    <value>Выбрать конкретные файлы из мода для добавления в ваш профиль</value>
   </data>
   <data name="ApplyControlView_ViewApplyChanges_ToolTip" xml:space="preserve">
     <value>Просмотреть изменения, которые будут применены к папке вашей игры</value>
@@ -710,15 +438,6 @@
   </data>
   <data name="IFileTreeNodeViewModel_FormattedChangeStateToolTip_ModifiedFolder" xml:space="preserve">
     <value>Папка содержит измененные файлы</value>
-  </data>
-  <data name="InfoBanner_PrefixProperty_Did_you_know_" xml:space="preserve">
-    <value>Знаете ли вы?</value>
-  </data>
-  <data name="NewTabPageInfoBannerText1" xml:space="preserve">
-    <value>Вы можете добавить панели для разделенного просмотра, выбрав</value>
-  </data>
-  <data name="NewTabPageInfoBannerText2" xml:space="preserve">
-    <value>кнопку на панели инструментов</value>
   </data>
   <data name="LoadoutGrid_EmptyModlistSubtitle_Add_from_library" xml:space="preserve">
     <value>Установите ваши моды из Библиотеки</value>
@@ -739,12 +458,6 @@
   </data>
   <data name="DiagnosticListView.Page_Description" xml:space="preserve">
     <value>Проверьте ваш профиль на наличие проблем и узнайте, как их решить при необходимости</value>
-  </data>
-  <data name="DiagnosticListView.EmptyState.Header" xml:space="preserve">
-    <value>Ваш профиль прошел проверку состояния без проблем</value>
-  </data>
-  <data name="DiagnosticListView.EmptyState.Subtitle" xml:space="preserve">
-    <value>Готово к игре.</value>
   </data>
   <data name="LoadoutCardViewModel_CreationTimeConverter_Created__0_" xml:space="preserve">
     <value>Создано {0}</value>
@@ -804,12 +517,6 @@
   <data name="LibraryItemDeleteConfirmation_UsedByWithLoadout" xml:space="preserve">
     <value>Используется в {0} - {1}:</value>
   </data>
-  <data name="LibraryItemDeleteConfirmation_DeleteModsButton" xml:space="preserve">
-    <value>Удалить мод(ы)</value>
-  </data>
-  <data name="Updated_ViewUninstallDocs" xml:space="preserve">
-    <value>Как удалить Apocrypha</value>
-  </data>
   <data name="HumanizedDateTime_Never" xml:space="preserve">
     <value>Никогда</value>
   </data>
@@ -831,18 +538,6 @@
   <data name="ErrorGameAlreadyRunning_Description" xml:space="preserve">
     <value>Похоже, что {0} уже запущена.
 Чтобы применить изменения или запустить игру снова, пожалуйста, сначала закройте игру.</value>
-  </data>
-  <data name="FileOriginPage_SwitchView" xml:space="preserve">
-    <value>Переключить вид</value>
-  </data>
-  <data name="FileOriginPage_SwitchView_ToolTip" xml:space="preserve">
-    <value>Показать или скрыть группы страниц модов</value>
-  </data>
-  <data name="FileOriginsPage_FromDrive_ToolTip" xml:space="preserve">
-    <value>Импортировать мод с вашего компьютера</value>
-  </data>
-  <data name="FileOriginsPage_FromNexus_ToolTip" xml:space="preserve">
-    <value>Открыть Nexus Mods</value>
   </data>
   <data name="FileOriginsPage_CheckForUpdates_ToolTip" xml:space="preserve">
     <value>Проверить Nexus Mods на наличие доступных обновлений файлов модов</value>
@@ -882,15 +577,6 @@
   </data>
   <data name="CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed" xml:space="preserve">
     <value>Готово к игре - Все необходимые моды установлены</value>
-  </data>
-  <data name="LibraryItemButtonUpdate_Single" xml:space="preserve">
-    <value>Загрузить обновление</value>
-  </data>
-  <data name="LibraryItemButtonUpdate_CounterInBracket" xml:space="preserve">
-    <value>Загрузить обновление ({0})</value>
-  </data>
-  <data name="LibraryItemButtonUpdate_All" xml:space="preserve">
-    <value>Загрузить все</value>
   </data>
   <data name="LoadoutView_Title_Installed_Mods_Default" xml:space="preserve">
     <value>Все</value>
@@ -996,21 +682,6 @@
   </data>
   <data name="CollectionDownloadViewModel_StatsRating_ToolTip" xml:space="preserve">
     <value>Рейтинг успеха</value>
-  </data>
-  <data name="ManageGameWarning_Title" xml:space="preserve">
-    <value>Управление этой игрой повлияет на существующие моды</value>
-  </data>
-  <data name="ManageGameWarning_Desc1" xml:space="preserve">
-    <value>Если у вас есть существующие моды, они будут обнаружены и могут использоваться вместе с приложением на странице "Внешние изменения".  Однако, если вы позже прекратите управление этой игрой или удалите приложение, эти моды будут навсегда удалены из папки вашей игры.</value>
-  </data>
-  <data name="ManageGameWarning_Desc2" xml:space="preserve">
-    <value>Чтобы сохранить любые моды, которые вы хотите сохранить, пожалуйста, сделайте их резервную копию перед продолжением.</value>
-  </data>
-  <data name="ManageGameWarning_Cancel" xml:space="preserve">
-    <value>Отмена</value>
-  </data>
-  <data name="ManageGameWarning_Continue" xml:space="preserve">
-    <value>Продолжить</value>
   </data>
   <data name="UpgradeToPremiumView_Title" xml:space="preserve">
     <value>Перейдите на Премиум для загрузки коллекций одним кликом</value>
