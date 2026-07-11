@@ -37,4 +37,12 @@ public static class ThunderstoreUrls
     /// </summary>
     public static Uri GetVersionApiUri(PackageVersionRef version)
         => new($"{BaseUrl}/api/experimental/package/{Uri.EscapeDataString(version.Package.Namespace)}/{Uri.EscapeDataString(version.Package.Name)}/{Uri.EscapeDataString(version.Version)}/");
+
+    /// <summary>
+    /// The v1 API endpoint listing every package (with all versions and dependencies) of one
+    /// community — the bulk index r2modman-family managers resolve modpacks against. Large
+    /// (megabytes gzipped) but a single request, unlike per-package experimental API calls.
+    /// </summary>
+    public static Uri GetCommunityPackageIndexUri(string communitySlug)
+        => new($"{BaseUrl}/c/{Uri.EscapeDataString(communitySlug)}/api/v1/package/");
 }

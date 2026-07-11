@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Thunderstore;
+using Apocrypha.Abstractions.Thunderstore.DTOs;
 using Apocrypha.Abstractions.Thunderstore.Models;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -35,11 +36,23 @@ public class ThunderstoreLibrary : IThunderstoreLibrary
         PackageVersionRef version,
         CancellationToken cancellationToken = default)
     {
-        var db = _connection.Db;
-        if (TryFindVersion(db, version, out var existing)) return existing;
+        if (TryFindVersion(_connection.Db, version, out var existing)) return existing;
 
         var dto = await _apiClient.GetVersion(version, cancellationToken);
         if (dto is null) throw new KeyNotFoundException($"Package version `{version}` was not found on Thunderstore");
+
+        return await GetOrAddVersion(dto, knownCommunities: null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ThunderstoreVersionMetadata.ReadOnly> GetOrAddVersion(
+        PackageVersionDto dto,
+        IReadOnlyCollection<string>? knownCommunities,
+        CancellationToken cancellationToken = default)
+    {
+        var version = dto.VersionRef;
+        var db = _connection.Db;
+        if (TryFindVersion(db, version, out var existing)) return existing;
 
         using var tx = _connection.BeginTransaction();
 
@@ -61,12 +74,21 @@ public class ThunderstoreLibrary : IThunderstoreLibrary
             if (Uri.TryCreate(dto.Icon, UriKind.Absolute, out var iconUri))
                 newPackage.IconUri = iconUri;
 
-            // Community listings live on the package endpoint (the version endpoint carries
-            // none) — they game-scope the package in the Library. Best-effort: a failed
-            // lookup leaves them unknown and the startup backfill retries later.
-            var packageDto = await _apiClient.GetPackage(version.Package, cancellationToken);
-            if (packageDto is not null && packageDto.CommunityListings.Length != 0)
-                newPackage.Communities = packageDto.CommunityListings.Select(listing => listing.Community).Distinct().ToArray();
+            // Community listings game-scope the package in the Library. Callers resolving
+            // against a community index pass the community they already know, saving one
+            // API round-trip per package — that matters when installing modpack closures.
+            // Otherwise ask the package endpoint (the version endpoint carries none).
+            // Best-effort either way: unknown listings are retried by the startup backfill.
+            var communities = knownCommunities;
+            if (communities is null || communities.Count == 0)
+            {
+                var packageDto = await _apiClient.GetPackage(version.Package, cancellationToken);
+                if (packageDto is not null && packageDto.CommunityListings.Length != 0)
+                    communities = packageDto.CommunityListings.Select(listing => listing.Community).ToArray();
+            }
+
+            if (communities is { Count: > 0 })
+                newPackage.Communities = communities.Distinct().ToArray();
 
             packageId = newPackage.Id;
         }
@@ -107,6 +129,17 @@ public class ThunderstoreLibrary : IThunderstoreLibrary
     {
         var metadata = await GetOrAddVersion(version, cancellationToken);
         _logger.LogInformation("Starting Thunderstore download of `{Version}`", version.FullName);
+        return ThunderstoreDownloadJob.Create(_serviceProvider, metadata);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IJobTask<IThunderstoreDownloadJob, AbsolutePath>> CreateDownloadJob(
+        PackageVersionDto dto,
+        IReadOnlyCollection<string>? knownCommunities,
+        CancellationToken cancellationToken = default)
+    {
+        var metadata = await GetOrAddVersion(dto, knownCommunities, cancellationToken);
+        _logger.LogInformation("Starting Thunderstore download of `{Version}`", dto.VersionRef.FullName);
         return ThunderstoreDownloadJob.Create(_serviceProvider, metadata);
     }
 

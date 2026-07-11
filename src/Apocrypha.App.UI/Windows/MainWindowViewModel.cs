@@ -237,6 +237,18 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
                 .DisposeWith(d);
             
             eventBus
+                .ObserveMessages<CliMessages.ModpackDownloadStarted>()
+                .ObserveOnUIThreadDispatcher()
+                .Subscribe(this, static (message, self) =>
+                {
+                    self._notificationService.ShowToast(
+                        $"Downloading {message.Name} — {message.Count} mods. Progress shows on the Downloads page; a completion toast follows.",
+                        ToastNotificationVariant.Neutral
+                    );
+                })
+                .DisposeWith(d);
+
+            eventBus
                 .ObserveMessages<CliMessages.ModDownloadSucceeded>()
                 .ObserveOnUIThreadDispatcher()
                 .Subscribe(this, static (message, self) =>

@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Library;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Networking.Thunderstore;
 using Apocrypha.Sdk.EventBus;
+using Apocrypha.Sdk.Library;
 using Apocrypha.Sdk.Settings;
 
 namespace Apocrypha.CLI.Types.IpcHandlers;
@@ -11,10 +13,19 @@ namespace Apocrypha.CLI.Types.IpcHandlers;
 /// <summary>
 /// A handler for ror2mm:// urls — Thunderstore's "Install with Mod Manager" one-click links.
 /// Downloads the requested package version plus its full dependency closure into the Library.
+/// Works for single mods and modpacks alike: modpack-sized closures resolve against the
+/// community package index and download in parallel.
 /// </summary>
 // ReSharper disable once InconsistentNaming
 public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
 {
+    /// <summary>
+    /// Concurrent package downloads per closure. Local constant rather than
+    /// <c>DownloadSettings.MaxParallelDownloads</c> to keep the CLI project decoupled from
+    /// the collections assembly; 8 keeps a 274-package modpack fast without hammering the CDN.
+    /// </summary>
+    private const int MaxParallelDownloads = 8;
+
     /// <inheritdoc/>
     public string Protocol => Ror2mmUrl.Scheme;
 
@@ -61,13 +72,6 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
         var resolver = _serviceProvider.GetRequiredService<ThunderstoreDependencyResolver>();
         var library = _serviceProvider.GetRequiredService<ILibraryService>();
 
-        if (thunderstoreLibrary.IsAlreadyDownloaded(versionRef))
-        {
-            _logger.LogInformation("Package `{Package}` has already been downloaded and will be skipped", versionRef.FullName);
-            _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyExists(versionRef.FullName)));
-            return;
-        }
-
         _eventBus.Send(new CliMessages.ModDownloadStarted());
 
         try
@@ -81,23 +85,71 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
                 return;
             }
 
-            foreach (var resolved in result.Packages)
+            // NOT filtered on the root alone: a previously-aborted modpack install may have
+            // landed the root but not its dependencies — re-clicking the link resumes it.
+            var toDownload = result.Packages
+                .Where(resolved => !thunderstoreLibrary.IsAlreadyDownloaded(resolved.Version))
+                .ToArray();
+
+            if (toDownload.Length == 0)
             {
-                if (thunderstoreLibrary.IsAlreadyDownloaded(resolved.Version))
-                {
-                    _logger.LogInformation("Dependency `{Package}` is already in the Library; skipping", resolved.Version.FullName);
-                    continue;
-                }
-
-                var downloadJob = await thunderstoreLibrary.CreateDownloadJob(resolved.Version, cancel);
-                var libraryFile = await library.AddDownload(downloadJob);
-
-                // The root package is what the user clicked — surface its completion in the UI.
-                if (resolved.Version.Equals(result.Packages[0].Version))
-                    _eventBus.Send(new CliMessages.ModDownloadSucceeded(libraryFile.AsLibraryItem()));
+                _logger.LogInformation("Package `{Package}` and all its dependencies are already downloaded", versionRef.FullName);
+                _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyExists(versionRef.FullName)));
+                return;
             }
 
-            _logger.LogInformation("Completed ror2mm install of `{Package}` ({Count} package(s) in closure)", versionRef.FullName, result.Packages.Count);
+            if (toDownload.Length > 1)
+                _eventBus.Send(new CliMessages.ModpackDownloadStarted(versionRef.Package.Name, toDownload.Length));
+
+            var knownCommunities = result.Community is null ? null : new[] { result.Community };
+            var failures = new ConcurrentBag<(string FullName, Exception Exception)>();
+            LibraryFile.ReadOnly rootLibraryFile = default;
+
+            await Parallel.ForEachAsync(
+                toDownload,
+                new ParallelOptions { MaxDegreeOfParallelism = MaxParallelDownloads, CancellationToken = cancel },
+                async (resolved, token) =>
+                {
+                    try
+                    {
+                        var downloadJob = await thunderstoreLibrary.CreateDownloadJob(resolved.Dto, knownCommunities, token);
+                        var libraryFile = await library.AddDownload(downloadJob);
+
+                        if (resolved.Version.Package.Equals(versionRef.Package))
+                            rootLibraryFile = libraryFile;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        failures.Add((resolved.Version.FullName, e));
+                    }
+                }
+            );
+
+            if (!failures.IsEmpty)
+            {
+                var failedNames = string.Join(", ", failures.Select(failure => failure.FullName));
+                _logger.LogWarning("{Failed} of {Total} package downloads failed for `{Package}`: {Names}", failures.Count, toDownload.Length, versionRef.FullName, failedNames);
+            }
+
+            var rootFailed = failures.Any(failure => failure.FullName == versionRef.FullName);
+            if (rootFailed)
+            {
+                _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.Unknown(failures.First(failure => failure.FullName == versionRef.FullName).Exception)));
+                return;
+            }
+
+            // Resumed runs (root already in the Library, only dependencies downloaded) have no
+            // root library file to surface — completion is logged below either way.
+            if (rootLibraryFile.IsValid())
+                _eventBus.Send(new CliMessages.ModDownloadSucceeded(rootLibraryFile.AsLibraryItem()));
+
+            _logger.LogInformation(
+                "Completed ror2mm install of `{Package}` ({Downloaded} downloaded, {Skipped} already present, {Failed} failed)",
+                versionRef.FullName, toDownload.Length - failures.Count, result.Packages.Count - toDownload.Length, failures.Count);
         }
         catch (TaskCanceledException)
         {
