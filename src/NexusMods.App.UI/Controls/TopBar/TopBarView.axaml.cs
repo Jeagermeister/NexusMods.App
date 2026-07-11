@@ -164,8 +164,7 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
 
                                 hostWindow.Padding = OSInformation.Shared.MatchPlatform(
                                     onWindows: () =>  new Thickness(7),
-                                    onLinux: () => default(Thickness),
-                                    onOSX: () => default(Thickness)
+                                    onLinux: () => default(Thickness)
                                 );
                             }
                             else

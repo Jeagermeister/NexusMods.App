@@ -97,8 +97,7 @@ public class LocalGameVersionRecognizer : ILocalGameVersionRecognizer
 
         var operatingSystem = locator.TargetOS.MatchPlatform(
             onWindows: () => OperatingSystem.Windows,
-            onLinux: () => OperatingSystem.Linux,
-            onOSX: () => OperatingSystem.MacOS);
+            onLinux: () => OperatingSystem.Linux);
 
         // The locator exposes installed manifest ids (depot ids are recovered from the cached file names).
         var manifestIds = locator.LocatorIds

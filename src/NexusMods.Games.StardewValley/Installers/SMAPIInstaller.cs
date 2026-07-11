@@ -23,7 +23,6 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
     private static readonly RelativePath InstallDatFile = "install.dat";
     private static readonly RelativePath LinuxFolder = "linux";
     private static readonly RelativePath WindowsFolder = "windows";
-    private static readonly RelativePath MacOSFolder = "macOS";
 
     private readonly TemporaryFileManager _temporaryFileManager;
     private readonly IFileStore _fileStore;
@@ -55,8 +54,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         var targetOS = loadout.InstallationInstance.LocatorResult.TargetOS;
         var targetParentName = targetOS.MatchPlatform(
             onWindows: static () => WindowsFolder,
-            onLinux: static () => LinuxFolder,
-            onOSX: static () => MacOSFolder
+            onLinux: static () => LinuxFolder
         );
 
         var foundInstallDataFile = libraryArchive.Children.TryGetFirst(fileEntry =>
@@ -78,9 +76,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
         var isUnix = targetOS.IsUnix();
 
         // NOTE(erri120): paths can be verified using Steam depots: https://steamdb.info/app/413150/depots/
-        RelativePath unixLauncherFile = targetOS.IsOSX
-            ? "Contents/MacOS/StardewValley"
-            : "StardewValley";
+        RelativePath unixLauncherFile = "StardewValley";
 
         var modDatabaseEntityId = Optional<EntityId>.None;
         var version = Optional<string>.None;
@@ -120,7 +116,7 @@ public class SMAPIInstaller : ALibraryArchiveInstaller
                 }
             }
 
-            // For Linux & macOS: replace the game launcher executable "StardewValley" with "unix-launcher.sh"
+            // For Linux: replace the game launcher executable "StardewValley" with "unix-launcher.sh"
             // https://github.com/Pathoschild/SMAPI/blob/5919337236650c6a0d7755863d35b2923a94775c/src/SMAPI.Installer/InteractiveInstaller.cs#L395-L425
             if (isUnix && fileName.Equals("unix-launcher.sh"))
             {

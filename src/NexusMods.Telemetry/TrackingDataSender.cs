@@ -341,12 +341,6 @@ internal sealed class TrackingDataSender : ITrackingDataSender, IDisposable
             return "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
         }
 
-        // https://devicedetector.lw1.at/Mozilla%2F5.0%20(Macintosh;%20Intel%20Mac%20OS%20X%2014.7)
-        if (platform == OSPlatform.OSX)
-        {
-            return $"Mozilla/5.0 (Macintosh; Intel Mac OS X {osVersion.Version.ToString(fieldCount: 2)})";
-        }
-
         throw new NotSupportedException();
     }
 

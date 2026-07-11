@@ -173,8 +173,7 @@ public static class Verbs
 
         return OSInformation.Shared.MatchPlatform(
             onWindows: () => OperatingSystem.Windows,
-            onLinux: () => OperatingSystem.Linux,
-            onOSX: () => OperatingSystem.MacOS);
+            onLinux: () => OperatingSystem.Linux);
     }
     
     [Verb("steam login", "Starts the login process for Steam")]

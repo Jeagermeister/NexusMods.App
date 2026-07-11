@@ -36,8 +36,7 @@ public record FileExtractorSettings : ISettings
         //       too small to handle large files.
         var baseKnownPath = os.MatchPlatform(
             onWindows: () => KnownPath.TempDirectory,
-            onLinux: () => KnownPath.XDG_STATE_HOME,
-            onOSX: () => KnownPath.TempDirectory
+            onLinux: () => KnownPath.XDG_STATE_HOME
         );
 
         return new FileExtractorSettings

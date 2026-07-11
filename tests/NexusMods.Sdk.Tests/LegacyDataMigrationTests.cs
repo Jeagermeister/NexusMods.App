@@ -109,14 +109,12 @@ public class LegacyDataMigrationTests
     [Arguments(LegacyDataModelSettingsJson, "Apocrypha/DataModel/MnemonicDB.rocksdb")]
     [Arguments(LegacyLoggingSettingsJson, "Apocrypha/Logs/apocrypha.main.current.log")]
     [Arguments(LegacyCliSettingsJson, "/run/user/1000/Apocrypha-sync_file.sync")]
-    [Arguments("""{"Path":"NexusMods_App/DataModel"}""", "Apocrypha/DataModel")]
     public async Task RewriteLegacyFragments_RewritesKnownShapes(string input, string expectedFragment)
     {
         var rewritten = LegacyDataMigration.RewriteLegacyFragments(input);
 
         await Assert.That(rewritten.Contains(expectedFragment)).IsTrue();
         await Assert.That(rewritten.Contains("NexusMods.App/")).IsFalse();
-        await Assert.That(rewritten.Contains("NexusMods_App/")).IsFalse();
     }
 
     [Test]

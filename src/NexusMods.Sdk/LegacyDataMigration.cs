@@ -5,7 +5,7 @@ namespace NexusMods.Sdk;
 
 /// <summary>
 /// One-time rebrand migration (R3): moves the per-user data directories from the pre-rebrand
-/// base name (<c>NexusMods.App</c> / <c>NexusMods_App</c>) to
+/// base name (<c>NexusMods.App</c>) to
 /// <see cref="ApplicationIdentity.DataDirectoryName"/>, then rewrites the legacy path
 /// fragments persisted inside the settings JSON files (ConfigurablePath <c>File</c> values
 /// and the CLI sync-file path pin the OLD relative paths — without the rewrite the app would
@@ -42,24 +42,21 @@ public static class LegacyDataMigration
 
         foreach (var baseDirectory in baseDirectories)
         {
-            foreach (var legacyName in (string[])[ApplicationIdentity.LegacyDataDirectoryName, ApplicationIdentity.LegacyDataDirectoryNameOSX])
+            var oldDirectory = baseDirectory.Combine(ApplicationIdentity.LegacyDataDirectoryName);
+            var newDirectory = baseDirectory.Combine(ApplicationIdentity.DataDirectoryName);
+            if (!oldDirectory.DirectoryExists()) continue;
+
+            if (newDirectory.DirectoryExists())
             {
-                var oldDirectory = baseDirectory.Combine(legacyName);
-                var newDirectory = baseDirectory.Combine(ApplicationIdentity.DataDirectoryName);
-                if (!oldDirectory.DirectoryExists()) continue;
-
-                if (newDirectory.DirectoryExists())
-                {
-                    report($"Rebrand migration: both `{oldDirectory}` and `{newDirectory}` exist — leaving the old directory untouched");
-                    continue;
-                }
-
-                // One atomic same-volume rename — instant regardless of size, and a crash
-                // can't leave a half-moved tree.
-                System.IO.Directory.Move(oldDirectory.ToString(), newDirectory.ToString());
-                report($"Rebrand migration: moved `{oldDirectory}` -> `{newDirectory}`");
-                didWork = true;
+                report($"Rebrand migration: both `{oldDirectory}` and `{newDirectory}` exist — leaving the old directory untouched");
+                continue;
             }
+
+            // One atomic same-volume rename — instant regardless of size, and a crash
+            // can't leave a half-moved tree.
+            System.IO.Directory.Move(oldDirectory.ToString(), newDirectory.ToString());
+            report($"Rebrand migration: moved `{oldDirectory}` -> `{newDirectory}`");
+            didWork = true;
         }
 
         foreach (var baseDirectory in baseDirectories)
@@ -90,9 +87,7 @@ public static class LegacyDataMigration
     public static string RewriteLegacyFragments(string json)
     {
         return json
-            .Replace($"{ApplicationIdentity.LegacyDataDirectoryNameOSX}/", $"{ApplicationIdentity.DataDirectoryName}/", StringComparison.Ordinal)
             .Replace($"{ApplicationIdentity.LegacyDataDirectoryName}/", $"{ApplicationIdentity.DataDirectoryName}/", StringComparison.Ordinal)
-            .Replace($"{ApplicationIdentity.LegacyDataDirectoryNameOSX}-sync_file", $"{ApplicationIdentity.DataDirectoryName}-sync_file", StringComparison.Ordinal)
             .Replace($"{ApplicationIdentity.LegacyDataDirectoryName}-sync_file", $"{ApplicationIdentity.DataDirectoryName}-sync_file", StringComparison.Ordinal)
             .Replace("nexusmods.app.main", "apocrypha.main", StringComparison.Ordinal)
             .Replace("nexusmods.app.slim", "apocrypha.slim", StringComparison.Ordinal);
@@ -100,7 +95,6 @@ public static class LegacyDataMigration
 
     private static KnownPath[] GetBaseDirectories(IOSInformation os) => os.MatchPlatform<KnownPath[]>(
         onWindows: () => [KnownPath.LocalApplicationDataDirectory],
-        onLinux: () => [KnownPath.XDG_DATA_HOME, KnownPath.XDG_STATE_HOME, KnownPath.LocalApplicationDataDirectory],
-        onOSX: () => [KnownPath.LocalApplicationDataDirectory, KnownPath.ApplicationDataDirectory]
+        onLinux: () => [KnownPath.XDG_DATA_HOME, KnownPath.XDG_STATE_HOME, KnownPath.LocalApplicationDataDirectory]
     );
 }

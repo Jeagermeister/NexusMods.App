@@ -66,8 +66,7 @@ public record FileHashesServiceSettings : ISettings
         //       too small to handle large files.
         var baseKnownPath = os.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
+            onLinux: () => KnownPath.XDG_DATA_HOME
         );
 
         return new FileHashesServiceSettings

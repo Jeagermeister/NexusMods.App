@@ -101,8 +101,7 @@ public record DataModelSettings : ISettings
     {
         var baseKnownPath = os.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
+            onLinux: () => KnownPath.XDG_DATA_HOME
         );
 
         baseDirectoryName = ApplicationIdentity.DataDirectoryName;

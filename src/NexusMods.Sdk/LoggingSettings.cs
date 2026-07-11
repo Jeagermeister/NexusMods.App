@@ -136,8 +136,7 @@ public record LoggingSettings : ISettings
     {
         var baseKnownPath = os.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_STATE_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
+            onLinux: () => KnownPath.XDG_STATE_HOME
         );
         return baseKnownPath;
     }
