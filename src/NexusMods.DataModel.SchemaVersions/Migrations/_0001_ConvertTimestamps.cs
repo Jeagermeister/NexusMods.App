@@ -23,11 +23,12 @@ public class _0001_ConvertTimestamps : IScanningMigration
     public static (MigrationId Id, string Name) IdAndName => MigrationId.ParseNameAndId(nameof(_0001_ConvertTimestamps));
 
     /// <inheritdoc />
-    public async Task Prepare(IDb db)
+    public Task Prepare(IDb db)
     {
         _attrIds = db.Connection.AttributeResolver.DefinedAttributes.Where(a => a is TimestampAttribute)
             .Select(a => db.AttributeCache.GetAttributeId(a.Id))
             .ToHashSet();
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -52,7 +53,7 @@ public class _0001_ConvertTimestamps : IScanningMigration
             var dt = DateTimeOffset.FromUnixTimeMilliseconds(oldTimestamp);
             return dt.UtcTicks;
         }
-        catch (ArgumentOutOfRangeException ex)
+        catch (ArgumentOutOfRangeException)
         {
             // This is a timestamp that is out of range for the DateTimeOffset class, so assume it is already in Ticks.
             return oldTimestamp;

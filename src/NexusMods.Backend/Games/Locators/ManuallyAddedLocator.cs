@@ -10,7 +10,7 @@ using NexusMods.Sdk.NexusModsApi;
 namespace NexusMods.Backend.Games.Locators;
 
 [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
-[Obsolete("this is a hack that will be removed soon tm")]
+// TODO(linux-fork): goes away with the ManuallyAddedGame refactor (notes-handoff §40 item 2).
 internal class ManuallyAddedLocator : IGameLocator
 {
     private readonly IConnection _connection;

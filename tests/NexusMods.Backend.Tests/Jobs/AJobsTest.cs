@@ -37,7 +37,7 @@ public class AJobsTest
         JobMonitor = ServiceProvider.GetRequiredService<IJobMonitor>();
     }
 
-    public IJobMonitor JobMonitor { get; private set; }
+    public IJobMonitor JobMonitor { get; private set; } = null!;
 
-    public IServiceProvider ServiceProvider { get; private set; }
+    public IServiceProvider ServiceProvider { get; private set; } = null!;
 }

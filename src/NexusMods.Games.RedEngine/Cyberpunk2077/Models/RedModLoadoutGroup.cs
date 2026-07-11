@@ -6,7 +6,13 @@ using NexusMods.Paths;
 
 namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
 
-[Obsolete("RedMod mod groups should no longer be marked explicitly, they should be identified by the presence of `{Game}/mods/<redModName>/info.json` child file.")]
+/// <remarks>
+/// Legacy model: upstream planned to identify RedMod groups by the presence of a
+/// `{Game}/mods/&lt;redModName&gt;/info.json` child file instead of marking them explicitly.
+/// The planned migration never landed and existing databases contain these entities,
+/// so the model stays. Upstream's [Obsolete] marker was dropped — it only produced
+/// CS0618 warnings in the MnemonicDB-generated code, not useful guidance.
+/// </remarks>
 [Include<LoadoutItemGroup>]
 public partial class RedModLoadoutGroup : IModelDefinition
 {

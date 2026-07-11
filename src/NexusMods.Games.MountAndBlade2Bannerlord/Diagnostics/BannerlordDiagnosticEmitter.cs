@@ -13,6 +13,7 @@ using NexusMods.Games.MountAndBlade2Bannerlord.Models;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Sdk.Resources;
+using System.Runtime.CompilerServices;
 
 namespace NexusMods.Games.MountAndBlade2Bannerlord.Diagnostics;
 
@@ -39,7 +40,7 @@ internal partial class BannerlordDiagnosticEmitter : ILoadoutDiagnosticEmitter
         _gameDomain = mappingCache[Bannerlord.NexusModsGameId.Value];
     }
 
-    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var modulesAndMods = await Helpers.GetAllManifestsAsync(_logger, loadout, _manifestPipeline, cancellationToken).ToArrayAsync(cancellationToken);
         var modulesOnly = modulesAndMods.Select(x => x.Item2).ToArray();

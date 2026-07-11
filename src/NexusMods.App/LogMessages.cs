@@ -37,7 +37,7 @@ internal static partial class LogMessages
     public static partial void UnobservedTaskException(
         ILogger logger,
         Exception e,
-        object? sender,
+        string? sender,
         Type? senderType
     );
 

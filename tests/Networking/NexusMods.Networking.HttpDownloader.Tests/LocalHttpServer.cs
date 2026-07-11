@@ -132,7 +132,7 @@ public class LocalHttpServer : IDisposable
         }
         else
         {
-            var rangeValue = RangeHeaderValue.Parse(rangeString);
+            var rangeValue = RangeHeaderValue.Parse(rangeString!);
             var range = rangeValue.Ranges.First();
             resp.StatusCode = (int)HttpStatusCode.PartialContent;
             resp.StatusDescription = "Partial Content";
@@ -163,7 +163,7 @@ public class LocalHttpServer : IDisposable
         }
 
         var rangeString = request.Headers.Get("Range");
-        var rangeValue = RangeHeaderValue.Parse(rangeString);
+        var rangeValue = RangeHeaderValue.Parse(rangeString!);
         var range = rangeValue.Ranges.First();
 
         resp.StatusCode = (int)HttpStatusCode.PartialContent;

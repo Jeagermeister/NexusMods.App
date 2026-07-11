@@ -10,6 +10,7 @@ using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Games.CreationEngine.Abstractions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using System.Runtime.CompilerServices;
 
 namespace NexusMods.Games.CreationEngine.Emitters;
 
@@ -26,7 +27,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         throw new NotImplementedException();
     }
 
-    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
         

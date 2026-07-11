@@ -8,7 +8,6 @@ namespace NexusMods.App.UI.Dialog;
 public class Dialog : IDialog
 {
     private DialogViewModel _viewModel;
-    private bool _hasUserResized = false;
 
     public Dialog(DialogViewModel viewModel)
     {

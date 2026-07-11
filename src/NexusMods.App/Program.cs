@@ -123,7 +123,7 @@ public class Program
         LogMessages.RuntimeInformation(_logger, RuntimeInformation.OSDescription, RuntimeInformation.FrameworkDescription, ApplicationConstants.InstallationMethod);
         TaskScheduler.UnobservedTaskException += (sender, eventArgs) =>
         {
-            LogMessages.UnobservedTaskException(_logger, eventArgs.Exception, sender, sender?.GetType());
+            LogMessages.UnobservedTaskException(_logger, eventArgs.Exception, sender?.ToString(), sender?.GetType());
             eventArgs.SetObserved();
         };
 
@@ -225,7 +225,7 @@ public class Program
             await client.ExecuteCommand(startupMode.Args, AnsiConsole.Console);
             return 0;
         }
-        catch (NoMainProcessStarted _)
+        catch (NoMainProcessStarted)
         {
             var interop = services.GetRequiredService<IOSInterop>();
             var ownExe = interop.GetRunningExecutablePath(out var _);

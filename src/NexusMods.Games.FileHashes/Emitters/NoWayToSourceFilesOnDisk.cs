@@ -16,6 +16,7 @@ public class NoWayToSourceFilesOnDisk : ILoadoutDiagnosticEmitter
     {
         // TODO: Enable this diagnostic once users have a way to back up the game files from UI
         yield break;
+#pragma warning disable CS0162 // the code below is kept for when the diagnostic is re-enabled
         
         var syncronizer = loadout.InstallationInstance.GetGame().Synchronizer;
         var syncTree = await syncronizer.BuildSyncTree(loadout);
@@ -37,5 +38,6 @@ public class NoWayToSourceFilesOnDisk : ILoadoutDiagnosticEmitter
         {
             yield return Diagnostics.CreateGameFilesDoNotHaveSource(totalSize, count);
         }
+#pragma warning restore CS0162
     }
 }

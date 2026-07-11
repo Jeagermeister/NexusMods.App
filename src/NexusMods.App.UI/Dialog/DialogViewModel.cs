@@ -8,7 +8,9 @@ namespace NexusMods.App.UI.Dialog;
 
 public class DialogViewModel: IDialogViewModel
 {
+#pragma warning disable CS0067 // required by INotifyPropertyChanged, never raised here
     public event PropertyChangedEventHandler? PropertyChanged;
+#pragma warning restore CS0067
     public ViewModelActivator Activator { get; }
     public R3.ReactiveCommand<ButtonDefinitionId, ButtonDefinitionId> ButtonPressCommand { get; }
     public string WindowTitle { get; }

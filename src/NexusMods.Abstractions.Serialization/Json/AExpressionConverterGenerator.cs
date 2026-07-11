@@ -11,7 +11,7 @@ public abstract class AExpressionConverterGenerator<T> : JsonConverter<T>
 {
     protected Lazy<WriteDelegate> WriterFunction = default!;
     protected Lazy<ReadDelegate> ReaderFunction = default!;
-    protected readonly Type Type;
+    protected new readonly Type Type;
 
     protected delegate T? ReadDelegate(ref Utf8JsonReader read, Type typeToConvert, JsonSerializerOptions options);
 

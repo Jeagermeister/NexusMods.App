@@ -174,7 +174,7 @@ public class BuildHashesDb : IAsyncDisposable
                         .Single(g => productIds.Contains(g.ProductId));
                     tx.Add(versionDef, VersionDefinition.GogBuildsIds, build.Id);
                 }
-                catch (InvalidOperationException _)
+                catch (InvalidOperationException)
                 {
                     await _renderer.TextLine("Failed to find GOG build for {0} {1} {2}", gameName, osName, id);
                 }
@@ -189,7 +189,7 @@ public class BuildHashesDb : IAsyncDisposable
                         .Single();
                     tx.Add(versionDef, VersionDefinition.SteamManifestsIds, manifest.Id);
                 }
-                catch (InvalidOperationException _)
+                catch (InvalidOperationException)
                 {
                     await _renderer.TextLine("Failed to anchor Steam manifest {0} to {1} for {2}", id, definition.Name, gameName);
                 }
@@ -204,7 +204,7 @@ public class BuildHashesDb : IAsyncDisposable
                         .Single();
                     tx.Add(versionDef, VersionDefinition.EpicGameStoreBuilds, manifest.Id);
                 }
-                catch (InvalidOperationException _)
+                catch (InvalidOperationException)
                 {
                     await _renderer.TextLine("Failed to find Epic manifest for {0} {1} {2}", gameName, osName, id);
                 }

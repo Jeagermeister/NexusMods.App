@@ -57,7 +57,7 @@ public interface IGameData
             var fvi = installation.Locations.ToAbsolutePath(primaryFile).FileInfo.GetFileVersionInfo();
             return fvi.ProductVersion;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             return Optional<Version>.None;
         }

@@ -45,7 +45,7 @@ public class AFileExtractorTest
         FileSystem = ServiceProvider.GetRequiredService<IFileSystem>();
     }
 
-    public IFileSystem FileSystem { get; set; }
+    public IFileSystem FileSystem { get; set; } = null!;
 
     public IFileExtractor FileExtractor { get; private set; } = null!;
     public TemporaryFileManager TemporaryFileManager { get; private set; } = null!;

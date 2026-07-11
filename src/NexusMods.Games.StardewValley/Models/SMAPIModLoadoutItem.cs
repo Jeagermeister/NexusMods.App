@@ -4,7 +4,12 @@ using NexusMods.MnemonicDB.Abstractions.Models;
 
 namespace NexusMods.Games.StardewValley.Models;
 
-[Obsolete("Will be removed with a future migration")]
+/// <remarks>
+/// Legacy model: upstream planned to remove this "with a future migration".
+/// The planned migration never landed and existing databases contain these entities,
+/// so the model stays. Upstream's [Obsolete] marker was dropped — it only produced
+/// CS0618 warnings in the MnemonicDB-generated code, not useful guidance.
+/// </remarks>
 [Include<LoadoutItemGroup>]
 public partial class SMAPIModLoadoutItem : IModelDefinition
 {

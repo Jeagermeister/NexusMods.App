@@ -6,6 +6,7 @@ using NexusMods.Games.Generic.Dependencies;
 using NexusMods.Paths;
 using NexusMods.Sdk.Loadouts;
 using static NexusMods.Games.RedEngine.Constants;
+using System.Runtime.CompilerServices;
 namespace NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 
 public partial class MissingProtontricksForRedModEmitter : ILoadoutDiagnosticEmitter
@@ -22,7 +23,7 @@ public partial class MissingProtontricksForRedModEmitter : ILoadoutDiagnosticEmi
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(
         Loadout.ReadOnly loadout,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var install = loadout.InstallationInstance;
         var locations = install.Locations;

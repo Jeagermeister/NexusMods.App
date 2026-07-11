@@ -54,7 +54,7 @@ public class LegacyDatabaseSupportTests(ITestOutputHelper helper) : ALegacyDatab
     /// </summary>
     record Statistics
     {
-        public string Name { get; init; }
+        public string Name { get; init; } = "";
         
         public ushort OldId { get; init; }
         
@@ -64,6 +64,6 @@ public class LegacyDatabaseSupportTests(ITestOutputHelper helper) : ALegacyDatab
         public int LoadoutItemGroups { get; init; }
         public int Files { get; init; }
         public int Collections { get; init; }
-        public string Created { get; init; }
+        public string Created { get; init; } = "";
     }
 }

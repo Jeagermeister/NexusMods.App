@@ -102,7 +102,7 @@ public partial class DebugControlsPageView : ReactiveUserControl<IDebugControlsP
         );
     }
 
-    private async void ShowModalInput_OnClick(object? sender, RoutedEventArgs e)
+    private void ShowModalInput_OnClick(object? sender, RoutedEventArgs e)
     {
         ShowModal(
             DialogFactory.CreateStandardDialog(

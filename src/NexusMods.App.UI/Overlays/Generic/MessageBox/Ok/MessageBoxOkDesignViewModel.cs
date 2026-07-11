@@ -7,7 +7,9 @@ namespace NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 
 public class MessageBoxOkDesignViewModel: IMessageBoxOkViewModel
 {
+#pragma warning disable CS0067 // required by INotifyPropertyChanged, never raised here
     public event PropertyChangedEventHandler? PropertyChanged;
+#pragma warning restore CS0067
     public ViewModelActivator Activator { get; } = null!;
     public IOverlayController Controller { get; set; } = null!;
     public Status Status { get; set; }

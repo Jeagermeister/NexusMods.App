@@ -398,12 +398,13 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         }
     }
 
-    private async ValueTask UpdateAndReplaceForMultiModPagesFreeOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
+    private ValueTask UpdateAndReplaceForMultiModPagesFreeOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
     {
         // Note(sewer): Per design, in the future this will expand the mod rows.
         //              But, due to the TreeDataGrid bug, we can't do that today, yet.
         // Instead update and keep old for free users.
         UpdateAndKeepOldFree(updatesOnPageCollection);
+        return ValueTask.CompletedTask;
     }
 
     private async ValueTask UpdateAndReplaceForMultiModPagesPremiumOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
