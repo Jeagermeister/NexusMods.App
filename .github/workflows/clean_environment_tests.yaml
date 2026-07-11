@@ -3,7 +3,7 @@ name: Clean Environment Tests
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, linux-fork ]
     paths:
       - ".github/workflows/clean_environment_tests.yaml"
       - "src/**"
@@ -11,7 +11,7 @@ on:
       - "**.props"
       - "**.targets"
   pull_request:
-    branches: [ main ]
+    branches: [ main, linux-fork ]
     paths:
       - ".github/workflows/clean_environment_tests.yaml"
       - "src/**"
@@ -30,8 +30,7 @@ jobs:
 
   build-and-test:
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    uses: Nexus-Mods/NexusMods.App.Meta/.github/workflows/dotnet-build-and-test-with-osx.yaml@main
+    uses: ./.github/workflows/dotnet-build-and-test.yaml
     with:
       extra-test-args: "--blame-hang-timeout 20m"
       test-filter: "RequiresNetworking!=True&FlakeyTest!=True"
-      codecov-flags: ",clean_environment_tests"

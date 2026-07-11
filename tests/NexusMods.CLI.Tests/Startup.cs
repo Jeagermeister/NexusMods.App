@@ -3,15 +3,18 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Serialization;
+using NexusMods.App.UI;
 using NexusMods.Backend;
 using NexusMods.CrossPlatform;
 using NexusMods.DataModel;
 using NexusMods.FileExtractor;
 using NexusMods.Games.FileHashes;
 using NexusMods.Library;
+using NexusMods.Networking.GOG;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.HttpDownloader.Tests;
 using NexusMods.Networking.NexusWebApi;
+using NexusMods.Networking.Thunderstore;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
@@ -50,6 +53,9 @@ public class Startup
                 .AddFileHashes()
                 .AddCLI()
                 .AddHttpDownloader()
+                .AddGOG()
+                .AddThunderstore()
+                .AddSingleton<NexusMods.Sdk.EventBus.IEventBus, EventBus>()
                 .AddNexusWebApi(true)
                 .AddLoadoutAbstractions()
                 .AddSerializationAbstractions()

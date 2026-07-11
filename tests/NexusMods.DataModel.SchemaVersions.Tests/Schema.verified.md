@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x03E30ECD79A64605
-   - Total attributes: 232
-   - Total namespaces: 75
+   - Fingerprint: 0x565592BA053E6682
+   - Total attributes: 245
+   - Total namespaces: 80
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
@@ -225,6 +225,8 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Resources.PersistedResource/Data                                         | Blob                    | False   | False | False     | 
 | NexusMods.Resources.PersistedResource/ExpiresAt                                    | Int64                   | False   | False | False     | 
 | NexusMods.Resources.PersistedResource/ResourceIdentifierHash                       | UInt64                  | False   | False | False     | 
+| NexusMods.RiskOfRain2.BepInExLoadoutItem/Version                                   | Utf8                    | False   | False | False     | 
+| NexusMods.RiskOfRain2.BepInExPluginLoadoutItem/Plugin                              | Null                    | False   | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/GameId                            | UInt32                  | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Path                              | Utf8                    | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Version                           | Utf8                    | False   | False | False     | 
@@ -242,3 +244,14 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/LabelName                        | Utf8                    | False   | False | False     | 
 | NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/ManifestHash                     | Utf8Insensitive         | True    | False | False     | 
 | NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/UpdatedAt                        | Int64                   | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstoreLibraryItem/Version                             | Reference               | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/FullName                        | Utf8                    | True    | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/IconUri                         | Utf8                    | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/Name                            | Utf8                    | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/PackageNamespace                | Utf8                    | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/PackageUri                      | Utf8                    | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstoreVersionMetadata/Dependencies                    | Utf8                    | False   | True  | False     | 
+| NexusMods.Thunderstore.ThunderstoreVersionMetadata/FullName                        | Utf8                    | True    | False | False     | 
+| NexusMods.Thunderstore.ThunderstoreVersionMetadata/Package                         | Reference               | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstoreVersionMetadata/UploadedAt                      | Int64                   | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstoreVersionMetadata/VersionNumber                   | Utf8                    | False   | False | False     | 
