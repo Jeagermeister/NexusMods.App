@@ -271,7 +271,7 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
             {
                 await message.Match<Task>(
                     toggleEnableStateMessage => 
-                        LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, connection),
+                        LoadoutViewModel.HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, connection, toastNotificationService),
                     openCollectionMessage =>
                     {
                         LoadoutViewModel.HandleOpenItemCollectionPage(openCollectionMessage.Ids, 
