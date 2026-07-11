@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+      <PackageReference Include="NexusMods.Paths" />
+      <PackageReference Include="Polly.Core" />
+      <PackageReference Include="QRCoder" />
+      <PackageReference Include="SteamKit2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Abstractions.Steam\Apocrypha.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games.FileHashes\Apocrypha.Abstractions.Games.FileHashes.csproj" />
+    </ItemGroup>
+
+</Project>

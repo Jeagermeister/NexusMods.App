@@ -1,0 +1,5 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Sdk\Apocrypha.Sdk.csproj" />
+    </ItemGroup>
+</Project>

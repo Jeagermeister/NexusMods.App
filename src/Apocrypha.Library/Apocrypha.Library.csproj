@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.HttpDownloads\Apocrypha.Abstractions.HttpDownloads.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Library\Apocrypha.Abstractions.Library.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts.Synchronizers\Apocrypha.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.NexusWebApi\Apocrypha.Abstractions.NexusWebApi.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.AdvancedInstaller\Apocrypha.Games.AdvancedInstaller.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
+    </ItemGroup>
+</Project>

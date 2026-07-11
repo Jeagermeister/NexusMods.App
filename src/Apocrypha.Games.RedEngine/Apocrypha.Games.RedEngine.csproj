@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+      <PackageReference Include="ObservableCollections" />
+      <PackageReference Include="ObservableCollections.R3" />  
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+      <ProjectReference Include="..\Apocrypha.Games.FileHashes\Apocrypha.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\Apocrypha.Games.FOMOD\Apocrypha.Games.FOMOD.csproj" />
+      <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+        <ProjectReference Include="..\Apocrypha.UI.Sdk\Apocrypha.UI.Sdk.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.Games.RedEngine.Tests" />        
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Resources\Cyberpunk2077\icon.png" />
+        <None Remove="Resources\Cyberpunk2077\game_image.jpg" />
+        <None Update="build\Apocrypha.Games.RedEngine.targets">
+          <Pack>true</Pack>
+          <PackagePath>build/Apocrypha.FileExtractor.targets</PackagePath>
+        </None>
+        <EmbeddedResource Include="Resources\Cyberpunk2077\thumbnail.webp" />
+        <None Remove="Resources\Cyberpunk2077\tile.webp" />
+        <EmbeddedResource Include="Resources\Cyberpunk2077\tile.webp" />
+    </ItemGroup>
+
+    <Import Project="build\Apocrypha.Games.RedEngine.targets" />
+    <ItemGroup>
+        <PackageReference Include="CliWrap" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="**\*.sql" />
+        <UpToDateCheckInput Include="**\*.sql"/>
+    </ItemGroup>
+</Project>

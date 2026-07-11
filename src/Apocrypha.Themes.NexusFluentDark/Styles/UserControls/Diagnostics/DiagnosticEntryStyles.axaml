@@ -1,0 +1,53 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:Apocrypha.App.UI.Controls.Diagnostics;assembly=Apocrypha.App.UI"
+        xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+        xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation;assembly=Apocrypha.App.UI"
+        xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls;assembly=Apocrypha.App.UI">
+
+    <Design.PreviewWith>
+        <Border Classes="Low" Width="800" Height="100" Padding="0">
+            <ui:DiagnosticEntryView>
+                <ui:DiagnosticEntryView.DataContext>
+                    <ui:DiagnosticEntryDesignViewModel />
+                </ui:DiagnosticEntryView.DataContext>
+            </ui:DiagnosticEntryView>
+        </Border>
+    </Design.PreviewWith>
+
+    <!-- Add Styles Here -->
+    <Style Selector="ui|DiagnosticEntryView">
+
+        <Setter Property="ClipToBounds" Value="False" />
+        <!-- <Setter Property="Height" Value="52" /> -->
+
+        <Style Selector="^ controls|StandardButton#EntryButton">
+            <Setter Property="Type" Value="Tertiary" />
+            <Setter Property="Fill" Value="Weak" />
+
+            <Style Selector="^[Type=Tertiary]">
+                <Style Selector="^[Fill=Weak]">
+                    <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+                    <Style Selector="^:pointerover">
+                        <Setter Property="Background" Value="{StaticResource SurfaceHighBrush}" />
+                    </Style>
+                    <Style Selector="^:pressed">
+                        <Setter Property="Background" Value="{StaticResource BrandTranslucentLight100Brush}" />
+                    </Style>
+                </Style>
+            </Style>
+
+            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="CornerRadius" Value="{StaticResource Rounded}" />
+                <Setter Property="BoxShadow" Value="{StaticResource DropShadowXS}" />
+
+                <Style Selector="^:pointerover">
+                    <Setter Property="BoxShadow" Value="{StaticResource DropShadowSM}" />
+                </Style>
+            </Style>
+        </Style>
+
+    </Style>
+
+</Styles>

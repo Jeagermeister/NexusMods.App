@@ -1,0 +1,50 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="ui:IGuidedInstallerOptionViewModel" xmlns="https://github.com/avaloniaui"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="clr-namespace:Apocrypha.Games.FOMOD.UI"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    mc:Ignorable="d" d:DesignWidth="500"
+    x:Class="Apocrypha.Games.FOMOD.UI.GuidedInstallerOptionView">
+
+    <Design.DataContext>
+        <ui:GuidedInstallerOptionDesignViewModel />
+    </Design.DataContext>
+
+    <reactiveUi:ReactiveUserControl.Styles>
+        <Style Selector="TextBlock#OptionNameTextBlock.StatusDangerLighter">
+            <Setter Property="Foreground" Value="{StaticResource DangerStrongBrush}" />
+        </Style>
+    </reactiveUi:ReactiveUserControl.Styles>
+
+    <Border x:Name="SelectionHighlightBorder" Padding="8">
+        <Grid ColumnDefinitions="Auto, *">
+            <Panel Grid.Column="0">
+                <CheckBox IsVisible="True" x:Name="CheckBox" Margin="0" />
+                <RadioButton IsVisible="True" x:Name="RadioButton" />
+            </Panel>
+
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto">
+                <TextBlock x:Name="OptionNameTextBlock" Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap" />
+                <icons:UnifiedIcon x:Name="ImageIcon" Grid.Column="1"
+                                   Value="{x:Static icons:IconValues.ImageOutline}"
+                                   IsVisible="True"
+                                   VerticalAlignment="Center"
+                                   Size="16"
+                                   Margin="4 0 0 0" />
+                <icons:UnifiedIcon x:Name="DescriptionIcon" Grid.Column="2"
+                                   Value="{x:Static icons:IconValues.FileDocumentOutline}"
+                                   IsVisible="True"
+                                   VerticalAlignment="Center"
+                                   Size="16"
+                                   Margin="4 0 0 0" />
+            </Grid>
+        </Grid>
+    </Border>
+</reactiveUi:ReactiveUserControl>

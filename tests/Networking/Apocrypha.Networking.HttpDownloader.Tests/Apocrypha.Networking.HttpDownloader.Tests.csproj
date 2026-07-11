@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Networking.HttpDownloader.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+        <ProjectReference Include="..\..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+</Project>

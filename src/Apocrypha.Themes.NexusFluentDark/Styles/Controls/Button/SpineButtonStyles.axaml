@@ -1,0 +1,215 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+        xmlns:icon="clr-namespace:Apocrypha.App.UI.Controls.Spine.Buttons.Icon;assembly=Apocrypha.App.UI"
+        xmlns:image="clr-namespace:Apocrypha.App.UI.Controls.Spine.Buttons.Image;assembly=Apocrypha.App.UI">
+    <Design.PreviewWith>
+        
+        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10">
+            <StackPanel.Resources>
+                <image:ImageButtonDesignViewModel x:Key="ImageButtonDesignViewModel"/>
+                <icon:IconButtonDesignViewModel x:Key="IconButtonDesignViewModel"/>
+            </StackPanel.Resources>
+            <Button Classes="IconButton Inactive Add IconTemplate" />
+            <Button Classes="IconButton Active Add IconTemplate" />
+            <Button Classes="IconButton Inactive Home IconTemplate" />
+            <Button Classes="IconButton Active Home IconTemplate" />
+            <Button Classes="ImageButton Inactive ImageTemplate" />
+            <Button Classes="ImageButton Active ImageTemplate" />
+            <icon:IconButton DataContext="{StaticResource IconButtonDesignViewModel}"/>
+            <image:ImageButton DataContext="{StaticResource ImageButtonDesignViewModel}"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+
+    <!-- Styles Definitions-->
+
+    <Style Selector="Button.IconButton">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="ClipToBounds" Value="False" />
+        <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Rounded-full}" />
+
+        <Style Selector="^.Inactive Border#IconButtonInnerBorder">
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <Style Selector="^.Inactive:pointerover Border#IconButtonInnerBorder">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentHighBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NeutralStrongBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <Style Selector="^.Active Border#IconButtonInnerBorder">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLowBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NeutralStrongBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <Style Selector="^.Active:pointerover Border#IconButtonInnerBorder">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentHighBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource NeutralStrongBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+
+        <!-- Set the template of the button for preview purposes, actual template is defined in `IconButton.axaml` -->
+        <Style Selector="^.IconTemplate">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid>
+                        <icons:UnifiedIcon x:Name="Icon"
+                                           Classes="HelpCircle"
+                                           Size="20"
+                                           HorizontalAlignment="Center"
+                                           Margin="0"
+                                           Padding="0"
+                                           VerticalAlignment="Center" />
+                        <Border x:Name="IconButtonInnerBorder"
+                                CornerRadius="{StaticResource Rounded-full}"
+                                Height="48"
+                                Width="48">
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        
+        <Style Selector="^.Add /template/ icons|UnifiedIcon#Icon">
+            <Setter Property="Value">
+                <icons:IconValue MdiValueSetter="mdi-plus" />
+            </Setter>
+        </Style>
+
+        <Style Selector="^.Home /template/ icons|UnifiedIcon#Icon">
+            <Setter Property="Value" Value="{x:Static icons:IconValues.Apocrypha}" />
+            <!-- 32 is the ceiling: the square tome art must stay inside the 48px circular
+                 hover ring (32×√2 ≈ 45 diagonal). The SVG viewBox is cropped to the book's
+                 bounds, so the mark fills the glyph box edge to edge. -->
+            <Setter Property="Size" Value="32" />
+        </Style>
+
+        <Style Selector="^.Inactive icons|UnifiedIcon#Icon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralTranslucentModerateBrush}" />
+
+        </Style>
+
+        <Style Selector="^.Active icons|UnifiedIcon#Icon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
+        </Style>
+
+        <Style Selector="^.Inactive:pointerover icons|UnifiedIcon#Icon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
+        </Style>
+    </Style>
+
+    <!-- ImageButton Style-->
+    <Style Selector="Button.ImageButton">
+        <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ClipToBounds" Value="False" />
+
+        <Style Selector="^ Grid#OuterGrid">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="^ Border#ClippingBorder">
+            <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Width" Value="48" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+
+        <Style Selector="^ icons|UnifiedIcon#Image">
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Size" Value="48" />
+        </Style>
+
+        <Style Selector="^ Rectangle#Mask">
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Width" Value="48" />
+        </Style>
+
+        <Style Selector="^ Border#DecorationBorder">
+            <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Width" Value="48" />
+        </Style>
+
+        <Style Selector="^.Inactive">
+            <Style Selector="^ Rectangle#Mask">
+                <Setter Property="Fill" Value="{StaticResource BrandTranslucentDark200Brush}" />
+            </Style>
+
+            <Style Selector="^ Border#DecorationBorder">
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentWeakBrush}" />
+            </Style>
+
+
+            <Style Selector="^:pointerover Rectangle#Mask">
+                <Setter Property="Fill" Value="{StaticResource SurfaceTranslucentHighBrush}" />
+            </Style>
+
+            <Style Selector="^:pointerover Border#DecorationBorder">
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="BorderBrush" Value="{StaticResource StrokeTranslucentModerateBrush}" />
+            </Style>
+
+        </Style>
+
+        <Style Selector="^.Active">
+
+            <Style Selector="^ Border#DecorationBorder">
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="BorderBrush" Value="{StaticResource NeutralStrongBrush}" />
+            </Style>
+
+
+            <Style Selector="^:pointerover Rectangle#Mask">
+                <Setter Property="Fill" Value="{StaticResource SurfaceTranslucentHighBrush}" />
+            </Style>
+
+            <Style Selector="^:pointerover Border#DecorationBorder">
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="BorderBrush" Value="{StaticResource NeutralStrongBrush}" />
+            </Style>
+
+        </Style>
+
+        <!--  ~1~ Set the template of the button for preview purposes, actual template is defined in `ImageButton.axaml` @1@ -->
+        <Style Selector="^.ImageTemplate">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="ClippingBorder">
+                        <Grid x:Name="InnerGrid">
+                            <icons:UnifiedIcon x:Name="Image">
+                                <icons:UnifiedIcon.Value>
+                                    <icons:IconValue
+                                        ImageSetter="avares://Apocrypha.Themes.NexusFluentDark/Assets/DesignTime/cyberpunk_game.png" />
+                                </icons:UnifiedIcon.Value>
+                            </icons:UnifiedIcon>
+                            <Rectangle x:Name="Mask" />
+                            <Border x:Name="DecorationBorder" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+    </Style>
+
+</Styles>

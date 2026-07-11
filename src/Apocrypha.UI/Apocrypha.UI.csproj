@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.UI.Sdk\Apocrypha.UI.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ReactiveUI.Fody" />
+    </ItemGroup>
+    
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.Backend\Apocrypha.Backend.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+    </ItemGroup>
+</Project>

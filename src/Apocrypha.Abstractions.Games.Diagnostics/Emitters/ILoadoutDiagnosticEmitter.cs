@@ -1,0 +1,35 @@
+using System.Collections.Frozen;
+using JetBrains.Annotations;
+using Apocrypha.Abstractions.Loadouts.Synchronizers;
+using Apocrypha.Sdk.Games;
+using Apocrypha.Sdk.Loadouts;
+
+namespace Apocrypha.Abstractions.Diagnostics.Emitters;
+
+/// <summary>
+/// Interface for diagnostic emitters that run on the entire <see cref="Loadout"/>.
+/// </summary>
+/// <remarks>
+/// This interface should be implemented if the emitter has to look at the relationship
+/// between mods to create diagnostics.
+/// </remarks>
+[PublicAPI]
+public interface ILoadoutDiagnosticEmitter : IDiagnosticEmitter
+{
+    /// <summary>
+    /// Diagnoses a loadout and creates instances of <see cref="Diagnostic"/>.
+    /// </summary>
+    [Obsolete("To be replaced with the overload that takes in the sync tree")]
+    IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Diagnoses a loadout and creates instances of <see cref="Diagnostic"/>.
+    /// </summary>
+    IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, CancellationToken cancellationToken)
+    {
+        // Bridge for emitters that haven't moved to the sync-tree overload yet.
+#pragma warning disable CS0618
+        return Diagnose(loadout, cancellationToken);
+#pragma warning restore CS0618
+    }
+}

@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+    
+    <ItemGroup>
+      <PackageReference Include="NexusMods.MnemonicDB" />
+      <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" />
+      <PackageReference Include="NexusMods.Paths" />
+      <PackageReference Include="YamlDotNet" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Abstractions.Steam\Apocrypha.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games.FileHashes\Apocrypha.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+      <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"  />
+      <ProjectReference Include="..\Apocrypha.Networking.EpicGameStore\Apocrypha.Networking.EpicGameStore.csproj" />
+    </ItemGroup>
+
+    <!--
+      Linux fork: the game hashes database is vendored into the repo at Assets/game_hashes_db.zip
+      (tracked via git-lfs) and embedded directly, rather than downloaded from
+      github.com/Nexus-Mods/game-hashes at build time. This severs the build-time dependency on
+      Nexus infrastructure so clean builds work fully offline.
+      Snapshot: Nexus-Mods/game-hashes release "vc2e27b8bf8632dca" (created 2025-09-30).
+      To refresh, download a newer game_hashes_db.zip into Assets/ and commit it.
+    -->
+    <ItemGroup>
+        <EmbeddedResource Include="Assets/game_hashes_db.zip" LogicalName="games_hashes_db.zip" />
+    </ItemGroup>
+
+    <!--
+      Guard against a checkout made without git-lfs: the zip would then be a ~130-byte LFS pointer
+      text file, which MSBuild would happily embed, producing a build whose hashes functionality
+      only fails at runtime. Fail fast instead.
+    -->
+    <Target Name="VerifyVendoredHashesDatabase" BeforeTargets="PrepareForBuild"
+            Inputs="Assets/game_hashes_db.zip"
+            Outputs="$(IntermediateOutputPath)game_hashes_db.verified">
+        <Error Condition="!Exists('Assets/game_hashes_db.zip')"
+               Text="Assets/game_hashes_db.zip is missing. Did the checkout fail?" />
+        <Error Condition="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Assets/game_hashes_db.zip').StartsWith('version https://git-lfs'))"
+               Text="Assets/game_hashes_db.zip is a git-lfs pointer file, not the real database. Install git-lfs and run 'git lfs install --local &amp;&amp; git lfs pull', then rebuild." />
+        <!-- Runs before PrepareForBuild has created the obj directories, so create the path first. -->
+        <MakeDir Directories="$(IntermediateOutputPath)" />
+        <Touch Files="$(IntermediateOutputPath)game_hashes_db.verified" AlwaysCreate="true" />
+    </Target>
+    
+    <ItemGroup>
+        <AdditionalFiles Include="**\*.sql" />
+        <UpToDateCheckInput Include="**\*.sql"/>
+    </ItemGroup>
+</Project>

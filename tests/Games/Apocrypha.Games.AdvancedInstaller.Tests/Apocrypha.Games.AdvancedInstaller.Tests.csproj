@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.AdvancedInstaller\Apocrypha.Games.AdvancedInstaller.csproj"/>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Update="xunit.runner.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+</Project>

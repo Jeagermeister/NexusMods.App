@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Downloads\Apocrypha.Abstractions.Downloads.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.GC\Apocrypha.Abstractions.GC.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Library.Installers\Apocrypha.Abstractions.Library.Installers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts\Apocrypha.Abstractions.Loadouts.csproj" />
+    </ItemGroup>
+
+</Project>

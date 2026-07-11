@@ -1,0 +1,140 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loadoutBadge="clr-namespace:Apocrypha.App.UI.Controls.LoadoutBadge;assembly=Apocrypha.App.UI"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+        xmlns:spinner="clr-namespace:Apocrypha.App.UI.Controls.Spinner;assembly=Apocrypha.App.UI"
+        xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels">
+
+    <Design.PreviewWith>
+        <Border Padding="16">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Border Width="48" 
+                        Height="48" 
+                        CornerRadius="8" 
+                        VerticalAlignment="Top"
+                        ClipToBounds="True">
+                    <Border.Background>
+                        <ImageBrush Source="/Assets/DesignTime/cyberpunk_game.png"/>
+                    </Border.Background>
+                    <StackPanel>
+                        <StackPanel.Resources>
+                            <loadoutBadge:LoadoutBadgeDesignViewModel x:Key="LoadoutBadgeDesignViewModel" />
+                        </StackPanel.Resources>
+                        <loadoutBadge:LoadoutBadge DataContext="{StaticResource LoadoutBadgeDesignViewModel}" />
+                    </StackPanel>
+                </Border>
+                <Border Width="128" Height="128" CornerRadius=" 8" VerticalAlignment="Top">
+                    <Border.Background>
+                        <ImageBrush Source="/Assets/DesignTime/cyberpunk_game.png"/>
+                    </Border.Background>
+                    <StackPanel>
+                        <StackPanel.Resources>
+                            <loadoutBadge:LoadoutBadgeDesignViewModel x:Key="LoadoutBadgeDesignViewModel" />
+                        </StackPanel.Resources>
+                        <loadoutBadge:LoadoutBadge DataContext="{StaticResource LoadoutBadgeDesignViewModel}"
+                                                   Classes="CardSize" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </Design.PreviewWith>
+
+    <!-- Add Styles Here -->
+    <Style Selector="loadoutBadge|LoadoutBadge">
+        <Setter Property="Background" Value="{StaticResource NeutralStrongBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource NeutralInvertedBrush}" />
+        <Setter Property="CornerRadius" Value="0,8,0,4" />
+        <Setter Property="Padding" Value="3 0 3 0" />
+        <Setter Property="Height" Value="20" />
+
+        <Style Selector="^ spinner|Spinner#Spinner">
+            <Setter Property="Foreground" Value="{StaticResource NeutralInvertedBrush}" />
+            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Margin" Value="2 0 0 0" />
+        </Style>
+
+        <Style Selector="^ icons|UnifiedIcon#Icon">
+            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="Size" Value="12" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style Selector="^ TextBlock#ShortName">
+            <Setter Property="Theme" Value="{StaticResource BodySMSemiTheme}" />
+            <Setter Property="Foreground" Value="{StaticResource NeutralInvertedBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="2,0,2,0" />
+        </Style>
+
+        <!-- Selected state -->
+        <Style Selector="^:not(:selected)">
+            <Setter Property="Background" Value="{StaticResource NeutralTranslucentModerateBrush}" />
+        </Style>
+
+        <!-- Applied state -->
+        <Style Selector="^:applied:not(:in-progress)">
+            <!-- <Setter Property="Padding" Value="2,0,2,0" /> -->
+            
+            <Style Selector="^ icons|UnifiedIcon#Icon">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            
+            <Style Selector="^ TextBlock#ShortName">
+                <!-- <Setter Property="Margin" Value="0,0,0,0" /> -->
+            </Style>
+        </Style>
+
+        <!-- In progress state -->
+        <Style Selector="^:in-progress">
+            <Style Selector="^ spinner|Spinner#Spinner">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+
+            <Style Selector="^ icons|UnifiedIcon#Icon">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            
+        </Style>
+
+    </Style>
+
+
+    <!-- Large version (for LoadoutCards) -->
+    <Style Selector="loadoutBadge|LoadoutBadge.CardSize">
+        <Setter Property="Padding" Value="8,0,10,0" />
+        <Setter Property="Height" Value="36" />
+
+        <Style Selector="^ spinner|Spinner#Spinner">
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style Selector="^ icons|UnifiedIcon#Icon">
+            <Setter Property="Size" Value="18" />
+        </Style>
+
+        <Style Selector="^ TextBlock#ShortName">
+            <Setter Property="Theme" Value="{StaticResource BodyXLBoldTheme}" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+        </Style>
+        
+        <!-- Applied state -->
+        <Style Selector="^:applied:not(:in-progress)">
+            
+            <Setter Property="Padding" Value="5,0,10,0" />
+            
+            <Style Selector="^ icons|UnifiedIcon#Icon">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+            
+            <Style Selector="^ TextBlock#ShortName">
+                <Setter Property="Margin" Value="3,0,0,0" />
+            </Style>
+        </Style>
+        
+    </Style>
+</Styles>

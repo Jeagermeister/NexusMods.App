@@ -1,0 +1,117 @@
+using Apocrypha.App.UI.Controls;
+using Apocrypha.App.UI.Extensions;
+using NexusMods.MnemonicDB.Abstractions;
+using R3;
+
+namespace Apocrypha.App.UI.Pages.Sorting;
+
+public static class FileConflictsComponents
+{
+    public class NeighbourIds : IItemModelComponent<NeighbourIds>, IComparable<NeighbourIds>
+    {
+        public ReactiveProperty<EntityId> Prev { get; set; }
+        public ReactiveProperty<EntityId> Next { get; set; }
+
+        public NeighbourIds(EntityId prev, EntityId next)
+        {
+            Prev = new ReactiveProperty<EntityId>(prev);
+            Next = new ReactiveProperty<EntityId>(next);
+        }
+
+        public int CompareTo(NeighbourIds? other) => 0;
+    }
+
+    public class NumConflicts : IItemModelComponent<NumConflicts>, IComparable<NumConflicts>
+    {
+        public ValueComponent<long> NumWinners { get; }
+        public ValueComponent<long> NumLosers { get; }
+
+        public IReadOnlyBindableReactiveProperty<bool> HasWinners { get; }
+        public IReadOnlyBindableReactiveProperty<bool> HasLosers { get; }
+
+        public NumConflicts(ValueComponent<long> numWinners, ValueComponent<long> numLosers)
+        {
+            NumWinners = numWinners;
+            NumLosers = numLosers;
+
+            HasWinners = numWinners.Value.Select(x => x > 0).ToReadOnlyBindableReactiveProperty();
+            HasLosers = numLosers.Value.Select(x => x > 0).ToReadOnlyBindableReactiveProperty();
+        }
+
+        public int CompareTo(NumConflicts? other)
+        {
+            if (other is null) return 1;
+
+            var winnerComparison = NumWinners.CompareTo(other.NumWinners);
+            if (winnerComparison != 0) return winnerComparison;
+
+            return NumLosers.CompareTo(other.NumLosers);
+        }
+    }
+    
+    public class ViewAction : IItemModelComponent<ViewAction>, IComparable<ViewAction>
+    {
+        public BindableReactiveProperty<bool> HasConflicts { get; }
+        public ReactiveCommand<Unit> CommandViewConflicts { get; }
+
+        public ViewAction(bool hasConflicts)
+        {
+            HasConflicts = new BindableReactiveProperty<bool>(value: hasConflicts);
+            CommandViewConflicts = HasConflicts.ToReactiveCommand();
+        }
+
+        public int CompareTo(ViewAction? other) => 0;
+    }
+}
+
+public static class FileConflictsColumns
+{
+    private const string Prefix = $"{nameof(FileConflictsColumns)}_";
+
+    public sealed class ConflictsColumn : ICompositeColumnDefinition<ConflictsColumn>
+    {
+        public const string ColumnTemplateResourceKey = Prefix + nameof(ConflictsColumn);
+        public static readonly ComponentKey NumConflictsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(FileConflictsComponents.NumConflicts));
+
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            return a.GetOptional<FileConflictsComponents.NumConflicts>(NumConflictsComponentKey).Compare(b.GetOptional<FileConflictsComponents.NumConflicts>(NumConflictsComponentKey));
+        }
+
+        public static string GetColumnHeader() => "Conflicts";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+    
+    public sealed class IndexColumn : ICompositeColumnDefinition<IndexColumn>
+    {
+        public const string ColumnTemplateResourceKey = Prefix + nameof(IndexColumn);
+        public static readonly ComponentKey IndexComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.IndexComponent));
+        public static readonly ComponentKey NeighbourIdsComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(FileConflictsComponents.NeighbourIds));
+
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            // tree is force sorted externally
+            throw new NotImplementedException();
+        }
+
+        public static string GetColumnHeader() => "Conflict Priority";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
+    public class Actions : ICompositeColumnDefinition<Actions>
+    {
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            return a.GetOptional<FileConflictsComponents.ViewAction>(ViewComponentKey).Compare(b.GetOptional<FileConflictsComponents.ViewAction>(ViewComponentKey));
+        }
+
+        public const string ColumnTemplateResourceKey = Prefix + "Action";
+        public static readonly ComponentKey ViewComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(Actions) + "_" + "View");
+
+        public static string GetColumnHeader() => "Actions";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+    
+    public static readonly ComponentKey IsActiveComponentKey = ComponentKey.From(nameof(FileConflictsColumns) + "_" + "IsActiveComponent");
+    public static readonly string IsActiveStyleTag = "IsActive";
+}

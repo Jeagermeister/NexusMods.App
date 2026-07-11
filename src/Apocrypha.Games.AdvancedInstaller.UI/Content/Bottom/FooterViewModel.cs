@@ -1,0 +1,20 @@
+﻿using System.Reactive;
+using Apocrypha.UI.Sdk;
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
+
+namespace Apocrypha.Games.AdvancedInstaller.UI;
+
+internal class FooterViewModel : AViewModel<IFooterViewModel>, IFooterViewModel
+{
+    [Reactive] public bool CanInstall { get; set; }
+    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
+    public ReactiveCommand<Unit, Unit> InstallCommand { get; }
+
+    public FooterViewModel()
+    {
+        CancelCommand = ReactiveCommand.Create(() => { });
+        InstallCommand = ReactiveCommand.Create(() => { },
+            this.WhenAnyValue(x => x.CanInstall));
+    }
+}

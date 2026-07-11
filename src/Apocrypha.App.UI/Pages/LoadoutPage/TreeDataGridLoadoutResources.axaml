@@ -1,0 +1,207 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+                    xmlns:abstractions="clr-namespace:NexusMods.MnemonicDB.Abstractions;assembly=NexusMods.MnemonicDB.Abstractions"
+                    xmlns:local="clr-namespace:Apocrypha.App.UI.Pages.LoadoutPage"
+                    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+                    xmlns:converters="clr-namespace:Apocrypha.App.UI.Converters"
+                    xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+                    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources">
+
+    <!-- LoadoutItemMenuFlyout - Reusable MenuFlyout for loadout items -->
+    <MenuFlyout x:Key="LoadoutItemMenuFlyout" FlyoutPresenterClasses="TreeDataGridMenu"
+                x:DataType="{x:Type controls:CompositeItemModel, x:TypeArguments=abstractions:EntityId}">
+        
+        <!-- View Mod Page -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedComponents+ViewModPageAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.ViewModPageComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedComponents+ViewModPageAction}">
+                            <MenuItem Header="{x:Static resources:Language.Library_ViewModPage_Text}"
+                                      Command="{CompiledBinding CommandViewModPage}"
+                                      IsEnabled="{CompiledBinding IsEnabled.Value}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.OpenInNew}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+        
+        <!-- View mod files action -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedComponents+ViewModFilesAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.ViewModFilesComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedComponents+ViewModFilesAction}">
+                            <navigation:NavigationMenuItem Header="{x:Static resources:Language.LoadoutGridView__View_Files}" 
+                                      Command="{CompiledBinding Command}"
+                                      IsEnabled="{CompiledBinding IsEnabled.Value}"
+                                      ToolTip.Tip="{x:Static resources:Language.LoadoutGridView__View_Files_ToolTip}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.Folder}" />
+                                </MenuItem.Icon>
+                            </navigation:NavigationMenuItem>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+        
+        <!-- Uninstall item action -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedComponents+UninstallItemAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.UninstallItemComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedComponents+UninstallItemAction}">
+                            <MenuItem Header="{CompiledBinding DisplayText}" 
+                                      Command="{CompiledBinding CommandUninstallItem}"
+                                      IsEnabled="{CompiledBinding IsEnabled.Value}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.DeleteOutline}" Classes="Critical" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+        
+    </MenuFlyout>
+
+    <!-- Collections -->
+    <DataTemplate x:Key="{x:Static local:LoadoutColumns+Collections.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
+        </DataTemplate.DataType>
+
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:StringComponent"
+                                            ComponentKey="{x:Static local:LoadoutColumns+Collections.ComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:StringComponent}">
+                            <TextBlock Text="{CompiledBinding Value.Value}" TextTrimming="CharacterEllipsis"/>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+    </DataTemplate>
+
+    <!-- Actions/Enabled state column -->
+    <DataTemplate x:Key="{x:Static local:LoadoutColumns+EnabledState.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
+        </DataTemplate.DataType>
+        
+        <StackPanel Orientation="Horizontal">
+        
+        <!-- Enabled state -->
+        <controls:MultiComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:MultiComponentControl.AvailableTemplates>
+                
+                <!-- mix of locked enabled and parent disabled -> indeterminate -->
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+MixLockedAndParentDisabled"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.MixLockedAndParentDisabledComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+MixLockedAndParentDisabled}">
+                            <navigation:NavigationControl
+                                Command="{CompiledBinding ButtonCommand}"
+                                Size="Small"
+                                LeftIcon="{x:Static icons:IconValues.Collections}"
+                                RightIcon="{x:Static icons:IconValues.ToggleIndeterminate}"
+                                ShowIcon="Both"
+                                ShowLabel="False"
+                                ToolTip.Tip="Contains mods that are both on and off and can't be interacted with due to their parent collections"/>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+                
+                <!-- parent collection disabled -->
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+ParentCollectionDisabled"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.ParentCollectionDisabledComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+ParentCollectionDisabled}">
+                            <navigation:NavigationControl
+                                Command="{CompiledBinding ButtonCommand}"
+                                Size="Small"
+                                LeftIcon="{x:Static icons:IconValues.Collections}"
+                                RightIcon="{x:Static icons:IconValues.ToggleOff}"
+                                ShowIcon="Both"
+                                ShowLabel="False"
+                                ToolTip.Tip="Mod's collection is switched off. Switch on the collection to switch on this mod"/>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+                
+                <!-- locked enabled state -->
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+LockedEnabledState"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.LockedEnabledStateComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+LockedEnabledState}">
+                            <navigation:NavigationControl
+                                Command="{CompiledBinding ButtonCommand}"
+                                Size="Small"
+                                LeftIcon="{x:Static icons:IconValues.Collections}"
+                                RightIcon="{x:Static icons:IconValues.ToggleOn}"
+                                ShowIcon="Both"
+                                ShowLabel="False"
+                                ToolTip.Tip="Mod cannot be turned off as it is as part of a read only collection. Switch off the collection to turn off this mod"/>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+                
+                <!-- normal toggle -->
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+EnabledStateToggle"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.EnabledStateToggleComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+EnabledStateToggle}">
+                            <Panel>
+                                <!-- NOTE(Al12rs): ToggleSwitch allows users to change its UI state even if the underlying IsChecked bound value didn't change -->
+                                <!--    This can happen in case the value is Null (indeterminate state), where pressing the toggle might not change the value -->
+                                <!--    As a workaround we show a button with the indeterminate state icon instead -->
+                                <Button Command="{CompiledBinding CommandToggle}"
+                                        Theme="{x:Null}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        IsVisible="{CompiledBinding Value.Value, Converter={x:Static converters:IsNullConverter.Instance}}">
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.ToggleIndeterminate}"
+                                                       Size="40"/>
+                                </Button>
+                                <ToggleSwitch Classes="ExtraSmall"
+                                              HorizontalAlignment="Center"
+                                              Command="{CompiledBinding CommandToggle}"
+                                              IsChecked="{CompiledBinding Value.Value, Mode=OneWay}"
+                                              OnContent="{x:Null}"
+                                              OffContent="{x:Null}"
+                                              IsVisible="{CompiledBinding Value.Value, Converter={x:Static converters:IsNotNullConverter.Instance}}"
+                                              ToolTip.Tip="Toggle on adds this mod to the game and loads it. Toggle off leaves it out."/>
+                            </Panel>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+
+            </controls:MultiComponentControl.AvailableTemplates>
+        </controls:MultiComponentControl>
+        
+        <!-- more options  -->
+        <controls:StandardButton
+                ToolTip.Tip="{x:Static resources:Language.Menu_MoreOptions_ToolTip}"
+                x:Name="HamburgerMenuButton"
+                LeftIcon="{x:Static icons:IconValues.MoreVertical}"
+                ShowIcon="Left"
+                ShowLabel="False"
+                Fill="None"
+                Flyout="{StaticResource LoadoutItemMenuFlyout}"/>
+        
+        </StackPanel>
+    </DataTemplate>
+</ResourceDictionary>
+

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Games.BepInEx.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Apocrypha.Games.BepInEx\Apocrypha.Games.BepInEx.csproj" />
+      <ProjectReference Include="..\..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+      <ProjectReference Include="..\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+</Project>

@@ -1,0 +1,110 @@
+using System.Text.Json;
+using JetBrains.Annotations;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NexusMods.MnemonicDB.Abstractions;
+using Apocrypha.Sdk.Settings;
+
+namespace Apocrypha.Backend;
+
+[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+internal class MnemonicDBStorageBackend : IAsyncStorageBackend
+{
+    public StorageBackendId Id { get; } = StorageBackendId.From(Guid.Parse("6317967a-3ee9-4e3f-bb24-ebbe40560160"));
+
+    private readonly ILogger _logger;
+    private readonly Lazy<IConnection> _conn;
+    private readonly Lazy<JsonSerializerOptions> _jsonOptions;
+
+    public MnemonicDBStorageBackend(IServiceProvider serviceProvider)
+    {
+        _logger = serviceProvider.GetRequiredService<ILogger<MnemonicDBStorageBackend>>();
+
+        _conn = new Lazy<IConnection>(serviceProvider.GetRequiredService<IConnection>);
+        _jsonOptions = new Lazy<JsonSerializerOptions>(serviceProvider.GetRequiredService<JsonSerializerOptions>);
+    }
+
+    private string? Serialize<T>(T value) where T : class
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(value, _jsonOptions.Value);
+            return json;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception while serializing `{Type}` with value `{Value}`", typeof(T), value);
+            return null;
+        }
+    }
+
+    private T? Deserialize<T>(string json) where T : class
+    {
+        try
+        {
+            var value = JsonSerializer.Deserialize<T>(json, _jsonOptions.Value);
+            return value;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception while deserializing to `{Type}` with JSON `{Json}`", typeof(T), json);
+            return null;
+        }
+    }
+
+    private static string GetId<T>(string? key) where T : ISettings
+    {
+        var typeName = typeof(T).FullName ?? typeof(T).Name;
+        return string.IsNullOrWhiteSpace(key) ? typeName : $"{typeName}|{key}";
+    }
+
+    /// <summary>
+    /// Settings stored before the R5 namespace rebrand are keyed by the old
+    /// <c>NexusMods.*</c> type full names; fall back to that key on read so settings
+    /// survive the rename (the new key is written on the next save).
+    /// </summary>
+    private static string? GetLegacyId<T>(string? key) where T : ISettings
+    {
+        var id = GetId<T>(key);
+        if (!id.StartsWith("Apocrypha.", StringComparison.Ordinal)) return null;
+        return "NexusMods." + id["Apocrypha.".Length..];
+    }
+
+    public async ValueTask Save<T>(T value, string? key, CancellationToken cancellationToken) where T : class, ISettings, new()
+    {
+        var db = _conn.Value.Db;
+        using var tx = _conn.Value.BeginTransaction();
+
+        var name = GetId<T>(key);
+
+        EntityId id;
+        var settings = Setting.FindByName(db, name).ToArray();
+        if (settings.Length == 0)
+        {
+            id = tx.TempId();
+            tx.Add(id, Setting.Name, name);
+        }
+        else
+        {
+            id = settings.First().Id;
+        }
+
+        tx.Add(id, Setting.Value, Serialize(value) ?? "null");
+        await tx.Commit();
+    }
+
+    public ValueTask<T?> Load<T>(string? key, CancellationToken cancellationToken) where T : class, ISettings, new()
+    {
+        var settings = Setting.FindByName(_conn.Value.Db, GetId<T>(key)).ToArray();
+        if (settings.Length == 0)
+        {
+            var legacyId = GetLegacyId<T>(key);
+            if (legacyId is not null)
+                settings = Setting.FindByName(_conn.Value.Db, legacyId).ToArray();
+        }
+        if (settings.Length == 0) return ValueTask.FromResult<T?>(null);
+        return ValueTask.FromResult(Deserialize<T>(settings.First().Value));
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

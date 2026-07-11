@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Jitbit.FastCache" />
+      <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+      <PackageReference Include="NexusMods.MnemonicDB.Abstractions" />
+      <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <PackageReference Include="Polly.Core" />
+      <PackageReference Include="SmartFormat" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.GOG\Apocrypha.Abstractions.GOG.csproj" />
+    </ItemGroup>
+
+</Project>

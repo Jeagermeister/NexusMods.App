@@ -1,0 +1,62 @@
+﻿<reactiveUi:ReactiveUserControl x:TypeArguments="ui:IAdvancedInstallerPageViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:ui="clr-namespace:Apocrypha.Games.AdvancedInstaller.UI"
+                                xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+                                xmlns:resources="clr-namespace:Apocrypha.Games.AdvancedInstaller.UI.Resources"
+                                mc:Ignorable="d" d:DesignWidth="1232" d:DesignHeight="672"
+                                x:Class="Apocrypha.Games.AdvancedInstaller.UI.AdvancedInstallerPageView">
+    
+    <Grid RowDefinitions="*, Auto">
+        <Grid.Styles>
+
+            <Style Selector="Border.TopPart">
+                <Setter Property="Padding" Value="24,0,24,24" />
+            </Style>
+
+            <Style Selector="Border.OverlayHeaderSection">
+                <Setter Property="Margin" Value="0,0,0,16" />
+            </Style>
+
+            <Style Selector="icons|UnifiedIcon#OverlayHeaderMultiOptionIcon">
+                <Setter Property="Size" Value="20" />
+                <Setter Property="Margin" Value="0,0,8,8" />
+            </Style>
+
+        </Grid.Styles>
+
+        <Border Grid.Row="0" Classes="High RoundedTop" HorizontalAlignment="Stretch">
+            <Border Classes="High RoundedTop TopPart" x:Name="TopContentBorder">
+                <Grid RowDefinitions="Auto, *">
+
+                    <Border Grid.Row="0" Classes="OverlayHeaderSection" x:Name="OverlayHeaderBorder">
+                        <Grid x:Name="OverlayHeaderGrid" ColumnDefinitions="Auto, *, Auto">
+
+                            <icons:UnifiedIcon Grid.Column="0" x:Name="OverlayHeaderMultiOptionIcon" Classes="Tune" />
+
+                            <TextBlock Grid.Column="1" x:Name="OverlayHeaderTextBlock" Classes="BodyLGBold"
+                                       Text="{x:Static resources:Language.OverlayHeaderText_Advanced_Installer}" />
+
+                        </Grid>
+                    </Border>
+
+                    <reactiveUi:ViewModelViewHost Grid.Row="1" x:Name="TopContentViewHost" />
+
+                </Grid>
+            </Border>
+        </Border>
+
+        <Border Grid.Row="1" Classes="Mid RoundedBottom" HorizontalAlignment="Stretch">
+            <Border x:Name="BottomContentBorder">
+
+                <reactiveUi:ViewModelViewHost x:Name="BottomContentViewHost" />
+
+            </Border>
+        </Border>
+
+    </Grid>
+
+</reactiveUi:ReactiveUserControl>

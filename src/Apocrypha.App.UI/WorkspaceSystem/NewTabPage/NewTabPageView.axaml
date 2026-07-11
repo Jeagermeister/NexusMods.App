@@ -1,0 +1,67 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="workspace:INewTabPageViewModel" xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:workspace="clr-namespace:Apocrypha.App.UI.WorkspaceSystem"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+    xmlns:alerts="clr-namespace:Apocrypha.App.UI.Controls.Alerts"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="500"
+    x:Class="Apocrypha.App.UI.WorkspaceSystem.NewTabPageView">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Orientation="Vertical" Spacing="24">
+
+            <alerts:Alert x:Name="InfoAlert"
+                          Title="View Pages Side by Side"
+                          Body="Add panels to view 2 or more pages at once by clicking the “add panel” button in the top bar or by right clicking a page and selecting “Open in new panel”"
+                          Severity="Info"
+                          ShowDismiss="True" />
+
+            <ItemsControl x:Name="Sections">
+
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type workspace:INewTabPageSectionViewModel}">
+                        <StackPanel Classes="Spacing-3" MinWidth="160" MaxWidth="375" Margin="0 0 48 48">
+                            <TextBlock x:Name="SectionNameTextBlock" Text="{CompiledBinding SectionName}"
+                                       Theme="{StaticResource HeadingXSSemiTheme}" />
+
+
+                            <ItemsControl x:Name="Items" ItemsSource="{CompiledBinding Items}">
+
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="{StaticResource Spacing-2}" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type workspace:INewTabPageSectionItemViewModel}">
+
+                                        <navigation:NavigationControl
+                                            ShowIcon="Left"
+                                            LeftIcon="{CompiledBinding Icon}"
+                                            Text="{CompiledBinding Name}"
+                                            Command="{CompiledBinding SelectItemCommand}" />
+
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+
+</reactive:ReactiveUserControl>

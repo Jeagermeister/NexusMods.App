@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.Games.RedEngine\Apocrypha.Games.RedEngine.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.App\Apocrypha.App.csproj" />
+        <ProjectReference Include="..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Noggog.CSharpExt" />
+        <PackageReference Include="ReactiveUI.Fody" />
+        <PackageReference Include="Avalonia.Headless" />
+        <PackageReference Include="Verify.Xunit" />
+        <PackageReference Include="Verify.ImageMagick"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Resources\data.test">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Resources\data_7zip_lzma2.7z">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Resources\data_zip_lzma.zip">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="xunit.runner.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="WorkspaceSystem\IconUtilsTests.Test_StateToBitmap.verified.png">
+        <ParentFile>IconUtilsTests</ParentFile>
+        <DependentUpon>IconUtilsTests.cs</DependentUpon>
+      </None>
+    </ItemGroup>
+</Project>

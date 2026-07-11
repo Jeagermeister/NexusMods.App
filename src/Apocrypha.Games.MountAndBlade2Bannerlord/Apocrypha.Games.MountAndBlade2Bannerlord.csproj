@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <None Remove="Resources\game_image.jpg" />
+    <None Remove="Resources\icon.png" />
+    <None Remove="Resources\thumbnail.webp" />
+    <EmbeddedResource Include="Resources\thumbnail.webp" />
+    <None Remove="Resources\tile.webp" />
+    <EmbeddedResource Include="Resources\tile.webp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Apocrypha.Games.MountAndBlade2Bannerlord.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bannerlord.ModuleManager" />
+    <PackageReference Include="LinqGen" />
+    <PackageReference Include="NexusMods.Paths" />
+    <PackageReference Include="Bannerlord.LauncherManager" />
+    <PackageReference Include="FetchBannerlordVersion" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+    <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+    <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+  </ItemGroup>
+
+</Project>

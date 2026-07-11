@@ -1,0 +1,33 @@
+﻿using Apocrypha.App.UI.LeftMenu;
+using Apocrypha.App.UI.WorkspaceSystem;
+
+namespace Apocrypha.App.UI.WorkspaceAttachments;
+
+public class WorkspaceAttachmentsFactoryManager(IEnumerable<ILeftMenuFactory> leftMenuFactories, IEnumerable<IWorkspaceAttachmentsFactory> attachmentsFactories)
+    : IWorkspaceAttachmentsFactoryManager
+{
+    private ILeftMenuFactory[] LeftMenuFactories { get; } = leftMenuFactories.ToArray();
+    private IWorkspaceAttachmentsFactory[] AttachmentsFactories { get; } = attachmentsFactories.ToArray();
+
+    public ILeftMenuViewModel? CreateLeftMenuFor(IWorkspaceContext context, WorkspaceId workspaceId,
+        IWorkspaceController workspaceController)
+    {
+        return LeftMenuFactories
+            .Select(f => f.CreateLeftMenu(context, workspaceId, workspaceController))
+            .FirstOrDefault(f => f != null);
+    }
+
+    public string CreateTitleFor(IWorkspaceContext context)
+    {
+        return AttachmentsFactories
+            .Select(f => f.CreateTitle(context))
+            .FirstOrDefault(t => t != null) ?? string.Empty;
+    }
+
+    public string CreateSubtitleFor(IWorkspaceContext context)
+    {
+        return AttachmentsFactories
+            .Select(f => f.CreateSubtitle(context))
+            .FirstOrDefault(t => t != null) ?? string.Empty;
+    }
+}

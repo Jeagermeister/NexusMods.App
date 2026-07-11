@@ -1,0 +1,111 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk">
+
+    <Style Selector="TreeDataGrid#TreeDataGridLibrary">
+
+        <!-- <Setter Property="Background" Value="DarkGreen"/> -->
+
+        <!-- last column header -->
+        <Style Selector="^ TreeDataGridColumnHeader">
+            <Style Selector="^:nth-last-child(1)">
+                <Style Selector="^ /template/ DockPanel#DataGridDockPanel">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                </Style>
+            </Style>
+        </Style>
+
+        <!-- ROWS -->
+
+        <Style Selector="^ TreeDataGridRow">
+
+            <!-- child row -->
+            <!-- <Setter Property="Background" Value="DarkBlue" /> -->
+
+            <!-- parent row -->
+            <Style Selector="^.RootRow">
+                <!-- <Setter Property="Background" Value="DarkRed" /> -->
+            </Style>
+
+            <!-- CELLS -->
+
+            <!-- all of our cells will be a type of this -->
+            <Style Selector="^ TreeDataGridTemplateCell">
+                <!-- <Setter Property="Background" Value="Blue" /> -->
+
+                <!-- library -> version cell -->
+                <Style Selector="^.LibraryColumns_ItemVersion">
+                    <!-- <Setter Property="Background" Value="DarkSlateBlue" /> -->
+
+                    <Style Selector="^ StackPanel#NewVersionStack">
+                        <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                        <Style Selector="^ > icons|UnifiedIcon">
+                            <Setter Property="Size" Value="16" />
+                            <Setter Property="Foreground" Value="{DynamicResource InfoModerateBrush}" />
+                        </Style>
+
+                        <Style Selector="^ > TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Foreground" Value="{DynamicResource InfoModerateBrush}" />
+                        </Style>
+                    </Style>
+                </Style>
+
+                <!-- library -> size cell -->
+                <Style Selector="^.LibraryColumns_ItemSize">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                </Style>
+                
+                <!-- library -> collections cell -->
+                <Style Selector="^.LibraryColumns_Collections">
+                    <Style Selector="^ StackPanel#CollectionsStack">
+                        <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                        <Style Selector="^ > icons|UnifiedIcon">
+                            <Setter Property="Size" Value="16" />
+                            <Setter Property="Foreground" Value="{DynamicResource NeutralSubduedBrush}" />
+                        </Style>
+
+                        <Style Selector="^ > TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Foreground" Value="{DynamicResource NeutralSubduedBrush}" />
+                        </Style>
+                    </Style>
+                </Style>
+
+                <!-- library -> actions cell -->
+                <Style Selector="^.LibraryColumns_Actions">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+
+                    <Style Selector="^/template/ ContentPresenter#PART_ContentPresenter > StackPanel">
+                        <Setter Property="Spacing" Value="{StaticResource Spacing-2}" />
+                    </Style>
+
+                    <Style Selector="^ StackPanel#InstalledStack">
+                        <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                        <Style Selector="^ > icons|UnifiedIcon">
+                            <Setter Property="Size" Value="16" />
+                            <Setter Property="Foreground" Value="{StaticResource NeutralSubduedBrush}" />
+                        </Style>
+
+                        <Style Selector="^ > TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Foreground" Value="{StaticResource NeutralSubduedBrush}" />
+                        </Style>
+                    </Style>
+
+                    <!-- first cell of a row as it can expand -->
+                    <Style Selector="^ TreeDataGridExpanderCell">
+                        <!-- <Setter Property="Background" Value="LightCoral" /> -->
+
+                        <Style Selector="^ TreeDataGridTemplateCell">
+                            <!-- <Setter Property="Background" Value="Coral" /> -->
+                        </Style>
+                    </Style>
+                </Style>
+            </Style>
+        </Style>
+    </Style>
+</Styles>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Abstractions.GuidedInstallers\Apocrypha.Abstractions.GuidedInstallers.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Backend\Apocrypha.Backend.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.FOMOD\Apocrypha.Games.FOMOD.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.RedEngine\Apocrypha.Games.RedEngine.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Collections\Apocrypha.Collections.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.FileHashes\Apocrypha.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\..\..\src\Apocrypha.Library\Apocrypha.Library.csproj" />
+        <ProjectReference Include="..\..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Verify.Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="xunit.runner.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+</Project>

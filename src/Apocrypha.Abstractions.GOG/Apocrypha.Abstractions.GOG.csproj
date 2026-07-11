@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <PackageReference Include="NexusMods.Paths" />
+        <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Abstractions.NexusWebApi\Apocrypha.Abstractions.NexusWebApi.csproj" />
+      <ProjectReference Include="..\Apocrypha.Sdk\Apocrypha.Sdk.csproj" />
+    </ItemGroup>
+</Project>

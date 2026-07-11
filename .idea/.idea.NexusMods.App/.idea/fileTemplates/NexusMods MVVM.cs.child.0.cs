@@ -1,6 +1,6 @@
 using Avalonia.ReactiveUI;
 
-namespace NexusMods.App.UI;
+namespace Apocrypha.App.UI;
 
 public partial class ${NAME}View : ReactiveUserControl<I${NAME}ViewModel>
 {

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Apocrypha.Abstractions.GuidedInstallers\Apocrypha.Abstractions.GuidedInstallers.csproj" />
+  </ItemGroup>
+</Project>

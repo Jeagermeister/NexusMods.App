@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI;
+namespace Apocrypha.App.UI;
 
 public interface I${NAME}ViewModel : IViewModelInterface
 {

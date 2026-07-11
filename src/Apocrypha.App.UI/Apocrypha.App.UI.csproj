@@ -1,0 +1,833 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**" />
+        <None Remove=".gitignore" />
+        <None Remove="Theme\BareIcons.xaml" />
+        <None Remove="Controls\GameWidget\GameWidgetStyles.xaml" />
+        <None Remove="Theme\Borders.xaml" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Black.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-BlackItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Bold.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-BoldItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-ExtraBold.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-ExtraBoldItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-ExtraLight.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-ExtraLightItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Italic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Light.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-LightItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Medium.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-MediumItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Regular.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-SemiBold.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-SemiBoldItalic.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-Thin.ttf" />
+        <None Remove="Fonts\Montserrat\static\Montserrat-ThinItalic.ttf" />
+        <None Remove="Fonts\Montserrat\Montserrat-Italic-VariableFont_wght.ttf" />
+        <None Remove="Fonts\Regular\Montserrat-Regular.ttf" />
+        <None Remove="Fonts\Regular\Roboto-Regular.ttf" />
+        <None Remove="Fonts\SemiBold\Montserrat-SemiBold.ttf" />
+        <None Remove="Theme\SelectableTextBlock.xaml" />
+        <None Remove="Theme\StackPanelStyles.xaml" />
+        <None Remove="Theme\PillStyles.xaml" />
+        <None Remove="Theme\IconStyles.xaml" />
+        <None Remove="Fonts\Bold\Roboto-Bold.ttf" />
+        <None Remove="Theme\GridStyles.xaml" />
+        <None Remove="Theme\Toolbar.xaml" />
+        <None Remove="Theme\MainWindow.xaml" />
+        <None Remove="Theme\ButtonStyles\Standard.xaml" />
+        <None Remove="Theme\ButtonStyles\Spine\DownloadButton.xaml" />
+        <None Remove="Theme\ButtonStyles\Hyperlink.xaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <TrimmerRootDescriptor Include="Roots.xml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.UI.Tests" />
+        <InternalsVisibleTo Include="Apocrypha.App.UI.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" />
+        <PackageReference Include="Avalonia.AvaloniaEdit" />
+        <PackageReference Include="Avalonia.Controls.TreeDataGrid" />
+        <PackageReference Include="Avalonia.Desktop" />
+        <PackageReference Include="Avalonia.Controls.DataGrid" />
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" />
+        <PackageReference Include="Avalonia.Labs.Panels" />
+        <PackageReference Include="Avalonia.ReactiveUI" />
+        <PackageReference Include="Avalonia.Svg.Skia" />
+        <PackageReference Include="Avalonia.Skia" />
+        <PackageReference Include="SkiaSharp"/>
+        <PackageReference Include="SkiaSharp.HarfBuzz"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.macOS"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Win32"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" />
+        <PackageReference Include="AvaloniaEdit.TextMate" />
+        <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia"/>
+        <PackageReference Include="Markdown.Avalonia.Tight" />
+        <PackageReference Include="DynamicData" />
+        <PackageReference Include="Humanizer" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="NuGet.Versioning" />
+        <PackageReference Include="ObservableCollections.R3" />
+        <PackageReference Include="OneOf" />
+        <PackageReference Include="Projektanker.Icons.Avalonia.MaterialDesign" />
+        <PackageReference Include="R3" />
+        <PackageReference Include="R3Extensions.Avalonia" />
+        <PackageReference Include="ReactiveUI.Fody" />
+        <PackageReference Include="Splat.Microsoft.Extensions.Logging" />
+        <PackageReference Include="System.Reactive" />
+        <PackageReference Include="TextMateSharp.Grammars" />
+        <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="ZLinq" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Logging\Apocrypha.Abstractions.Logging.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.NexusModsLibrary\Apocrypha.Abstractions.NexusModsLibrary.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Thunderstore\Apocrypha.Abstractions.Thunderstore.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.GuidedInstallers\Apocrypha.Abstractions.GuidedInstallers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.Cli\Apocrypha.App.Cli.csproj" />
+        <ProjectReference Include="..\Apocrypha.Collections\Apocrypha.Collections.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.GitHub\Apocrypha.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\Apocrypha.UI.Sdk\Apocrypha.UI.Sdk.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="Controls\Spine\Buttons\Image\ImageButton.axaml.cs">
+            <DependentUpon>Game.axaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Add\AddButton.axaml.cs">
+            <DependentUpon>Add.axaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Windows\MainWindow.axaml.cs">
+            <DependentUpon>MainWindow.axaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\LoadoutGridDesignViewModel.cs">
+            <DependentUpon>ILoadoutGridViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\LoadoutGridViewModel.cs">
+            <DependentUpon>ILoadoutGridViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\Downloads\InProgressDesignViewModel.cs">
+            <DependentUpon>IInProgressViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\Downloads\InProgressViewModel.cs">
+            <DependentUpon>IInProgressViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Icon\IconButtonViewModel.cs">
+          <DependentUpon>IIconButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Icon\IconButtonDesignViewModel.cs">
+          <DependentUpon>IIconButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Download\SpineDownloadButtonDesignerViewModel.cs">
+          <DependentUpon>ISpineDownloadButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Download\SpineDownloadButtonViewModel.cs">
+          <DependentUpon>ISpineDownloadButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\Downloads\ViewModels\DownloadTaskDesignViewModel.cs">
+          <DependentUpon>IDownloadTaskViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModCategory\ModCategoryView.axaml.cs">
+          <DependentUpon>ModCategoryView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModCategory\ModCategoryDesignViewModel.cs">
+          <DependentUpon>IModCategoryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModCategory\ModCategoryViewModel.cs">
+          <DependentUpon>IModCategoryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModName\ModNameView.axaml.cs">
+          <DependentUpon>ModNameView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModName\ModNameDesignViewModel.cs">
+          <DependentUpon>IModNameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModName\ModNameViewModel.cs">
+          <DependentUpon>IModNameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModEnabled\ModEnabledHeader.axaml.cs">
+          <DependentUpon>ModEnabledHeader.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModEnabled\ModEnabledView.axaml.cs">
+          <DependentUpon>ModEnabledView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModEnabled\ModEnabledDesignViewModel.cs">
+          <DependentUpon>IModEnabledViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModEnabled\ModEnabledViewModel.cs">
+          <DependentUpon>IModEnabledViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\DownloadGameView\DownloadGameView.axaml.cs">
+          <DependentUpon>DownloadGameView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\DownloadGameView\DownloadGameViewModel.cs">
+          <DependentUpon>IDownloadGameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\DownloadGameView\DownloadGameDesignViewModel.cs">
+          <DependentUpon>IDownloadGameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModInstalled\ModInstalledView.axaml.cs">
+          <DependentUpon>ModInstalledView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModInstalled\ModInstalledDesignViewModel.cs">
+          <DependentUpon>ModInstalledViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModInstalled\IModInstalledViewModel.cs">
+          <DependentUpon>ModInstalledViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModVersion\ModVersionView.axaml.cs">
+          <DependentUpon>ModVersionView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModVersion\ModVersionDesignViewModel.cs">
+          <DependentUpon>IModVersionViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\ModVersion\ModVersionViewModel.cs">
+          <DependentUpon>IModVersionViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\DownloadGameName\DownloadGameNameViewModel.cs">
+          <DependentUpon>IDownloadGameNameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\LoadoutGrid\Columns\DownloadGameName\DownloadGameNameDesignViewModel.cs">
+          <DependentUpon>IDownloadGameNameViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\OkCancel\MessageBoxOkCancelView.axaml.cs">
+          <DependentUpon>MessageBoxOkCancelView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\Download\Cancel\CancelDownloadOverlayView.axaml.cs">
+          <DependentUpon>MessageBoxOkCancelView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\Download\Cancel\CancelDownloadOverlayViewModel.cs">
+          <DependentUpon>ICancelDownloadOverlayViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RightContent\Downloads\ViewModels\DownloadTaskViewModel.cs">
+          <DependentUpon>IDownloadTaskViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Login\NexusLoginOverlayView.axaml.cs">
+          <DependentUpon>NexusLoginOverlayView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\OverlayController.cs">
+          <DependentUpon>IOverlayController.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\OkCancel\MessageBoxOkCancelViewModel.cs">
+          <DependentUpon>IMessageBoxOkCancelViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\DevelopmentBuildBanner\DevelopmentBuildBannerViewModel.cs">
+          <DependentUpon>IDevelopmentBuildBannerViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\DevelopmentBuildBanner\DevelopmentBuildBannerView.axaml.cs">
+          <DependentUpon>DevelopmentBuildBannerView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TopBar\TopBarDesignViewModel.cs">
+          <DependentUpon>ITopBarViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TopBar\TopBarViewModel.cs">
+          <DependentUpon>ITopBarViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Workspace\WorkspaceView.axaml.cs">
+          <DependentUpon>WorkspaceView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Workspace\WorkspaceViewModel.cs">
+          <DependentUpon>IWorkspaceViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Panel\PanelViewModel.cs">
+          <DependentUpon>IPanelViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\AddPanelButton\AddPanelButtonViewModel.cs">
+          <DependentUpon>IAddPanelButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\AddPanelButton\AddPanelButtonDesignViewModel.cs">
+          <DependentUpon>IAddPanelButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\PanelTab\PanelTabViewModel.cs">
+          <DependentUpon>IPanelTabViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\PanelTabHeader\PanelTabHeaderViewModel.cs">
+          <DependentUpon>IPanelTabHeaderViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\PanelTabHeader\PanelTabHeaderDesignViewModel.cs">
+          <DependentUpon>IPanelTabHeaderViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\NewTabPage\NewTabPageViewModel.cs">
+          <DependentUpon>INewTabPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Page\IPageFactoryContext.cs">
+          <DependentUpon>IPageFactory.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Page\PageFactoryId.cs">
+          <DependentUpon>IPageFactory.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Page\APageViewModel.cs">
+          <DependentUpon>IPageViewModelInterface.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\PanelResizer\PanelResizerViewModel.cs">
+          <DependentUpon>IPanelResizerViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\ProgressRing\ProgressRing.axaml.cs">
+          <DependentUpon>ProgressRing.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Controllers\WorkspaceController.cs">
+          <DependentUpon>IWorkspaceController.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\Controllers\DesignWorkspaceController.cs">
+          <DependentUpon>IWorkspaceController.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\AddPanelButton\AddPanelDropDownDesignViewModel.cs">
+          <DependentUpon>IAddPanelDropDownViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\AddPanelButton\AddPanelDropDownViewModel.cs">
+          <DependentUpon>IAddPanelDropDownViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Windows\MainWindowViewModel.cs">
+          <DependentUpon>IMainWindowViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Windows\WindowManager.cs">
+          <DependentUpon>IWindowManager.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Windows\DesignWindowManager.cs">
+          <DependentUpon>IWindowManager.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Home\HomeLeftMenuViewModel.cs">
+          <DependentUpon>IHomeLeftMenuViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Home\HomeLeftMenuDesignViewModel.cs">
+          <DependentUpon>IHomeLeftMenuViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\SpineDesignViewModel.cs">
+          <DependentUpon>ISpineViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\SpineViewModel.cs">
+          <DependentUpon>ISpineViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Image\ImageButtonDesignViewModel.cs">
+          <DependentUpon>IImageButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Spine\Buttons\Image\ImageButtonViewModel.cs">
+          <DependentUpon>IImageButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Loadout\LoadoutLeftMenuViewModel.cs">
+          <DependentUpon>ILoadoutLeftMenuViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceAttachments\WorkspaceAttachmentsFactoryManager.cs">
+          <DependentUpon>IWorkspaceAttachmentsFactoryManager.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceAttachments\AttachmentsFactories\DownloadsAttachmentsFactory.cs">
+          <DependentUpon>IWorkspaceAttachmentsFactory.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceAttachments\AttachmentsFactories\HomeAttachmentsFactory.cs">
+          <DependentUpon>IWorkspaceAttachmentsFactory.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceAttachments\AttachmentsFactories\LoadoutAttachmentsFactory.cs">
+          <DependentUpon>IWorkspaceAttachmentsFactory.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\IItemModelComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\AValueComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\AFormattedValueComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\DateComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\StringComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\ImageComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\SizeComponent.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\ComponentKey.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\UInt32Component.cs">
+            <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Trees\Files\FileTreeNodeViewModel.cs">
+          <DependentUpon>IFileTreeNodeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Trees\Files\FileTreeNodeDesignViewModel.cs">
+          <DependentUpon>IFileTreeNodeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\ModInfo\ViewModFiles\ViewModFilesView.axaml.cs">
+          <DependentUpon>ViewModFilesView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\ModInfo\ViewModFiles\ModFilesViewModFilesDesignModFilesViewModel.cs">
+          <DependentUpon>IModFilesViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\ModInfo\ViewModFiles\ModFilesViewModel.cs">
+          <DependentUpon>IModFilesViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\ViewModInfo\ModInfoView.axaml.cs">
+          <DependentUpon>ViewModFilesView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\ViewModInfo\ModInfoViewModInfoDesignModInfoViewModel.cs">
+          <DependentUpon>IModInfoViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\ViewModInfo\ModInfoViewModel.cs">
+          <DependentUpon>IModInfoViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Loadout\LoadoutLeftMenuDesignViewModel.cs">
+          <DependentUpon>ILoadoutLeftMenuViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\IApplyControlDesignViewModel.cs">
+          <DependentUpon>IApplyControlViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\ModInfo\Dummy\ViewModFilesView.axaml.cs">
+          <DependentUpon>ViewModFilesView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\Spinner\Spinner.axaml.cs">
+          <DependentUpon>ProgressRing.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\Diagnostics\DiagnosticEntryView.axaml.cs">
+            <DependentUpon>DiagnosticEntryView.xaml</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Diagnostics\DiagnosticEntryViewModel.cs">
+          <DependentUpon>IDiagnosticEntryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Diagnostics\DiagnosticEntryDesignViewModel.cs">
+          <DependentUpon>IDiagnosticEntryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="DiagnosticSystem\ModReferenceFormatter.cs">
+          <DependentUpon>IValueFormatter.cs</DependentUpon>
+        </Compile>
+        <Compile Update="DiagnosticSystem\LoadoutReferenceFormatter.cs">
+          <DependentUpon>IValueFormatter.cs</DependentUpon>
+        </Compile>
+        <Compile Update="DiagnosticSystem\NamedLinkFormatter.cs">
+          <DependentUpon>IValueFormatter.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diagnostics\Details\DiagnosticDetailsView.axaml.cs">
+          <DependentUpon>DiagnosticDetailsView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\Diagnostics\Details\DiagnosticDetailsViewModel.cs">
+          <DependentUpon>IDiagnosticDetailsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diagnostics\Details\DiagnosticDetailsDesignViewModel.cs">
+          <DependentUpon>IDiagnosticDetailsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diagnostics\List\DiagnosticListViewModel.cs">
+          <DependentUpon>IDiagnosticListViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Trees\ModFileTreeDesignViewModel.cs">
+          <DependentUpon>IFileTreeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Trees\ModFileTreeViewModel.cs">
+          <DependentUpon>IFileTreeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyGames\MyGamesDesignViewModel.cs">
+          <DependentUpon>IMyGamesViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyGames\MyGamesViewModel.cs">
+          <DependentUpon>IMyGamesViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diff\ApplyDiff\ApplyDiffViewModel.cs">
+          <DependentUpon>IApplyDiffViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Trees\DiffTreeViewModel.cs">
+          <DependentUpon>IFileTreeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diff\ApplyDiff\ApplyDiffDesignViewModel.cs">
+          <DependentUpon>IApplyDiffViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\MarkdownRenderer\MarkdownRendererViewModel.cs">
+          <DependentUpon>IMarkdownRendererViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Settings\SettingsPageViewModel.cs">
+          <DependentUpon>ISettingsPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Settings\SettingEntries\SettingEntryViewModel.cs">
+          <DependentUpon>ISettingEntryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Settings\SettingEntries\SettingInteractionControls\Toggle\SettingToggleControl.axaml.cs">
+          <DependentUpon>SettingToggleControl.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\Settings\SettingEntries\SettingInteractionControls\Toggle\SettingToggleViewModel.cs">
+          <DependentUpon>ISettingToggleViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\ModLibrary\DownloadsLibrary\DownloadsLibraryViewModel.cs">
+          <DependentUpon>IDownloadsLibraryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Settings\SettingEntries\SettingInteractionControls\ComboBox\SettingComboBoxViewModel.cs">
+          <DependentUpon>ISettingComboBoxViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Changelog\ChangelogPageView.cs">
+          <DependentUpon>ChangelogPageView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Changelog\ChangelogPageViewModel.cs">
+          <DependentUpon>IChangelogPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\NewTabPage\NewTabPageSectionItemViewModel.cs">
+          <DependentUpon>INewTabPageSectionItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\NewTabPage\NewTabPageSectionViewModel.cs">
+          <DependentUpon>INewTabPageSectionViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\TextEdit\TextEditorPageViewModel.cs">
+          <DependentUpon>ITextEditorPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\AlphaWarning\AlphaWarningViewModel.cs">
+          <DependentUpon>IAlphaWarningViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="WorkspaceSystem\WorkspaceController\WorkspaceController.cs">
+          <DependentUpon>IWorkspaceController.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Settings\Section\SettingSectionViewModel.cs">
+          <DependentUpon>ISettingSectionViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutBadge\LoadoutBadgeDesignViewModel.cs">
+          <DependentUpon>ILoadoutBadgeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\Standard\LoadoutCardView.axaml.cs">
+          <DependentUpon>LoadoutCardView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\Standard\LoadoutCardDesignViewModel.cs">
+          <DependentUpon>ILoadoutCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\Standard\SkeletonLoadoutCardViewModel.cs">
+          <DependentUpon>ILoadoutCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\AddLoadoutCard\AddLoadoutCardViewModel.cs">
+          <DependentUpon>IAddLoadoutCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyLoadouts\GameLoadoutsSectionEntry\GameLoadoutsSectionEntryViewModel.cs">
+          <DependentUpon>IGameLoadoutsSectionEntryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyLoadouts\GameLoadoutsSectionEntry\GameLoadoutsSectionEntryDesignViewModel.cs">
+          <DependentUpon>IGameLoadoutsSectionEntryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\CreateNewLoadoutCard\CreateNewLoadoutCardViewModel.cs">
+          <DependentUpon>ICreateNewLoadoutCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyLoadouts\MyLoadoutsDesignViewModel.cs">
+          <DependentUpon>IMyLoadoutsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutCard\Standard\LoadoutCardViewModel.cs">
+          <DependentUpon>ILoadoutCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\MyLoadouts\MyLoadoutsViewModel.cs">
+          <DependentUpon>IMyLoadoutsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\LoadoutBadge\LoadoutBadgeViewModel.cs">
+          <DependentUpon>ILoadoutBadgeViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutGroupFiles\LoadoutGroupFilesViewModel.cs">
+          <DependentUpon>ILoadoutGroupFilesViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="DiagnosticSystem\LoadoutItemGroupFormatter.cs">
+          <DependentUpon>IValueFormatter.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\LibraryDeleteConfirmation\LibraryItemDeleteConfirmationViewModel.cs">
+          <DependentUpon>ILibraryItemDeleteConfirmationViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Loadout\LoadoutViewModel.cs">
+          <DependentUpon>ILoadoutViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LibraryPage\LibraryViewModel.cs">
+          <DependentUpon>ILibraryViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutPage\LoadoutViewModel.cs">
+          <DependentUpon>ILoadoutViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\Ok\MessageBoxOkView.axaml.cs">
+          <DependentUpon>MessageBoxOkCancelView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\Ok\MessageBoxOkCancelView.axaml.cs">
+          <DependentUpon>MessageBoxOkCancelView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\Ok\MessageBoxOkViewModel.cs">
+          <DependentUpon>IMessageBoxOkViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Dependency\MissingRuntimeDependency\MissingRuntimeDependencyView.axaml.cs">
+          <DependentUpon>MessageBoxOkView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\LibraryPage\Collections\CollectionCardDesignViewModel.cs">
+          <DependentUpon>ICollectionCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\CollectionDownload\CollectionDownloadDesignViewModel.cs">
+          <DependentUpon>ICollectionDownloadViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LibraryPage\Collections\CollectionCardViewModel.cs">
+          <DependentUpon>ICollectionCardViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\Alerts\Alert.axaml.cs">
+          <DependentUpon>Alert.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\LoadOrder\LoadOrdersPageDesignViewModel.cs">
+          <DependentUpon>ILoadOrdersPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadOrder\LoadOrdersPageViewModel.cs">
+          <DependentUpon>ILoadOrdersPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadOrder\Prototype\LoadOrderViewModel.cs">
+          <DependentUpon>ILoadOrderViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\GameWidget\GameWidgetDesignViewModel.cs">
+          <DependentUpon>IGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\GameWidget\GameWidgetViewModel.cs">
+          <DependentUpon>IGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Sorting\Prototype\LoadOrderViewModel.cs">
+          <DependentUpon>ILoadOrderViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Sorting\Prototype\LoadOrderItemModel.cs">
+          <DependentUpon>ILoadOrderItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Sorting\SortingSelectionView\SortingSelectionView.axaml.cs">
+          <DependentUpon>SortingSelectionView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\Sorting\LoadOrder\LoadOrderViewModel.cs">
+          <DependentUpon>ILoadOrderViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Sorting\SortingSelection\SortingSelectionViewModel.cs">
+          <DependentUpon>ISortingSelectionViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Diagnostics\List\DiagnosticListDesignViewModel.cs.old">
+          <DependentUpon>IDiagnosticListViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\ApplyControlView.axaml.cs">
+          <DependentUpon>ApplyControlView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\LaunchButtonView.axaml.cs">
+          <DependentUpon>LaunchButtonView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="LeftMenu\Items\LeftMenuItemViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\LeftMenuItemDesignViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\CollectionLeftMenuItemViewModel.cs">
+          <DependentUpon>ILeftMenuItemWithToggleViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ILeftMenuItemWithToggleViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\HealthCheckLeftMenuItemViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\LeftMenuItemWithCountBadgeViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\CollectionDownload\CollectionDownloadViewModel.cs">
+          <DependentUpon>ICollectionDownloadViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutPage\CollectionLoadoutViewModel.cs">
+          <DependentUpon>ICollectionLoadoutViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutPage\CollectionLoadoutDesignViewModel.cs">
+          <DependentUpon>ICollectionLoadoutViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\PageHeader\PageHeader.axaml.cs">
+          <DependentUpon>PageHeader.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\LaunchButtonDesignViewModel.cs">
+          <DependentUpon>ILaunchButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\LaunchButtonViewModel.cs">
+          <DependentUpon>ILaunchButtonViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\ApplyControlViewModel.cs">
+          <DependentUpon>IApplyControlViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\ApplyControl\ApplyControlDesignViewModel.cs">
+          <DependentUpon>IApplyControlViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Sorting\LoadOrder\TreeDataGrid\LoadOrderDataProvider.cs">
+          <DependentUpon>ILoadOrderDataProvider.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\ManageGame\ManageGameWarningView.axaml.cs">
+          <DependentUpon>MetricsOptInView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Overlays\ManageGame\ManageGameWarningViewModel.cs">
+          <DependentUpon>IManageGameWarningViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\TreeDataGrid\UnifiedIconComponent.cs">
+          <DependentUpon>CompositeItemModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Overlays\Generic\MessageBox\Ok\MessageBoxOkDesignViewModel.cs">
+          <DependentUpon>IMessageBoxOkViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="MessageBox\MessageBoxViewModel.cs">
+          <DependentUpon>IDialogViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="MessageBox\Dialog.cs">
+          <DependentUpon>IDialog.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\ProtocolRegistration\ProtocolRegistrationTestPageViewModel.cs">
+          <DependentUpon>IProtocolRegistrationTestPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutGroupFilesPage\LoadoutGroupFilesView.cs">
+          <DependentUpon>LoadoutGroupFilesView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutGroupFilesPage\LoadoutGroupFilesViewModel.cs">
+          <DependentUpon>ILoadoutGroupFilesViewModel.cs</DependentUpon>
+         </Compile>
+        <Compile Update="Controls\Settings\SettingEntries\SettingInteractionControls\PathsList\SettingPathsViewModel.cs">
+          <DependentUpon>ISettingPathsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Dialog\DialogStandardContentView.axaml.cs">
+          <DependentUpon>DialogStandardContentView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Dialog\DialogViewModel.cs">
+          <DependentUpon>IDialogViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Dialog\DialogStandardContentViewModel.cs">
+          <DependentUpon>IDialogStandardContentViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\LoadoutPage\Dialogs\ShareCollection\DialogShareCollectionView.axaml.cs">
+          <DependentUpon>DialogShareCollectionView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\Standard\MiniGameWidget.axaml.cs">
+          <DependentUpon>MiniGameWidget.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\Standard\MiniGameWidgetDesignViewModel.cs">
+          <DependentUpon>IMiniGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\Standard\MiniGameWidgetViewModel.cs">
+          <DependentUpon>IMiniGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidget.axaml.cs">
+          <DependentUpon>MiniGameWidget.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidgetViewModel.cs">
+          <DependentUpon>IComingSoonMiniGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidgetDesignViewModel.cs">
+          <DependentUpon>IComingSoonMiniGameWidgetViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\CollectionDownload\Dialogs\CollectionPublished\DialogPremiumCollectionDownloadsView.axaml.cs">
+          <DependentUpon>DialogPremiumCollectionDownloads.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\CollectionDownload\Dialogs\CollectionPublished\DialogCollectionPublishedView.axaml.cs">
+          <DependentUpon>DialogCollectionPublishedView.axaml</DependentUpon>
+          <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\CollectionDownload\Dialogs\PremiumDownloads\DialogPremiumCollectionDownloadsView.axaml.cs">
+           <DependentUpon>DialogCollectionPublishedView.axaml</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Downloads\DownloadsPageViewModel.cs">
+           <DependentUpon>IDownloadsPageViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Pages\Downloads\DownloadsPageView.axaml.cs">
+           <DependentUpon>DownloadsPageView.axaml</DependentUpon>
+           <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Pages\Sorting\FileConflicts\FileConflictsViewModel.cs">
+           <DependentUpon>IFileConflictsViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\CollectionMenuItem\CollectionMenuItem.axaml.cs">
+           <DependentUpon>CollectionMenuItem.axaml</DependentUpon>
+           <SubType>Code</SubType>
+        </Compile>
+        <Compile Update="Controls\CollectionMenuItem\CollectionMenuItemDesignViewModel.cs">
+           <DependentUpon>ICollectionMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Controls\CollectionMenuItem\CollectionMenuItemViewModel.cs">
+           <DependentUpon>ICollectionMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\CollectionRevisionLeftMenuItemViewModel.cs">
+          <DependentUpon>LeftMenuItemWithRightIconViewModel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="LeftMenu\Items\LeftMenuItemWithRightIconViewModel.cs">
+          <DependentUpon>ILeftMenuItemViewModel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Theme\Icons.xaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Fonts\Bold\Montserrat-Bold.ttf" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Controls\DownloadProgressBar\DownloadProgressBar.axaml" />
+      <UpToDateCheckInput Remove="Controls\Buttons\RoundedButton\RoundedButton.axaml" />
+      <UpToDateCheckInput Remove="Controls\Buttons\StandardButtonTheme.axaml" />
+      <UpToDateCheckInput Remove="RightContent\Home\HomeView.axaml" />
+      <UpToDateCheckInput Remove="Controls\Badge\Badge.axaml" />
+      <UpToDateCheckInput Remove="Controls\DataGrid\Columns\ModInstalled\ModInstalledView.axaml" />
+      <UpToDateCheckInput Remove="Controls\DownloadGrid\Columns\DownloadGameName\DownloadGameNameView.axaml" />
+      <UpToDateCheckInput Remove="Controls\DownloadGrid\Columns\DownloadName\DownloadNameView.axaml" />
+      <UpToDateCheckInput Remove="Controls\DownloadGrid\Columns\DownloadSize\DownloadSizeView.axaml" />
+      <UpToDateCheckInput Remove="Controls\DownloadGrid\Columns\DownloadStatus\DownloadStatusView.axaml" />
+      <UpToDateCheckInput Remove="Controls\DownloadGrid\Columns\DownloadVersion\DownloadVersionView.axaml" />
+      <UpToDateCheckInput Remove="Overlays\Login\StartupMessageBox\LoginMessageBoxView.axaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Controls\DevelopmentBuildBanner\DevelopmentBuildBannerView.axaml" />
+      <AdditionalFiles Include="Pages\MyGames\MyGamesView.axaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Update="Resources\Language.resx">
+            <Generator>PublicResXFileCodeGenerator</Generator>
+            <LastGenOutput>Language.Designer.cs</LastGenOutput>
+        </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <AvaloniaXaml Update="Controls\CollectionMenuItem\CollectionMenuItemDesignPreview.axaml">
+        <DependentUpon>CollectionMenuItem.axaml</DependentUpon>
+      </AvaloniaXaml>
+    </ItemGroup>
+</Project>

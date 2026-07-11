@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Networking.Thunderstore.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Apocrypha.Abstractions.Thunderstore\Apocrypha.Abstractions.Thunderstore.csproj" />
+      <ProjectReference Include="..\..\..\src\Apocrypha.Networking.Thunderstore\Apocrypha.Networking.Thunderstore.csproj" />
+    </ItemGroup>
+</Project>

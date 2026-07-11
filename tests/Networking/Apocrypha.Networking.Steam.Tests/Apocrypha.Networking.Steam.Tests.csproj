@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Networking.Steam.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Apocrypha.Abstractions.Steam\Apocrypha.Abstractions.Steam.csproj" />
+      <ProjectReference Include="..\..\..\src\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+      <ProjectReference Include="..\..\..\src\Apocrypha.Networking.Steam\Apocrypha.Networking.Steam.csproj" />
+    </ItemGroup>
+
+</Project>

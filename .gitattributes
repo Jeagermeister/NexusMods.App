@@ -50,4 +50,4 @@
 *.verified.xml text eol=lf working-tree-encoding=UTF-8
 *.verified.json text eol=lf working-tree-encoding=UTF-8
 . !text !filter !merge !diff
-src/NexusMods.Games.FileHashes/Assets/game_hashes_db.zip filter=lfs diff=lfs merge=lfs -text
+src/Apocrypha.Games.FileHashes/Assets/game_hashes_db.zip filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <!-- Target WinExe so that a console isn't automatically created on Windows -->
+        <OutputType>WinExe</OutputType>
+        <!-- The executable is the app's identity (WM_CLASS, process name, scripts) — the
+             project/namespace names deliberately stay NexusMods.* (Phase 1 §14 decision). -->
+        <AssemblyName>Apocrypha</AssemblyName>
+        <ApplicationIcon>icon.ico</ApplicationIcon>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DefineConstants />
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games.FileHashes\Apocrypha.Abstractions.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Logging\Apocrypha.Abstractions.Logging.csproj" />
+        <ProjectReference Include="..\Apocrypha.Backend\Apocrypha.Backend.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.AdvancedInstaller.UI\Apocrypha.Games.AdvancedInstaller.UI.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.CreationEngine\Apocrypha.Games.CreationEngine.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.FOMOD.UI\Apocrypha.Games.FOMOD.UI.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.FOMOD\Apocrypha.Games.FOMOD.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.Larian\Apocrypha.Games.Larian.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.MountAndBlade2Bannerlord\Apocrypha.Games.MountAndBlade2Bannerlord.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.BepInEx\Apocrypha.Games.BepInEx.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.EpicGameStore\Apocrypha.Networking.EpicGameStore.csproj" />
+        <ProjectReference Include="..\\Apocrypha.Networking.GOG\Apocrypha.Networking.GOG.csproj" />
+        <ProjectReference Include="..\\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\\Apocrypha.Networking.Steam\Apocrypha.Networking.Steam.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.Thunderstore\Apocrypha.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
+        <ProjectReference Include="..\\Apocrypha.Networking.Steam\Apocrypha.Networking.Steam.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.Cli\Apocrypha.App.Cli.csproj" />
+        <ProjectReference Include="..\Apocrypha.Collections\Apocrypha.Collections.csproj" />
+        <ProjectReference Include="..\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.FileHashes\Apocrypha.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\Apocrypha.Library\Apocrypha.Library.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.GitHub\Apocrypha.Networking.GitHub.csproj" />
+        <ProjectReference Include="..\Apocrypha.ProxyConsole\Apocrypha.ProxyConsole.csproj" />
+        <ProjectReference Include="..\Apocrypha.SingleProcess\Apocrypha.SingleProcess.csproj" />
+        <ProjectReference Include="..\Apocrypha.Themes.NexusFluentDark\Apocrypha.Themes.NexusFluentDark.csproj" />
+    </ItemGroup>
+   
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Games.StardewValley\Apocrypha.Games.StardewValley.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.RedEngine\Apocrypha.Games.RedEngine.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="NLog.Extensions.Logging" />
+        <PackageReference Include="Spectre.Console" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="App.axaml.cs">
+        <DependentUpon>App.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="uninstall-helper.ps1">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="io.github.jeagermeister.apocrypha.desktop">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="app.manifest">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="io.github.jeagermeister.apocrypha.metainfo.xml">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="sign.bat">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="uninstall.bat">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="icon.svg">
+            <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+        <None Update="io.github.jeagermeister.apocrypha.releases.xml">
+          <DependentUpon>app.pupnet.conf</DependentUpon>
+        </None>
+    </ItemGroup>
+
+    <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish"
+            Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(RuntimeIdentifier)' == 'win'">
+        <Copy SourceFiles="uninstall.bat" DestinationFolder="$(PublishDir)" />
+    </Target>
+</Project>

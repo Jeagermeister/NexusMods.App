@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <PropertyGroup>
+      <RootNamespace>Apocrypha.CLI</RootNamespace>
+    </PropertyGroup>
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.GOG\Apocrypha.Abstractions.GOG.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Library\Apocrypha.Abstractions.Library.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.Thunderstore\Apocrypha.Networking.Thunderstore.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="NexusMods.Paths" />
+    </ItemGroup>
+
+</Project>

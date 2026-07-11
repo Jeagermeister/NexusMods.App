@@ -1,0 +1,51 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="viewModel:ILoadoutGroupFilesViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+    xmlns:search="clr-namespace:Apocrypha.App.UI.Controls.Search"
+    xmlns:viewModel="clr-namespace:Apocrypha.App.UI.Pages.LoadoutGroupFilesPage"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+    x:Class="Apocrypha.App.UI.Pages.LoadoutGroupFilesPage.LoadoutGroupFilesView">
+
+    <Grid RowDefinitions="Auto, *">
+        <controls:Toolbar Grid.Row="0" Margin="24,12, 24, 0">
+            <ItemsControl>
+                <search:SearchControl x:Name="SearchControl"
+                                      ButtonSize="Toolbar" />
+            </ItemsControl>
+            
+            <ItemsControl>
+                <navigation:NavigationControl x:Name="OpenEditorMenuItem"
+                                              Text="Edit File"
+                                              LeftIcon="{x:Static icons:IconValues.FileEdit}"
+                                              ShowIcon="Left"
+                                              Size="Toolbar"
+                                              Type="Tertiary"
+                                              Fill="WeakAlt"/>
+                
+                <controls:StandardButton x:Name="RemoveButton" 
+                                         Text="Delete"
+                                         LeftIcon="{x:Static icons:IconValues.DeleteForever}"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         Type="Tertiary"
+                                         Fill="WeakAlt"/>
+            </ItemsControl>
+        </controls:Toolbar>
+
+        <TreeDataGrid Grid.Row="1" x:Name="TreeDataGrid"
+                      ShowColumnHeaders="True"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="True"
+                      Classes="Compact" />
+        
+    </Grid>
+
+</reactive:ReactiveUserControl>

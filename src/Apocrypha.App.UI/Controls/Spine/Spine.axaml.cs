@@ -1,0 +1,25 @@
+using System.Reactive.Disposables;
+using Avalonia.ReactiveUI;
+using ReactiveUI;
+
+namespace Apocrypha.App.UI.Controls.Spine;
+
+public partial class Spine : ReactiveUserControl<ISpineViewModel>
+{
+    public Spine()
+    {
+        InitializeComponent();
+
+        this.WhenActivated(disposables =>
+        {
+            this.OneWayBind(ViewModel, vm => vm.Home, v => v.Home.ViewModel)
+                .DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.LoadoutSpineItems, v => v.Loadouts.ItemsSource)
+                .DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.Downloads, v => v.Download.ViewModel)
+                .DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.AddLoadout, v => v.Add.ViewModel)
+                .DisposeWith(disposables);
+        });
+    }
+}

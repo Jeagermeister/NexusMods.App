@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Games.StardewValley.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.StardewValley\Apocrypha.Games.StardewValley.csproj" />
+        <ProjectReference Include="..\..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="xunit.runner.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+</Project>

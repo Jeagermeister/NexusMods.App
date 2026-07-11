@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <None Remove="Assets\ecosystem-schema.json" />
+        <EmbeddedResource Include="Assets\ecosystem-schema.json" />
+        <None Remove="Assets\bepinex-nexus-ids.json" />
+        <EmbeddedResource Include="Assets\bepinex-nexus-ids.json" />
+        <None Remove="Resources\thumbnail.webp" />
+        <EmbeddedResource Include="Resources\thumbnail.webp" />
+        <None Remove="Resources\tile.webp" />
+        <EmbeddedResource Include="Resources\tile.webp" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.Games.BepInEx.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NexusMods.Paths" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Thunderstore\Apocrypha.Abstractions.Thunderstore.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

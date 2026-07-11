@@ -1,0 +1,171 @@
+using System.Diagnostics;
+using Apocrypha.App.UI.Controls.Navigation;
+using Apocrypha.App.UI.Resources;
+using Apocrypha.UI.Sdk;
+using R3;
+
+namespace Apocrypha.App.UI.Controls;
+
+/// <summary>
+/// Collection of shared IItemModelComponents that can be used in TreeDataGrid.
+/// </summary>
+public static class SharedComponents
+{
+    public sealed class ViewModPageAction : ReactiveR3Object, IItemModelComponent<ViewModPageAction>, IComparable<ViewModPageAction>
+    {
+        public ReactiveCommand<Unit> CommandViewModPage { get; } = new();
+        public IReadOnlyBindableReactiveProperty<bool> IsEnabled { get; }
+
+        public int CompareTo(ViewModPageAction? other)
+        {
+            if (other is null) return 1;
+            return 0; // All view mod page actions are considered equal for sorting
+        }
+
+        public ViewModPageAction(bool isEnabled = true)
+        {
+            IsEnabled = new BindableReactiveProperty<bool>(isEnabled);
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(CommandViewModPage, IsEnabled);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+    
+    public sealed class ViewModFilesAction : ReactiveR3Object, IItemModelComponent<ViewModFilesAction>, IComparable<ViewModFilesAction>
+    {
+        public ReactiveCommand<NavigationInformation, NavigationInformation> Command { get; } = new(info => info);
+        public IReadOnlyBindableReactiveProperty<bool> IsEnabled { get; }
+
+        public int CompareTo(ViewModFilesAction? other)
+        {
+            if (other is null) return 1;
+            return 0; // All open file location actions are considered equal for sorting
+        }
+
+        public ViewModFilesAction(bool isEnabled = true)
+        {
+            IsEnabled = new BindableReactiveProperty<bool>(isEnabled);
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(Command, IsEnabled);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+    
+    public sealed class UninstallItemAction : ReactiveR3Object, IItemModelComponent<UninstallItemAction>, IComparable<UninstallItemAction>
+    {
+        public ReactiveCommand<Unit> CommandUninstallItem { get; } = new();
+        public IReadOnlyBindableReactiveProperty<bool> IsEnabled { get; }
+
+        public IReadOnlyBindableReactiveProperty<string> DisplayText { get;  }
+
+        private string EnabledText => Language.Loadout_UninstallItem_Menu_Text;
+
+        private string DisabledText => Language.Loadout_UninstallItem_Menu_Text__Uninstall_read_only;
+
+        public int CompareTo(UninstallItemAction? other)
+        {
+            if (other is null) return 1;
+            return 0; // All uninstall item actions are considered equal for sorting
+        }
+
+        public UninstallItemAction(bool isEnabled = true)
+        {
+            IsEnabled = new BindableReactiveProperty<bool>(isEnabled);
+            DisplayText = new BindableReactiveProperty<string>(isEnabled ? EnabledText : DisabledText);
+        }
+        
+        public UninstallItemAction(Observable<bool> isEnabled)
+        {
+            IsEnabled = isEnabled.ToBindableReactiveProperty();
+            
+            DisplayText = isEnabled
+                .Select(enabled => enabled ? EnabledText : DisabledText)
+                .ToBindableReactiveProperty(EnabledText);
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(CommandUninstallItem, IsEnabled);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    public sealed class IndexComponent : ReactiveR3Object, IItemModelComponent<IndexComponent>, IComparable<IndexComponent>
+    {
+        public ValueComponent<int> Index { get; }
+        public ValueComponent<string> DisplaySortIndexComponent { get; }
+
+        public ReactiveCommand<Unit> MoveUp { get; }
+        public ReactiveCommand<Unit> MoveDown { get; }
+
+        public IReadOnlyBindableReactiveProperty<int> SortIndex => Index.Value;
+        public IReadOnlyBindableReactiveProperty<string> DisplaySortIndex => DisplaySortIndexComponent.Value;
+
+        public IndexComponent(ValueComponent<int> index, 
+            ValueComponent<string> displaySortIndex,
+            Observable<bool> canExecuteMoveUp,
+            Observable<bool> canExecuteMoveDown)
+        {
+            Index = index;
+            DisplaySortIndexComponent = displaySortIndex;
+
+            MoveUp = canExecuteMoveUp.ObserveOnUIThreadDispatcher().ToReactiveCommand();
+            MoveDown = canExecuteMoveDown.ObserveOnUIThreadDispatcher().ToReactiveCommand();
+        }
+
+        public int CompareTo(IndexComponent? other) => throw new UnreachableException("Data is sorted by the Adapter, not by the TreeDataGrid");
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    Disposable.Dispose(MoveUp, MoveDown);
+                }
+
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+        
+    }
+}

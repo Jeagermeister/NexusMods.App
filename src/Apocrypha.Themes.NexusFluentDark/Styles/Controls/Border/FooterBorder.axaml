@@ -1,0 +1,38 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls;assembly=Apocrypha.App.UI">
+
+    <!-- Preview -->
+    <Design.PreviewWith>
+        <StackPanel Margin="20" Width="300">
+            <Border Classes="Footer">
+                <StackPanel>
+                    <controls:StandardButton x:Name="CancelButton"
+                                             Text="Cancel"
+                                             Type="Tertiary"
+                                             Fill="Weak"
+                                             Size="Small" />
+                    <controls:StandardButton x:Name="SaveButton"
+                                             Text="Save"
+                                             Type="Primary"
+                                             Fill="Strong"
+                                             Size="Small" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <!-- Add Styles Here -->
+    <Style Selector="Border.Footer">
+        <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Rounded-b-lg}" />
+
+        <Style Selector="^ > StackPanel">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="Margin" Value="18, 18" />
+            <Setter Property="Spacing" Value="{StaticResource Spacing-2}" />
+        </Style>
+    </Style>
+
+</Styles>

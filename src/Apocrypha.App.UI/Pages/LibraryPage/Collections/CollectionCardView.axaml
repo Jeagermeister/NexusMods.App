@@ -1,0 +1,83 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="collections:ICollectionCardViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:collections="clr-namespace:Apocrypha.App.UI.Pages.LibraryPage.Collections"
+    xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+    mc:Ignorable="d"
+    x:Class="Apocrypha.App.UI.Pages.LibraryPage.Collections.CollectionCardView">
+
+    <Design.DataContext>
+        <collections:CollectionCardDesignViewModel />
+    </Design.DataContext>
+
+    <Border x:Name="CardCollectionBorder" Width="372">
+
+        <!-- panel just to layer the background and foreground -->
+        <Panel>
+
+            <!-- background layer -->
+            <Border x:Name="BackgroundLayerBorder">
+                <StackPanel x:Name="BackgroundLayerStack">
+                    <!-- nexus mods logo -->
+                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.NexusColor}"
+                                       ToolTip.Tip="Nexus Mods Collection"/>
+                    <!-- revision -->
+                    <StackPanel x:Name="RevisionsStack">
+                        <TextBlock x:Name="RevisionText" />
+                        <StackPanel x:Name="RevisionUpdateStack" IsVisible="False">
+                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.ArrowForward}" />
+                            <TextBlock x:Name="NewestRevision" Text="456" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- foreground layer -->
+            <DockPanel x:Name="ForegroundLayerDock">
+                <!-- left column -->
+                <Border x:Name="TileImageBorder" DockPanel.Dock="Left">
+                    <Image x:Name="TileImage" />
+                </Border>
+
+                <!-- right column -->
+                <DockPanel x:Name="DetailsDock">
+                    <!-- stay at top -->
+                    <TextBlock DockPanel.Dock="Top" x:Name="TitleText"/>
+                    <!-- stay at bottom -->
+                    <StackPanel DockPanel.Dock="Bottom" x:Name="ActionStack">
+                        <navigation:NavigationControl x:Name="DownloadButton"
+                                                      Size="Small"
+                                                      Type="Secondary"
+                                                      Fill="Strong"
+                                                      LeftIcon="{x:Static icons:IconValues.Download}"
+                                                      RightIcon="{x:Static icons:IconValues.ChevronRight}"
+                                                      ShowIcon="Both" />
+                    </StackPanel>
+
+                    <!-- fill remaining space -->
+                    <panels:FlexPanel x:Name="StatsPanel">
+                        <StackPanel>
+                            <TextBlock x:Name="ModsCountText" />
+                            <Ellipse />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock x:Name="TotalSize" />
+                            <Ellipse />
+                        </StackPanel>
+                        <TextBlock x:Name="AuthorName" />
+                        <StackPanel>
+                            <Ellipse />
+                            <TextBlock Text="Read Only" />
+                        </StackPanel>
+                    </panels:FlexPanel>
+                </DockPanel>
+            </DockPanel>
+        </Panel>
+    </Border>
+</reactiveUi:ReactiveUserControl>
