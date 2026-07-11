@@ -1,4 +1,0 @@
-[submodule "extern/SMAPI"]
-	path = extern/SMAPI
-	url = https://github.com/Pathoschild/SMAPI.git
-	branch = stable

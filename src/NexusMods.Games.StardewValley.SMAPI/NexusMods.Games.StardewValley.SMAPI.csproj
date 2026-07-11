@@ -1,16 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <ItemGroup>
-        <Compile Include="..\..\extern\SMAPI\src\SMAPI.Toolkit\**\*.cs">
-            <Link>Toolkit\%(RecursiveDir)\%(FileName)%(Extension)</Link>
-            <Visible>false</Visible>
-        </Compile>
-
-        <Compile Include="..\..\extern\SMAPI\src\SMAPI.Toolkit.CoreInterfaces\**\*.cs">
-            <Link>CoreInterfaces\%(RecursiveDir)\%(FileName)%(Extension)</Link>
-            <Visible>false</Visible>
-        </Compile>
-    </ItemGroup>
+    <!-- Vendored SMAPI Toolkit sources (LGPL-3.0) — see Vendored/README.md for
+         provenance and update instructions. Replaced the extern/SMAPI submodule. -->
 
     <ItemGroup>
         <!-- keep in sync with https://github.com/Pathoschild/SMAPI/blob/develop/src/SMAPI.Toolkit/SMAPI.Toolkit.csproj -->
@@ -24,9 +15,5 @@
     <ItemGroup>
         <InternalsVisibleTo Include="NexusMods.Games.StardewValley"/>
     </ItemGroup>
-
-    <Target Name="ValidateSubmodule" AfterTargets="BeforeBuild">
-        <Error Condition="!Exists('..\..\extern\SMAPI\src')" Text="Missing SMAPI submodule! Make sure to run 'git submodule update --init --recursive'" />
-    </Target>
 
 </Project>
