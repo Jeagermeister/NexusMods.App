@@ -2064,7 +2064,21 @@ EVERY release (second onion layer after #30's missing script arg): release event
 the TAG → detached HEAD → create-pull-request demands an explicit `base`. Fixed
 (`base: linux-fork`) + releases.xml regenerated to back-fill v0.1.2 as stable.
 
+**Brian's backlog additions (2026-07-11, this session):**
+1. **Move the AI-session helper files out of the repo** (KIRO-HANDOFF.md, the DESIGN-*.md
+   working docs — anything that's agent context rather than user docs). They must stay on
+   disk somewhere readable for future sessions (a sibling folder like
+   `~/Source/Apocrypha-notes/` works; record the location in agent memory) — Brian just
+   doesn't want them IN the repo. Supersedes/absorbs the older "internal docs out of repo
+   before announcing" item.
+2. **Rename the local checkout folder to match the project**: `~/Source/NexusMods.App` →
+   `~/Source/Apocrypha` (queued since §27; the archived Vortex reference clone at
+   `~/Source/Vortex` stays as-is).
+3. **Full cleanup pass over the codebase**: dead code, stale configs, leftovers that are no
+   longer valid post-rebrand/post-macOS-cut (candidates: the ripped-telemetry projects,
+   remaining upstream Mixpanel scaffolding, unused workflows, the 182-warning backlog,
+   `ManuallyAddedGame` obsolete hack, dormant upstream scripts).
+
 **Next candidates:** server SQLite persistence + deploy notes → droplet friend test;
 app-side "Share → room code" / "Add → From room code" integration; Windows QA via the
-friend test (installer is live); AUR claim; layout epic L2–L5; internal docs out of repo
-before announcing.
+friend test (installer is live); AUR claim; layout epic L2–L5.
