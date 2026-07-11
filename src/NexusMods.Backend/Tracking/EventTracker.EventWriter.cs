@@ -114,8 +114,7 @@ internal partial class EventTracker
 
             _jsonWriter.WriteString(JsonText.OS, _tracker._osInformation.MatchPlatform(
                 onLinux: () => JsonText.Linux,
-                onWindows: () => JsonText.Windows,
-                onOSX: () => JsonText.OSX
+                onWindows: () => JsonText.Windows
             ));
         }
 

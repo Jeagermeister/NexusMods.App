@@ -291,8 +291,7 @@ public class SevenZipExtractor : IExtractor
     {
         return osInformation.MatchPlatform(
             onWindows: static () => "7z.exe",
-            onLinux: static () => "7zz",
-            onOSX: static () => "7zz"
+            onLinux: static () => "7zz"
         );
     }
 
@@ -311,8 +310,7 @@ public class SevenZipExtractor : IExtractor
         var fileName = GetExtractorExecutableFileName(osInformation);
         var directory = osInformation.MatchPlatform(
             onWindows: static () => "runtimes/win-x64/native/",
-            onLinux: static () => "runtimes/linux-x64/native/",
-            onOSX: static () => "runtimes/osx-x64/native/"
+            onLinux: static () => "runtimes/linux-x64/native/"
         );
 
         return fileSystem.GetKnownPath(KnownPath.EntryDirectory).Combine(directory + fileName).ToString();

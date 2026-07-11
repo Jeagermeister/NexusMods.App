@@ -38,8 +38,7 @@ public sealed class JsonStorageBackend : IStorageBackend
         var os = fileSystem.OS;
         var baseKnownPath = os.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
+            onLinux: () => KnownPath.XDG_DATA_HOME
         );
 
         return fileSystem.GetKnownPath(baseKnownPath).Combine($"{ApplicationIdentity.DataDirectoryName}/Configs");

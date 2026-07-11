@@ -124,8 +124,7 @@ internal sealed class SMAPIWebApi : ISMAPIWebApi
     {
         return os.MatchPlatform(
             onWindows: () => Platform.Windows,
-            onLinux: () => Platform.Linux,
-            onOSX: () => Platform.Mac
+            onLinux: () => Platform.Linux
         );
     }
 

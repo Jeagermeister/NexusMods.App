@@ -27,7 +27,6 @@ internal static class JsonText
     // https://github.com/mixpanel/mixpanel-js/blob/8940b6a20ab4415f82c2c543583d946613158bf5/src/utils.js#L1554-L1576
     public static readonly JsonEncodedText Linux = JsonEncodedText.Encode("Linux");
     public static readonly JsonEncodedText Windows = JsonEncodedText.Encode("Windows");
-    public static readonly JsonEncodedText OSX = JsonEncodedText.Encode("Mac OS X");
 
     public static readonly JsonEncodedText UserType = JsonEncodedText.Encode("user_type");
     public static readonly JsonEncodedText Anonymous = JsonEncodedText.Encode("anonymous");

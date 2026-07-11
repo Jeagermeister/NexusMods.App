@@ -13,8 +13,7 @@ public static class ApplicationIdentity
 {
     /// <summary>
     /// Base directory name for all per-user app data (DataModel, Configs, Logs, Temp, Cache,
-    /// auth). Contains no dot, so the pre-rebrand macOS "NexusMods_App" special-casing
-    /// (".App" is special in macOS paths) is no longer needed on any platform.
+    /// auth).
     /// </summary>
     public const string DataDirectoryName = "Apocrypha";
 
@@ -28,9 +27,6 @@ public static class ApplicationIdentity
     /// <see cref="LegacyDataMigration"/> and old-registration cleanup.
     /// </summary>
     public const string LegacyDataDirectoryName = "NexusMods.App";
-
-    /// <summary>Pre-rebrand data dir base name on macOS.</summary>
-    public const string LegacyDataDirectoryNameOSX = "NexusMods_App";
 
     /// <summary>Pre-rebrand reverse-DNS id. Consumed only by old-registration cleanup.</summary>
     public const string LegacyAppId = "com.nexusmods.app";

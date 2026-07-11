@@ -55,10 +55,6 @@ public static class ServiceExtensions
 
                     return new WinePrefixWrappingLocator(serviceProvider, locatorFactories);
                 });
-            },
-            onOSX: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
             }
         );
 
@@ -87,8 +83,7 @@ public static class ServiceExtensions
         serviceCollection = os.MatchPlatform(
             ref serviceCollection,
             onWindows: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, WindowsInterop>(),
-            onLinux: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, LinuxInterop>(),
-            onOSX: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, MacOSInterop>()
+            onLinux: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, LinuxInterop>()
         );
 
         return serviceCollection;

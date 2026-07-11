@@ -23,8 +23,7 @@ internal static class GameArtCache
     {
         var baseKnownPath = fileSystem.OS.MatchPlatform(
             onWindows: () => KnownPath.LocalApplicationDataDirectory,
-            onLinux: () => KnownPath.XDG_DATA_HOME,
-            onOSX: () => KnownPath.LocalApplicationDataDirectory
+            onLinux: () => KnownPath.XDG_DATA_HOME
         );
 
         return fileSystem.GetKnownPath(baseKnownPath).Combine(ApplicationIdentity.DataDirectoryName).Combine("Cache/GameArt");

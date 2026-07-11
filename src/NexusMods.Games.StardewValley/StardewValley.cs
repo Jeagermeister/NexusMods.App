@@ -84,8 +84,7 @@ public class StardewValley : IGame, IGameData<StardewValley>
         // NOTE(erri120): Our SMAPI installer overrides all of these files.
         return installation.LocatorResult.TargetOS.MatchPlatform(
             onWindows: () => new GamePath(LocationId.Game, "Stardew Valley.exe"),
-            onLinux: () => new GamePath(LocationId.Game, "StardewValley"),
-            onOSX: () => new GamePath(LocationId.Game, "Contents/MacOS/StardewValley")
+            onLinux: () => new GamePath(LocationId.Game, "StardewValley")
         );
     }
 
@@ -94,8 +93,7 @@ public class StardewValley : IGame, IGameData<StardewValley>
         // NOTE(erri120): see https://github.com/Nexus-Mods/NexusMods.App/issues/2553
         var path = installation.LocatorResult.TargetOS.MatchPlatform(
             onWindows: () => new GamePath(LocationId.Game, Constants.ModsFolder),
-            onLinux: () => new GamePath(LocationId.Game, Constants.ModsFolder),
-            onOSX: () => new GamePath(LocationId.Game, "Contents/MacOS" / Constants.ModsFolder)
+            onLinux: () => new GamePath(LocationId.Game, Constants.ModsFolder)
         );
 
         return Optional<GamePath>.Create(path);
@@ -107,8 +105,7 @@ public class StardewValley : IGame, IGameData<StardewValley>
         {
             var path = installation.LocatorResult.TargetOS.MatchPlatform(
                 onWindows: () => "Stardew Valley.dll",
-                onLinux: () => "Stardew Valley.dll",
-                onOSX: () => "Contents/MacOS/Stardew Valley.dll"
+                onLinux: () => "Stardew Valley.dll"
             );
 
             var fileInfo = installation.Locations[LocationId.Game].Path.Combine(path).FileInfo;

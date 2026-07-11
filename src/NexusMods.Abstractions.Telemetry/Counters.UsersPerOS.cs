@@ -25,7 +25,6 @@ public static partial class Counters
         // https://learn.microsoft.com/en-us/windows/win32/sysinfo/operating-system-version
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "Windows";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "Linux";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "macOS";
         return "Unknown";
     }
 
