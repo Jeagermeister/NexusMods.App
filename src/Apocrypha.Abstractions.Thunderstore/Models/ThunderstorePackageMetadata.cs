@@ -6,8 +6,9 @@ namespace Apocrypha.Abstractions.Thunderstore.Models;
 
 /// <summary>
 /// Represents a remote package on Thunderstore (the all-versions container, analogous to a
-/// Nexus Mods mod page). Thunderstore packages are global — they are not tied to a single
-/// community/game, so no game reference is stored here.
+/// Nexus Mods mod page). Thunderstore packages are global — a package can be listed in any
+/// number of communities (games), so game scoping is the <see cref="Communities"/> slug set
+/// rather than a single game reference.
 /// </summary>
 [PublicAPI]
 public partial class ThunderstorePackageMetadata : IModelDefinition
@@ -38,6 +39,14 @@ public partial class ThunderstorePackageMetadata : IModelDefinition
     /// The package icon (256×256 PNG on the Thunderstore CDN).
     /// </summary>
     public static readonly UriAttribute IconUri = new(Namespace, nameof(IconUri)) { IsOptional = true };
+
+    /// <summary>
+    /// The community slugs (games) this package is listed under on thunderstore.io, from the
+    /// package API's community listings. EMPTY MEANS UNKNOWN, not unlisted: rows created
+    /// before this attribute existed are backfilled on startup, and consumers must keep
+    /// unknown packages visible everywhere.
+    /// </summary>
+    public static readonly StringsAttribute Communities = new(Namespace, nameof(Communities));
 
     /// <summary>
     /// Back-reference to all known versions of this package.

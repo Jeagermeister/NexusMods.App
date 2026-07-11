@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x2E5EA252D97883B6
-   - Total attributes: 242
+   - Fingerprint: 0xE6B76C6D86189BE6
+   - Total attributes: 243
    - Total namespaces: 79
    
 ## Attributes
@@ -242,6 +242,7 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/ManifestHash                     | Utf8Insensitive         | True    | False | False     | 
 | NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/UpdatedAt                        | Int64                   | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstoreLibraryItem/Version                             | Reference               | False   | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/Communities                     | Utf8                    | False   | True  | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/FullName                        | Utf8                    | True    | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/IconUri                         | Utf8                    | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/Name                            | Utf8                    | False   | False | False     | 

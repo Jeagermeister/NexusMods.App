@@ -4,6 +4,7 @@ using DynamicData.Aggregation;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.Loadouts;
+using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Abstractions.Thunderstore.Models;
 using Apocrypha.App.UI.Controls;
 using Apocrypha.App.UI.Pages.LibraryPage;
@@ -36,17 +37,40 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
-        return ThunderstoreLibraryItem
-            .ObserveAll(_connection)
+        return ObserveGameLibraryItems(libraryFilter)
             .Transform(item => ToLibraryItemModel(libraryFilter, item));
     }
 
     public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
-        return ThunderstoreLibraryItem
-            .ObserveAll(_connection)
+        return ObserveGameLibraryItems(libraryFilter)
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
+    }
+
+    /// <summary>
+    /// Thunderstore packages are global, so the Library scopes them by the package's community
+    /// listings: a game without a Thunderstore community shows none, and a package whose
+    /// listings are still unknown (awaiting the startup backfill) stays visible everywhere
+    /// rather than vanishing. Listings arriving from the backfill refresh the filter live.
+    /// </summary>
+    private IObservable<IChangeSet<ThunderstoreLibraryItem.ReadOnly, EntityId>> ObserveGameLibraryItems(LibraryFilter libraryFilter)
+    {
+        var allItems = ThunderstoreLibraryItem.ObserveAll(_connection);
+
+        if (libraryFilter.Game is not IThunderstoreCommunityGame thunderstoreGame)
+            return allItems.Filter(static _ => false);
+
+        var communitySlug = thunderstoreGame.ThunderstoreCommunitySlug;
+        return allItems
+            .AutoRefreshOnObservable(item => _connection.ObserveDatoms(item.Version.PackageId).Skip(1))
+            .Filter(item =>
+            {
+                // Re-load against the current db: the item snapshot predates backfill writes.
+                var package = ThunderstoreLibraryItem.Load(_connection.Db, item.Id).Version.Package;
+                var communities = package.Communities;
+                return !communities.Any() || communities.Contains(communitySlug);
+            });
     }
 
     private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, ThunderstoreLibraryItem.ReadOnly item)

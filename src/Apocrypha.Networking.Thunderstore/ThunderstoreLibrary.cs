@@ -61,6 +61,13 @@ public class ThunderstoreLibrary : IThunderstoreLibrary
             if (Uri.TryCreate(dto.Icon, UriKind.Absolute, out var iconUri))
                 newPackage.IconUri = iconUri;
 
+            // Community listings live on the package endpoint (the version endpoint carries
+            // none) — they game-scope the package in the Library. Best-effort: a failed
+            // lookup leaves them unknown and the startup backfill retries later.
+            var packageDto = await _apiClient.GetPackage(version.Package, cancellationToken);
+            if (packageDto is not null && packageDto.CommunityListings.Length != 0)
+                newPackage.Communities = packageDto.CommunityListings.Select(listing => listing.Community).Distinct().ToArray();
+
             packageId = newPackage.Id;
         }
 
