@@ -51,11 +51,6 @@ public readonly partial struct GameStore
     /// Xbox Game Pass.
     /// </summary>
     public static readonly GameStore XboxGamePass = From("Xbox Game Pass");
-
-    /// <summary>
-    /// Manually added.
-    /// </summary>
-    public static readonly GameStore ManuallyAdded = From("Manually Added");
 }
 
 /// <summary>

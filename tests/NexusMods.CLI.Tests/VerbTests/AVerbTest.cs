@@ -87,15 +87,6 @@ public class AVerbTest(IServiceProvider provider)
     }
 
     /// <summary>
-    /// Creates a new stubbed game installation, registers it with the game registry, and returns it.
-    /// </summary>
-    /// <returns></returns>
-    public async Task<GameInstallation> CreateInstall()
-    {
-        return await StubbedGame.Create(provider);
-    }
-
-    /// <summary>
     /// Runs the given verb with the given arguments. No conversion is done on the arguments, so they must be the correct
     /// type as defined in the verb definition.
     /// </summary>

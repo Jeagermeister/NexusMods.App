@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x565592BA053E6682
-   - Total attributes: 245
-   - Total namespaces: 80
+   - Fingerprint: 0x2E5EA252D97883B6
+   - Total attributes: 242
+   - Total namespaces: 79
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
@@ -227,9 +227,6 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Resources.PersistedResource/ResourceIdentifierHash                       | UInt64                  | False   | False | False     | 
 | NexusMods.RiskOfRain2.BepInExLoadoutItem/Version                                   | Utf8                    | False   | False | False     | 
 | NexusMods.RiskOfRain2.BepInExPluginLoadoutItem/Plugin                              | Null                    | False   | False | False     | 
-| NexusMods.StandardGameLocators.ManuallyAddedGame/GameId                            | UInt32                  | True    | False | False     | 
-| NexusMods.StandardGameLocators.ManuallyAddedGame/Path                              | Utf8                    | True    | False | False     | 
-| NexusMods.StandardGameLocators.ManuallyAddedGame/Version                           | Utf8                    | False   | False | False     | 
 | NexusMods.StardewValley.SMAPILoadoutItem/ModDatabase                               | Reference               | False   | False | False     | 
 | NexusMods.StardewValley.SMAPILoadoutItem/Version                                   | Utf8                    | False   | False | False     | 
 | NexusMods.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 
