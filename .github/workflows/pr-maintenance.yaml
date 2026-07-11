@@ -2,9 +2,9 @@ name: "PR Maintenance"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ linux-fork ]
   pull_request_target:
-    branches: [ main ]
+    branches: [ linux-fork ]
     types: [ synchronize ]
 
 jobs:
