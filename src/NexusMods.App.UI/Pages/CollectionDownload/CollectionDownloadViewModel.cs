@@ -557,7 +557,7 @@ public class CollectionDownloadTreeDataGridAdapter :
     private readonly LoadoutId _targetLoadout;
     private readonly CollectionDataProvider _collectionDataProvider;
 
-    public R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
+    public new R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
 
     public Subject<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal>> MessageSubject { get; } = new();
 

@@ -203,7 +203,7 @@ public class RunGameTool<T> : IRunGameTool
         await reaper.WaitForExitAsync(cancellationToken);
     }
 
-    private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
+    private Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
     {
         Debug.Assert(OSInformation.Shared.IsLinux);
 
@@ -213,6 +213,7 @@ public class RunGameTool<T> : IRunGameTool
                              $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
 
         _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
+        return Task.CompletedTask;
     }
 
     private async ValueTask<Process?> WaitForProcessToStart(

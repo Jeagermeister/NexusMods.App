@@ -22,8 +22,8 @@ namespace NexusMods.StandardGameLocators.TestHelpers;
 public class StubbedFileHasherService : IFileHashesService
 {
     private readonly IServiceProvider _provider;
-    private DatomStore _datomStore;
-    private Connection _connection;
+    private DatomStore _datomStore = null!;
+    private Connection _connection = null!;
     private IDb? _current;
     private readonly IFileStore _fileStore;
     private readonly TemporaryFileManager _temporaryFileManager;

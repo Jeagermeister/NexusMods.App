@@ -15,7 +15,7 @@ namespace NexusMods.Abstractions.NexusModsLibrary;
 /// will not be added.
 /// </summary>
 // ReSharper disable once InconsistentNaming
-public readonly struct GraphQLResolver(ITransaction Tx, ReadOnlyModel Model, bool Existing)
+public readonly struct GraphQLResolver(ITransaction Tx, ReadOnlyModel Model)
 {
     /// <summary>
     /// Create a new resolver using the given primary key attribute and value.
@@ -31,7 +31,7 @@ public readonly struct GraphQLResolver(ITransaction Tx, ReadOnlyModel Model, boo
         var exists = existing.Count > 0;
         var id = existing.Count == 0 ? tx.TempId() : existing[0].E;
         if (!exists) tx.Add(id, primaryKeyAttribute, primaryKeyValue);
-        return new GraphQLResolver(tx, new ReadOnlyModel(db, id), exists);
+        return new GraphQLResolver(tx, new ReadOnlyModel(db, id));
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public readonly struct GraphQLResolver(ITransaction Tx, ReadOnlyModel Model, boo
             tx.Add(id, pair2.A, pair2.V);
         }
 
-        return new GraphQLResolver(tx, new ReadOnlyModel(referenceDb, id), exists);
+        return new GraphQLResolver(tx, new ReadOnlyModel(referenceDb, id));
     }
 
     /// <summary>
@@ -63,11 +63,6 @@ public readonly struct GraphQLResolver(ITransaction Tx, ReadOnlyModel Model, boo
     /// </summary>
     public EntityId Id => Model.Id;
 
-    /// <summary>
-    /// Whether we're updating an existing entity or creating a new one.
-    /// </summary>
-    public bool Existing => Existing;
-    
     /// <summary>
     /// Add a value to the entity. If the value already exists, it will not be added again.
     /// </summary>

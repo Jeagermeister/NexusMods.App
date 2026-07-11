@@ -1,3 +1,6 @@
+// The SimplifiedObservableRoots tests below intentionally exercise an API that is
+// marked [Obsolete] as "not usable from the UI yet" — the tests are the only safe caller.
+#pragma warning disable CS0618
 using FluentAssertions;
 
 using NexusMods.App.UI.Controls;

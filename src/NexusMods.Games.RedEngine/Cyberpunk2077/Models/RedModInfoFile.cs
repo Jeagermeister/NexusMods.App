@@ -4,7 +4,13 @@ using NexusMods.MnemonicDB.Abstractions.Models;
 
 namespace NexusMods.Games.RedEngine.Cyberpunk2077.Models;
 
-[Obsolete("RedMod manifests files should not longer be marked explicitly, they should be identified by path format `{Game}/mods/<redModName>/info.json`")]
+/// <remarks>
+/// Legacy model: upstream planned to identify RedMod manifests by the path format
+/// `{Game}/mods/&lt;redModName&gt;/info.json` instead of marking them explicitly.
+/// The planned migration never landed and existing databases contain these entities,
+/// so the model stays. Upstream's [Obsolete] marker was dropped — it only produced
+/// CS0618 warnings in the MnemonicDB-generated code, not useful guidance.
+/// </remarks>
 [Include<LoadoutFile>]
 public partial class RedModInfoFile : IModelDefinition
 {

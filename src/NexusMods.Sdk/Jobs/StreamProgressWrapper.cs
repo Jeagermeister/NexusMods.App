@@ -48,7 +48,8 @@ public sealed class StreamProgressWrapper<TState> : Stream
         var current = self._currentBytesWritten;
 
         var diff = current - self._lastBytesWritten;
-        var speed = diff.Value / self._period.TotalSeconds;
+        var period = self._period;
+        var speed = diff.Value / period.TotalSeconds;
 
         self._lastBytesWritten = self._currentBytesWritten;
         self._notifyWritten.Invoke(self._state, (current, speed));

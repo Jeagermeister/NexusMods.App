@@ -24,12 +24,12 @@ public class GameFileStreamSource : IReadOnlyStreamSource
         _gameRegistry = provider.GetRequiredService<IGameRegistry>();
     }
 
-    public async ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
+    public ValueTask<Stream?> OpenAsync(Hash hash, CancellationToken cancellationToken = default)
     {
         var path = Resolve(hash);
         if (path == null)
-            return null;
-        return path!.Value.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read);
+            return ValueTask.FromResult<Stream?>(null);
+        return ValueTask.FromResult<Stream?>(path!.Value.Open(mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read));
     }
 
     public bool Exists(Hash hash)

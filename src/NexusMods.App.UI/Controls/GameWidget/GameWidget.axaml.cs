@@ -8,7 +8,6 @@ namespace NexusMods.App.UI.Controls.GameWidget;
 
 public partial class GameWidget : ReactiveUserControl<IGameWidgetViewModel>
 {
-    private GameWidgetState _previousState;
 
     public GameWidget()
     {

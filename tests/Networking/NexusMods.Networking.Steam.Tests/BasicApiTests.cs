@@ -8,7 +8,7 @@ using Xunit;
 
 namespace NexusMods.Networking.Steam.Tests;
 
-public class BasicApiTests(ILogger<BasicApiTests> logger, ISteamSession session)
+public class BasicApiTests(ISteamSession session)
 {
     private static readonly AppId SdvAppId = AppId.From(413150);
 

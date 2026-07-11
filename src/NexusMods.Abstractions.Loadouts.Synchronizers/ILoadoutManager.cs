@@ -71,7 +71,7 @@ public interface ILoadoutManager
     /// <param name="fallbackInstaller">The installer to use if the default installer fails</param>
     /// <remarks>
     /// Job returns a result with null <see cref="LoadoutItemGroup.ReadOnly"/> after
-    /// if supplied an external transaction via <paramref name="transaction"/>,
+    /// if supplied an external transaction,
     /// since it is the caller's responsibility to complete that transaction.
     /// </remarks>
     IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult> InstallItem(
@@ -112,7 +112,7 @@ public interface ILoadoutManager
     ValueTask ResolveFileConflicts(LoadoutItemGroupPriorityId[] winnerIds, LoadoutItemGroupPriorityId loserId);
 
     /// <summary>
-    /// Make items in <paramref name="losers"/> lose all file conflicts.
+    /// Make items in <paramref name="loserIds"/> lose all file conflicts.
     /// </summary>
     ValueTask LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds);
 

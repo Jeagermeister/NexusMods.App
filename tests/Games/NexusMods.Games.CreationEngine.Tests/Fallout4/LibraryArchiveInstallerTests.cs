@@ -53,7 +53,7 @@ public class LibraryArchiveInstallerTests(ITestOutputHelper outputHelper) : AIso
 
         var installed = await LoadoutManager.InstallItem(libraryArchive.AsLibraryItem(), loadout);
 
-        var contents = installed.LoadoutItemGroup.Value.Children
+        var contents = installed.LoadoutItemGroup!.Value.Children
             .OfTypeLoadoutItemWithTargetPath()
             .OfTypeLoadoutFile()
             .Select(child => ((GamePath)child.AsLoadoutItemWithTargetPath().TargetPath, child.Hash, child.Size))

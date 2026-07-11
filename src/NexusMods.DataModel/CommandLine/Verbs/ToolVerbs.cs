@@ -23,7 +23,7 @@ internal static class ToolVerbs
     }
 
     [Verb("run-tool", "Runs a tool")]
-    private static async Task<int> RunTool([Injected] IRenderer renderer,
+    private static Task<int> RunTool([Injected] IRenderer renderer,
         [Option("t", "tool", "Tool to run")] ITool tool,
         [Option("l", "loadout", "Loadout to run the tool on")] LoadoutId loadout,
         [Injected] IToolManager toolManager,

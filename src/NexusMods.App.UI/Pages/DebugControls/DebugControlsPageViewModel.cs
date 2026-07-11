@@ -55,7 +55,7 @@ public class DebugControlsPageViewModel : APageViewModel<IDebugControlsPageViewM
         MarkdownRenderer = markdownRendererViewModel;
     }
 
-    public IWindowManager WindowManager { get; }
+    public new IWindowManager WindowManager { get; }
 
     public ReactiveCommand<Unit, Unit> GenerateUnhandledException { get; }
 
@@ -67,7 +67,7 @@ public class DebugControlsPageDesignViewModel : APageViewModel<IDebugControlsPag
 {
     public DebugControlsPageDesignViewModel() : base(new DesignWindowManager()) { }
     public ReactiveCommand<Unit, Unit> GenerateUnhandledException { get; }= ReactiveCommand.Create(() => { });
-    public IWindowManager WindowManager { get; } = new DesignWindowManager();
+    public new IWindowManager WindowManager { get; } = new DesignWindowManager();
     public IServiceProvider ServiceProvider { get; } = null!;
 
     public IMarkdownRendererViewModel MarkdownRenderer { get; } = new MarkdownRendererViewModel() 

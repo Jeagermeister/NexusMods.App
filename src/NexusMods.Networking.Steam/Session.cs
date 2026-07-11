@@ -114,15 +114,17 @@ public class Session : ISteamSession
         return Task.CompletedTask;
     }
     
-    private async Task LoggedOnCallback(SteamUser.LoggedOnCallback callback)
+    private Task LoggedOnCallback(SteamUser.LoggedOnCallback callback)
     {
         _isLoggedOn = true;
         _logger.LogInformation("Logged on to Steam network.");
+        return Task.CompletedTask;
     }
 
-    private async Task DisconnectedCallback(SteamClient.DisconnectedCallback callback)
+    private Task DisconnectedCallback(SteamClient.DisconnectedCallback callback)
     {
         _logger.LogInformation("Disconnected from Steam network.");
+        return Task.CompletedTask;
     }
     
     private async Task ConnectedCallback(SteamClient.ConnectedCallback callback)

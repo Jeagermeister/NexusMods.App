@@ -12,7 +12,7 @@ using NexusMods.Sdk.IO;
 
 namespace NexusMods.App.GarbageCollection.DataModel.Tests;
 
-public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, IConnection connection, ISettingsManager settingsManager)
+public class DataStoreNxArchiveFinderTests(NxFileStore fileStore, ISettingsManager settingsManager)
 {
     private readonly DataModelSettings _dataModelSettings = settingsManager.Get<DataModelSettings>();
 

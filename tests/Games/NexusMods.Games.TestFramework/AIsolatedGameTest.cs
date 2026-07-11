@@ -49,8 +49,8 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
 {
     protected readonly ILogger Logger;
     protected readonly IServiceProvider ServiceProvider;
-    protected TGame Game;
-    protected GameInstallation GameInstallation;
+    protected TGame Game = default!;
+    protected GameInstallation GameInstallation = default!;
 
     protected readonly IFileSystem FileSystem;
     protected readonly TemporaryFileManager TemporaryFileManager;
@@ -560,7 +560,7 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         Debug.Assert(didFind);
         didFind.Should().BeTrue();
 
-        GameInstallation = gameInstallation;
+        GameInstallation = gameInstallation!;
         Game = (TGame)GameInstallation.Game;
     }
 

@@ -15,8 +15,8 @@ namespace NexusMods.StandardGameLocators.TestHelpers.StubbedGames;
 
 public class StubbedGameInstaller : ALibraryArchiveInstaller
 {
-    private readonly RelativePath _preferencesPrefix = "preferences".ToRelativePath();
-    private readonly RelativePath _savesPrefix = "saves".ToRelativePath();
+    private readonly RelativePath _preferencesPrefix = "preferences";
+    private readonly RelativePath _savesPrefix = "saves";
     public StubbedGameInstaller(IServiceProvider serviceProvider) : base(serviceProvider, serviceProvider.GetRequiredService<ILogger<StubbedGameInstaller>>())
     {
     }

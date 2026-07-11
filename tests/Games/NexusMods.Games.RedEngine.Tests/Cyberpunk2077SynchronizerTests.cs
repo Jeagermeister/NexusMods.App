@@ -12,7 +12,7 @@ public class Cyberpunk2077SynchronizerTests(IServiceProvider serviceProvider) : 
 {
 
     [Fact]
-    public async Task ContentIsIgnoredWhenSettingIsSet()
+    public void ContentIsIgnoredWhenSettingIsSet()
     {
         // Get the settings
         var settings = ServiceProvider.GetRequiredService<ISettingsManager>().Get<Cyberpunk2077Settings>();

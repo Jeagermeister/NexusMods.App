@@ -60,7 +60,7 @@ public interface IDataReference<out TDataId, TData> : IDataReference
     /// Resolves the data at <see cref="IDataReference.DataStoreId"/>.
     /// </summary>
     /// <returns><c>null</c> if the value doesn't exist in the data store.</returns>
-    new TData? ResolveData(IServiceProvider serviceProvider, IConnection dataStore);
+    TData? ResolveData(IServiceProvider serviceProvider, IConnection dataStore);
 
     /// <summary>
     /// Converts the data from <see cref="ResolveData"/> to a string representation.

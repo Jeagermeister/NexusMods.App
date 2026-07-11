@@ -359,13 +359,14 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                 }, configureAwait: false
             );
 
-            CommandOpenRevisionUrl = IsCollectionUploaded.ToReactiveCommand<Unit>(async (_, cancellationToken) =>
+            CommandOpenRevisionUrl = IsCollectionUploaded.ToReactiveCommand<Unit>((_, _) =>
                 {
                     var managedCollectionLoadoutGroup = ManagedCollectionLoadoutGroup.Load(_connection.Db, collectionGroupId.Value);
-                    if (!managedCollectionLoadoutGroup.IsValid()) return;
+                    if (!managedCollectionLoadoutGroup.IsValid()) return ValueTask.CompletedTask;
 
                     var uri = GetCollectionUri(managedCollectionLoadoutGroup.Collection);
                     serviceProvider.GetRequiredService<IOSInterop>().OpenUri(uri);
+                    return ValueTask.CompletedTask;
                 }, configureAwait: false
             );
 

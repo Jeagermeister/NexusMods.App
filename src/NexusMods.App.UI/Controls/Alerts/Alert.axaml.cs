@@ -78,7 +78,6 @@ public class Alert : ContentControl
     private Button? _dismissButton = null;
     private TextBlock? _titleText = null;
     private TextBlock? _bodyText = null;
-    private Border? _bodyTextBorder = null;
     private Border? _actionsRowBorder = null;
 
     /// <summary>

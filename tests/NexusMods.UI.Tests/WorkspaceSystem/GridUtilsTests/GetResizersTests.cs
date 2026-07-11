@@ -69,9 +69,6 @@ public partial class GridUtilsTests
         var thirdPanelId = PanelId.From(Guid.Parse("33333333-3333-3333-3333-333333333333"));
         var fourthPanelId = PanelId.From(Guid.Parse("44444444-4444-4444-4444-444444444444"));
 
-        const double step = 0.1;
-        const double min = 0.2;
-        const double max = 1.0 - min;
 
         var res = new TheoryData<string, WorkspaceGridState, List<GridUtils.ResizerInfo>>();
 

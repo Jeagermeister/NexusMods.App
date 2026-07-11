@@ -7,7 +7,9 @@ namespace NexusMods.Sdk.Games;
 /// <summary>
 /// Used to store information about manually added games.
 /// </summary>
-[Obsolete("this is a hack that will be removed soon tm")]
+// TODO(linux-fork): upstream's "hack that will be removed soon tm" — a real refactor of
+// the manually-added-game flow is queued as its own prune (notes-handoff §40 item 2).
+// The [Obsolete] marker was dropped meanwhile; it only warned in generated code.
 public partial class ManuallyAddedGame : IModelDefinition
 {
     private const string Namespace = "NexusMods.StandardGameLocators.ManuallyAddedGame";
