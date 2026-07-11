@@ -1702,7 +1702,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §37 (loadout update indicator)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §38 (the CI excavation)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -1961,4 +1961,64 @@ Install is a split button: click opens Install/Advanced Install menu, not immedi
 **Next candidates (unchanged from §36 + standing queue):** v0.1.2 release (share/join +
 this indicator aren't in any release), Windows .msi/.exe for the friend test (dormant
 PupNet workflow), DESIGN-webservice.md, AUR claim, layout epic L2–L5, move internal docs
+out of repo before announcing.
+
+## 38. Session log — 2026-07-10/11 (cont.) — The CI excavation: PR #38, six layers deep
+
+**Trigger:** watching PR #37 for checks revealed there were none — and never had been.
+`pr-builds.yaml` + `clean_environment_tests.yaml` filtered `pull_request` to `main` only;
+every fork PR (#33–#37) merged checkless. PR #38 fixed that and then had to excavate every
+failure CI had never been around to catch. All pre-existing; none caused by #37/#38.
+
+**The six layers (one commit each):**
+1. Branch filters: `linux-fork` added to both workflows (PR + push triggers).
+2. `global.json` had `rollForward: latestMajor` + `allowPrerelease` → runners (and this box:
+   9.0.118 AND 10.0.109 installed) resolved the .NET 10 SDK, where Microsoft.Testing.Platform
+   2.0.1 hard-errors the VSTest target (Sdk/Backend.Tests died pre-test). Pinned 9.0.100 /
+   `latestFeature`. The reusable workflow already installed 9.x — global.json overrode it.
+3. CLI.Tests failed 10/10 on ALL platforms: upstream rework gave `NxmIpcProtocolHandler`
+   ctor deps (GOG `IClient`, `IEventBus`) that the test harness never registered. Later
+   rounds added `AddThunderstore()` too (host start walks `IIpcProtocolHandler`s →
+   `Ror2mmIpcProtocolHandler.IsEnabled` reads `ThunderstoreSettings`).
+4. `SchemaFingerprintHasntChanged` failing since PR #6: Thunderstore + BepInEx models were
+   added without accepting the Verify snapshot. Regenerated — all additions intentional.
+5. **Brian's mid-session directive: CUT MACOS COMPLETELY (Linux + Windows only).** The
+   matrix lived in upstream Meta's reusable workflow → vendored into the fork
+   (`.github/workflows/dotnet-build-and-test.yaml`: 2-OS matrix, checkout v4 `lfs: true`,
+   setup-dotnet 9.x, codecov dropped — another umbilical cut). macOS also removed from the
+   game-not-found issue template. Code-level macOS (~28 files, `MacOSInterop` etc.) NOT
+   touched — offered as a separate PR decision.
+6. Two real Windows-only bugs:
+   a. `CachedHttpStreamFactoryTests` (PR #16) anchored its cache path at
+      `KnownPath.CurrentDirectory` — the REAL process CWD (`D:` on GitHub runners) — while
+      `InMemoryFileSystem` is fixed-rooted at `C:/`. One test threw out-of-root; three more
+      quietly got fallback bytes because the factory's any-failure→fallback design masked
+      the same error. Tests now anchor at the FS root. Lesson: InMemoryFileSystem's known
+      paths come from the real environment; never mix them with its synthetic root.
+   b. GENUINE race in upstream's `WaitForCancellationJob`: the loop checked
+      `IsCancellationRequested` in the while-condition, so cancellation landing between
+      `YieldAsync()` and the re-check made the job return SUCCESSFULLY — the exact outcome
+      `Should_Cancel_All_Active_Jobs` asserts never happens. 2-core Windows runners hit the
+      window reliably. Fixed properly (YieldAsync's throw is the only exit), not
+      flaky-marked.
+
+**Outcome: 8 checks, 0 failing — ubuntu 6m26s + windows 8m03s, the first full CI test pass
+in the fork's history.** Also proven green as a side effect: `build-windows / build-setup`,
+i.e. the PupNet+InnoSetup `setup.exe` pipeline — the Windows friend-test installer path
+works in CI. Both PRs merged by Brian 2026-07-11 (#37 then #38); the first push-triggered
+clean-env run on linux-fork validates the merged state (covers #37, which pre-dated the
+triggers).
+
+**Process lessons:** fail-fast hides everything behind the first red job — run the full
+suite locally with CI's exact filter (`RequiresNetworking!=True&FlakeyTest!=True`) to flush
+all layers in one pass; `pull_request` workflows are read from the MERGE COMMIT, so trigger
+fixes can't check the very PR that needs them until merged; local `dotnet test` on this box
+had been quietly running the SDk-10-tolerant projects only — Sdk/Backend/CLI/SchemaVersions
+test projects were never in the usual suites, which is how four of the six layers stayed
+invisible.
+
+**Standing queue after this session:** v0.1.2 release (share/join + update indicator are in
+no release yet), Windows .msi/.exe friend build (pipeline proven), DESIGN-webservice.md,
+web-service v1, per-row indicator follow-ups (Thunderstore update source, loadout Update
+button), code-level macOS cut (Brian's call), AUR claim, layout epic L2–L5, internal docs
 out of repo before announcing.
