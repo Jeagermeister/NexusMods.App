@@ -73,14 +73,16 @@ public record WaitForCancellationJob(ManualResetEventSlim ReadySignal) : IJobDef
     public async ValueTask<string> StartAsync(IJobContext<WaitForCancellationJob> context)
     {
         ReadySignal.Set();
-        
-        while (!context.CancellationToken.IsCancellationRequested)
+
+        // The only exit is YieldAsync throwing OperationCanceledException. Checking
+        // IsCancellationRequested in the loop condition instead races: cancellation landing
+        // between YieldAsync and the re-check made the job return SUCCESSFULLY, which is
+        // exactly what the cancellation tests assert never happens.
+        while (true)
         {
             await Task.Delay(10, CancellationToken.None);
             await context.YieldAsync();
         }
-
-        return "Should not reach here";
     }
 }
 
