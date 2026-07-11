@@ -100,7 +100,10 @@ public class CachedHttpStreamFactoryTests
     private static (CachedHttpStreamFactory Factory, CountingHandler Handler, AbsolutePath CacheFile) Setup()
     {
         var fileSystem = new InMemoryFileSystem();
-        var cacheFile = fileSystem.GetKnownPath(KnownPath.CurrentDirectory).Combine("cache/GameArt/cover.webp");
+        // KnownPath.CurrentDirectory is the real process CWD, which on Windows can sit on a
+        // drive outside the in-memory filesystem's fixed root (C:/) — anchor at that root instead.
+        var root = fileSystem.FromUnsanitizedFullPath(OSInformation.Shared.IsWindows ? "C:/" : "/");
+        var cacheFile = root.Combine("cache/GameArt/cover.webp");
         var handler = new CountingHandler { Responder = OkResponder };
         var factory = new CachedHttpStreamFactory(new HttpClient(handler), Uri, cacheFile, new FreshStreamFallback());
         return (factory, handler, cacheFile);
