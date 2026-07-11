@@ -38,6 +38,12 @@ public static class CliMessages
     /// A mod download failed.
     /// </summary>
     public record ModDownloadFailed(IFailureReason Reason) : IEventBusMessage;
+
+    /// <summary>
+    /// A multi-package download (a modpack and its dependency closure) resolved and started
+    /// downloading. <paramref name="Count"/> is the number of packages being downloaded.
+    /// </summary>
+    public record ModpackDownloadStarted(string Name, int Count) : IEventBusMessage;
     
     /// <summary>
     /// A protocol registration test was initialized.

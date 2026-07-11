@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Apocrypha.Abstractions.Thunderstore.DTOs;
 using Apocrypha.Abstractions.Thunderstore.Models;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -22,6 +23,15 @@ public interface IThunderstoreLibrary
     Task<ThunderstoreVersionMetadata.ReadOnly> GetOrAddVersion(PackageVersionRef version, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Like <see cref="GetOrAddVersion(PackageVersionRef,CancellationToken)"/> but from an
+    /// already-fetched version DTO (e.g. out of a community package index), avoiding
+    /// per-package API round-trips. <paramref name="knownCommunities"/> game-scopes the
+    /// package in the Library when the caller already knows the community; pass null to
+    /// look listings up via the API instead.
+    /// </summary>
+    Task<ThunderstoreVersionMetadata.ReadOnly> GetOrAddVersion(PackageVersionDto dto, IReadOnlyCollection<string>? knownCommunities, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Resolves the latest published version of a package.
     /// </summary>
     /// <exception cref="KeyNotFoundException">The package does not exist on Thunderstore.</exception>
@@ -37,4 +47,11 @@ public interface IThunderstoreLibrary
     /// <c>ILibraryService.AddDownload</c> to land it in the Library.
     /// </summary>
     Task<IJobTask<IThunderstoreDownloadJob, AbsolutePath>> CreateDownloadJob(PackageVersionRef version, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Like <see cref="CreateDownloadJob(PackageVersionRef,CancellationToken)"/> but from an
+    /// already-fetched version DTO, avoiding per-package API round-trips (see
+    /// <see cref="GetOrAddVersion(PackageVersionDto,IReadOnlyCollection{string},CancellationToken)"/>).
+    /// </summary>
+    Task<IJobTask<IThunderstoreDownloadJob, AbsolutePath>> CreateDownloadJob(PackageVersionDto dto, IReadOnlyCollection<string>? knownCommunities, CancellationToken cancellationToken = default);
 }

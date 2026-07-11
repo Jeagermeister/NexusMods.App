@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Thunderstore;
@@ -32,6 +33,22 @@ public class ThunderstoreApiClient : IThunderstoreApiClient
     /// <inheritdoc/>
     public Task<PackageVersionDto?> GetVersion(PackageVersionRef version, CancellationToken cancellationToken = default)
         => Get<PackageVersionDto>(ThunderstoreUrls.GetVersionApiUri(version), cancellationToken);
+
+    /// <inheritdoc/>
+    public async IAsyncEnumerable<PackageIndexEntryDto> GetCommunityPackageIndex(
+        string communitySlug,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var uri = ThunderstoreUrls.GetCommunityPackageIndexUri(communitySlug);
+        using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await foreach (var entry in JsonSerializer.DeserializeAsyncEnumerable<PackageIndexEntryDto>(stream, JsonOptions, cancellationToken))
+        {
+            if (entry is not null) yield return entry;
+        }
+    }
 
     private async Task<T?> Get<T>(Uri uri, CancellationToken cancellationToken) where T : class
     {

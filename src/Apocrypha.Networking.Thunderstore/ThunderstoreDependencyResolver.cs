@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Abstractions.Thunderstore.DTOs;
@@ -9,6 +10,11 @@ namespace Apocrypha.Networking.Thunderstore;
 /// dependencies are exact-version strings, so this is plain graph traversal, not constraint
 /// solving: BFS from the root, and when the same package is requested at two versions the
 /// higher one wins (the Thunderstore/r2modman convention).
+///
+/// Small closures resolve via per-package experimental-API calls. Once a closure looks
+/// modpack-sized the resolver switches to the community's bulk v1 package index — one
+/// multi-megabyte request instead of hundreds of sequential API calls (a 273-dependency
+/// modpack would otherwise take minutes and trip rate limiting).
 /// </summary>
 public class ThunderstoreDependencyResolver
 {
@@ -17,8 +23,20 @@ public class ThunderstoreDependencyResolver
     /// </summary>
     private const int MaxResolvedPackages = 512;
 
+    /// <summary>
+    /// Once resolved + queued packages exceed this, the community package index is fetched and
+    /// the rest of the closure resolves locally. Ordinary mods (a handful of dependencies) stay
+    /// on the cheap per-package path; modpacks cross it immediately.
+    /// </summary>
+    private const int IndexFetchThreshold = 15;
+
+    private static readonly TimeSpan IndexCacheTtl = TimeSpan.FromMinutes(10);
+
     private readonly IThunderstoreApiClient _apiClient;
     private readonly ILogger<ThunderstoreDependencyResolver> _logger;
+
+    private readonly SemaphoreSlim _indexLock = new(initialCount: 1, maxCount: 1);
+    private readonly Dictionary<string, (DateTimeOffset FetchedAt, Dictionary<PackageRef, PackageVersionDto> LatestByPackage)> _indexCache = new();
 
     /// <summary>
     /// Constructor.
@@ -44,6 +62,12 @@ public class ThunderstoreDependencyResolver
         /// True if the whole closure resolved without errors.
         /// </summary>
         public bool IsComplete => Errors.Count == 0;
+
+        /// <summary>
+        /// The community whose package index was used for resolution, if any. Doubles as the
+        /// best-known game scope for the resolved packages.
+        /// </summary>
+        public string? Community { get; init; }
     }
 
     /// <summary>
@@ -60,6 +84,10 @@ public class ThunderstoreDependencyResolver
         var queue = new Queue<(PackageVersionRef Ref, bool IsRoot)>();
         queue.Enqueue((root, true));
 
+        Dictionary<PackageRef, PackageVersionDto>? index = null;
+        string? community = null;
+        var indexAttempted = false;
+
         while (queue.TryDequeue(out var item))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -69,6 +97,14 @@ public class ThunderstoreDependencyResolver
 
             if (!item.IsRoot)
             {
+                // Modpack-sized closure? Switch to the bulk community index before grinding
+                // through hundreds of per-package API calls.
+                if (index is null && !indexAttempted && chosen.Count + queue.Count + 1 > IndexFetchThreshold)
+                {
+                    indexAttempted = true;
+                    (community, index) = await TryLoadIndexForAsync(root, cancellationToken);
+                }
+
                 // Ecosystem parity (r2modman): dependency pins are FLOORS, not exact versions.
                 // Mod authors rarely bump their pins, so honoring them literally installs
                 // builds that predate game updates (e.g. RoR2 mods pinning pre-SotS R2API
@@ -77,11 +113,16 @@ public class ThunderstoreDependencyResolver
                 // for stays exact.
                 if (!latestCache.TryGetValue(current.Package, out var latest))
                 {
-                    latest = (await _apiClient.GetPackage(current.Package, cancellationToken))?.Latest;
+                    if (index is not null && index.TryGetValue(current.Package, out var fromIndex))
+                        latest = fromIndex;
+                    else
+                        latest = (await _apiClient.GetPackage(current.Package, cancellationToken))?.Latest;
                     latestCache[current.Package] = latest;
                 }
 
-                if (latest is not null && PackageVersionRef.CompareVersions(latest.VersionNumber, current.Version) > 0)
+                // >= 0: an equal-version latest is the same version — reuse its DTO instead of
+                // re-fetching it through the per-version endpoint below.
+                if (latest is not null && PackageVersionRef.CompareVersions(latest.VersionNumber, current.Version) >= 0)
                 {
                     current = latest.VersionRef;
                     dto = latest;
@@ -130,6 +171,73 @@ public class ThunderstoreDependencyResolver
         if (errors.Count > 0)
             _logger.LogWarning("Dependency resolution of `{Root}` finished with {Count} error(s): {Errors}", root, errors.Count, string.Join("; ", errors));
 
-        return new ResolutionResult(packages, errors);
+        return new ResolutionResult(packages, errors) { Community = community };
+    }
+
+    /// <summary>
+    /// Determines the root package's community and returns that community's package index
+    /// (latest version per package). Best-effort: on any failure resolution falls back to
+    /// per-package API calls.
+    /// </summary>
+    private async Task<(string? Community, Dictionary<PackageRef, PackageVersionDto>? Index)> TryLoadIndexForAsync(
+        PackageVersionRef root,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var package = await _apiClient.GetPackage(root.Package, cancellationToken);
+            var community = package?.CommunityListings.FirstOrDefault()?.Community;
+            if (community is null)
+            {
+                _logger.LogWarning("No community listing found for `{Root}`; resolving per-package instead of via an index", root.Package.FullName);
+                return (null, null);
+            }
+
+            return (community, await GetOrFetchIndexAsync(community, cancellationToken));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Failed to load the community package index for `{Root}`; resolving per-package instead", root.Package.FullName);
+            return (null, null);
+        }
+    }
+
+    private async Task<Dictionary<PackageRef, PackageVersionDto>> GetOrFetchIndexAsync(string community, CancellationToken cancellationToken)
+    {
+        await _indexLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_indexCache.TryGetValue(community, out var cached) && DateTimeOffset.UtcNow - cached.FetchedAt < IndexCacheTtl)
+                return cached.LatestByPackage;
+
+            var stopwatch = Stopwatch.StartNew();
+            var map = new Dictionary<PackageRef, PackageVersionDto>();
+
+            await foreach (var entry in _apiClient.GetCommunityPackageIndex(community, cancellationToken))
+            {
+                // Versions are newest-first per API contract, but pick the maximum defensively.
+                PackageIndexVersionDto? latest = null;
+                foreach (var version in entry.Versions)
+                {
+                    if (latest is null || PackageVersionRef.CompareVersions(version.VersionNumber, latest.VersionNumber) > 0)
+                        latest = version;
+                }
+
+                if (latest is not null)
+                    map[entry.PackageRef] = latest.ToPackageVersionDto(entry.Owner);
+            }
+
+            _indexCache[community] = (DateTimeOffset.UtcNow, map);
+            _logger.LogInformation("Fetched the `{Community}` package index: {Count} packages in {Elapsed:0.0}s", community, map.Count, stopwatch.Elapsed.TotalSeconds);
+            return map;
+        }
+        finally
+        {
+            _indexLock.Release();
+        }
     }
 }
