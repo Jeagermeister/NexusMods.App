@@ -2,12 +2,12 @@ name: Validate Changelog Assets
 
 on:
   push:
-    branches: [ main ]
+    branches: [ linux-fork ]
     paths:
       - "docs/changelog-assets/**"
       - ".github/workflows/validate-changelog-assets.yaml"
   pull_request:
-    branches: [ main ]
+    branches: [ linux-fork ]
     paths:
       - "docs/changelog-assets/**"
       - ".github/workflows/validate-changelog-assets.yaml"

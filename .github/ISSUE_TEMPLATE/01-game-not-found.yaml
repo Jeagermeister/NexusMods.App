@@ -9,26 +9,20 @@ body:
   - type: markdown
     attributes:
       value: >-
-        Please remember that the Nexus Mods app is still in development and
-        supports a limited number of games. 
+        Please remember that Apocrypha is still in development and supports a
+        limited number of games.
 
 
-        ## [See all supported games
-        here](https://nexus-mods.github.io/NexusMods.App/users/games/)
-
-
-        Check out [the
-        roadmap](https://trello.com/b/gPzMuIr3/nexus-mods-app-roadmap) to see
-        the upcoming games.
+        The full list of supported games is in the app: **Home → My Games →
+        "Other supported games"** search.
   - type: checkboxes
     id: confirm-supported
     attributes:
       label: Supported Game Check
       description: >-
-        I confirm that I have checked the [supported
-        games](https://nexus-mods.github.io/NexusMods.App/users/games/), and the
-        game I am reporting is listed as supported but has not been found by the
-        app.
+        I confirm that I have checked the supported-games list in the app
+        (Home → My Games → "Other supported games"), and the game I am
+        reporting is listed as supported but has not been found by the app.
       options:
         - label: 'Yes'
           required: true
@@ -92,8 +86,7 @@ body:
     attributes:
       label: Attach Log Files
       description: >-
-        Please attach your logs. If you are having issues finding your log
-        files, see [this
-        guide](https://nexus-mods.github.io/NexusMods.App/users/faq/LogFiles/).
+        Please attach your logs. They live at `~/.local/state/Apocrypha/Logs`
+        on Linux and `%LOCALAPPDATA%\Apocrypha\Logs` on Windows.
     validations:
       required: true

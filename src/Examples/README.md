@@ -2,8 +2,8 @@
 
 This project contains examples on how to use the various APIs available.
 
-This document supplements articles such as [UI Coding Conventions](https://nexus-mods.github.io/NexusMods.App/development-guidelines/UICodingGuidelines/)
-and [Using Workspaces](https://nexus-mods.github.io/NexusMods.App/development-guidelines/UsingWorkspaces/).
+This document supplements upstream's development-guideline articles (UI Coding
+Conventions, Using Workspaces), which lived on the retired docs site.
 
 ## Available Examples
 
