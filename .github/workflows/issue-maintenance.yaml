@@ -19,7 +19,7 @@ jobs:
           issue-number: ${{ github.event.issue.number }}
           body: |
             Thanks for opening this issue! To help us resolve the issue, please upload the logs from the app.
-            You can find a guide on how to find the logs [here](https://nexus-mods.github.io/NexusMods.App/users/faq/LogFiles/).
+            Logs live at `~/.local/state/Apocrypha/Logs` on Linux and `%LOCALAPPDATA%\Apocrypha\Logs` on Windows.
 
   on_close:
     if: github.event.action == 'closed' && github.event.issue.state_reason == 'completed' && contains(github.event.issue.labels.*.name, 'user raised')

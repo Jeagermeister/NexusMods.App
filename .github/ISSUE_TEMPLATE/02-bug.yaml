@@ -34,7 +34,7 @@ body:
     attributes:
       label: "Attach Log Files"
       description: >-
-        Please attach your logs. If you are having issues finding your log
-        files, see [this guide](https://nexus-mods.github.io/NexusMods.App/users/faq/LogFiles/).
+        Please attach your logs. They live at `~/.local/state/Apocrypha/Logs`
+        on Linux and `%LOCALAPPDATA%\Apocrypha\Logs` on Windows.
     validations:
       required: true
