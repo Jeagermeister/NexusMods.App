@@ -23,7 +23,6 @@ using NexusMods.Sdk;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Loadouts;
-using NexusMods.Telemetry;
 using NexusMods.Sdk.Library;
 using CollectionMod = NexusMods.Abstractions.Collections.Json.Mod;
 using ModSource = NexusMods.Abstractions.Collections.Json.ModSource;
@@ -198,7 +197,6 @@ public static class CollectionCreator
 
         var result = await tx.Commit();
 
-        Tracking.AddEvent(Events.Collections.CreateLocalCollection, new EventMetadata(name: $"{loadout.Game.DisplayName} - {newName}"));
         return result.Remap(group);
     }
 
@@ -317,7 +315,6 @@ public static class CollectionCreator
             await ChangeCollectionStatus(serviceProvider, groupId.Value, newStatus: initialCollectionStatus, cancellationToken);
         }
 
-        Tracking.AddEvent(Events.Collections.ShareCollection, EventMetadata.Create(name: $"{collection.Slug}", value: collectionManifest.Mods.Length));
         return CollectionMetadata.Load(connection.Db, collection.Id);
     }
 
@@ -395,7 +392,6 @@ public static class CollectionCreator
 
         await tx.Commit();
 
-        Tracking.AddEvent(Events.Collections.UploadRevision, EventMetadata.Create(name: $"{collection.Slug}", value: collectionManifest.Mods.Length));
         return (collection, revisionId, revisionNumber);
     }
 

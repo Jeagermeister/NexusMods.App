@@ -1,11 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Settings;
 using NexusMods.Sdk;
-using NexusMods.Sdk.Tracking;
 using NexusMods.UI.Sdk;
 using R3;
 using ReactiveUI;

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Serialization;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.Commandline;
 using NexusMods.App.UI;
 using NexusMods.App.UI.Settings;
@@ -34,9 +33,7 @@ using NexusMods.ProxyConsole;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.ProxyConsole;
 using NexusMods.Sdk.Settings;
-using NexusMods.Sdk.Tracking;
 using NexusMods.SingleProcess;
-using NexusMods.Telemetry;
 
 namespace NexusMods.App;
 
@@ -44,7 +41,6 @@ public static class Services
 {
     public static IServiceCollection AddApp(
         this IServiceCollection services,
-        TrackingSettings? trackingSettings = null,
         bool addStandardGameLocators = true,
         StartupMode? startupMode = null,
         ExperimentalSettings? experimentalSettings = null,
@@ -70,16 +66,10 @@ public static class Services
                 .AddJobMonitor()
                 .AddNexusModsCollections()
 
-                .AddSettings<TrackingSettings>()
                 .AddSettings<LoggingSettings>()
                 .AddSettings<ExperimentalSettings>()
                 .AddDefaultRenderers()
                 .AddDefaultParsers()
-
-                // Apocrypha: no telemetry. The upstream OpenTelemetry exporters, Matomo
-                // sender, and Mixpanel EventTracker are not registered (KIRO-HANDOFF §23.4);
-                // the Mixpanel endpoint/tokens are also removed at the source.
-                .AddSingleton<ITelemetryProvider, TelemetryProvider>()
 
                 .AddSingleton<CommandLineConfigurator>()
                 .AddCLI()

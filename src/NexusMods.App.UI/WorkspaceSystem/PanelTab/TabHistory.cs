@@ -1,6 +1,5 @@
 using System.Reactive;
 using System.Reactive.Linq;
-using NexusMods.Telemetry;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
@@ -80,13 +79,6 @@ internal class TabHistory : ReactiveObject
         finally
         {
             IsTraversing = false;
-        }
-
-        if (Tracking.IsEnabled)
-        {
-            var current = _history[currentPosition % Limit];
-            var eventDefinition = offset > 0 ? Events.PageHistory.Forward : Events.PageHistory.Back;
-            Tracking.AddEvent(eventDefinition, new EventMetadata(name: current.Context.TrackingName));
         }
     }
 

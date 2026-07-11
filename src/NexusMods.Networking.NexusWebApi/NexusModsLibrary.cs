@@ -8,7 +8,6 @@ using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.DTOs;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.NexusWebApi.Extensions;

@@ -18,7 +18,6 @@
         <controls:Toolbar Grid.Row="0" Margin="24,12, 24, 0">
             <ItemsControl>
                 <search:SearchControl x:Name="SearchControl"
-                                      PageName="LoadoutGroupFiles"
                                       ButtonSize="Toolbar" />
             </ItemsControl>
             

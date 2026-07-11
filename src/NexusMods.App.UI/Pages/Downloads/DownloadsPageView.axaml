@@ -32,7 +32,6 @@
             <controls:Toolbar Margin="24, 0">
                 <ItemsControl>
                     <search:SearchControl x:Name="SearchControl"
-                                          PageName="Downloads"
                                           ButtonSize="Toolbar" />
                 </ItemsControl>
 

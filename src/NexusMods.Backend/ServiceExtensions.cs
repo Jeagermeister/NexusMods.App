@@ -10,7 +10,6 @@ using NexusMods.Backend.Jobs;
 using NexusMods.Backend.OS;
 using NexusMods.Backend.Process;
 using NexusMods.Backend.RuntimeDependency;
-using NexusMods.Backend.Tracking;
 using NexusMods.FileExtractor;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -18,7 +17,6 @@ using NexusMods.Sdk.FileExtractor;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Settings;
-using NexusMods.Sdk.Tracking;
 using NexusMods.UI.Sdk.Icons;
 using NexusMods.UI.Sdk.Settings;
 
@@ -105,14 +103,6 @@ public static class ServiceExtensions
         return serviceCollection;
     }
 
-    public static IServiceCollection AddTracking(this IServiceCollection serviceCollection, TrackingSettings? settings)
-    {
-        // Apocrypha: telemetry removed (KIRO-HANDOFF §23.4). The EventTracker is never
-        // registered, regardless of settings; its Mixpanel endpoint and project tokens are
-        // gone from the source as well.
-        return serviceCollection;
-    }
-
     public static IServiceCollection AddSettingsManager(this IServiceCollection serviceCollection)
     {
         return serviceCollection
@@ -124,11 +114,6 @@ public static class ServiceExtensions
                 Name: "General",
                 IconFunc: () => IconValues.Desktop,
                 Priority: ushort.MaxValue
-            ))
-            .AddSingleton(new SectionDescriptor(
-                Id: Sections.Privacy,
-                Name: "Privacy",
-                IconFunc: () => IconValues.ShieldHalfFull
             ))
             .AddSingleton(new SectionDescriptor(
                 Id: Sections.GameSpecific,

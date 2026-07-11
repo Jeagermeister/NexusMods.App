@@ -11,7 +11,6 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
@@ -185,7 +184,7 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
             {
                 // Missing mod
                 var parent = row.File.AsLoadoutItem().Parent;
-                var downloadLink = new NamedLink("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, row.Pattern.ModId, campaign: NexusModsUrlBuilder.CampaignDiagnostics));
+                var downloadLink = new NamedLink("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, row.Pattern.ModId));
                 if (row.MatchingSegment.HasValue)
                 {
                     yield return Diagnostics.CreateMissingModWithKnownNexusUriWithStringSegment(

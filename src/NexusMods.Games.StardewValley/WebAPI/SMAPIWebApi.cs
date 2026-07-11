@@ -3,7 +3,6 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Diagnostics.Values;
 using NexusMods.Abstractions.NexusWebApi;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.Paths;
 using NexusMods.Sdk.NexusModsApi;
 using StardewModdingAPI;
