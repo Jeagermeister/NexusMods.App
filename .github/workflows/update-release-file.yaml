@@ -81,9 +81,10 @@ jobs:
           # Labels to apply to the Pull Request (optional)
           labels: automated-update
 
-          # Target branch for the PR (default is the repository's default branch)
-          # You can specify a different base branch if needed
-          # base: main
+          # NOTE(linux-fork): release events check out the TAG (detached HEAD), and
+          # create-pull-request refuses to infer a base from a detached checkout —
+          # every release-triggered run failed without this.
+          base: linux-fork
 
           # Automatically delete the branch after the PR is merged (optional)
           delete-branch: true

@@ -1,6 +1,9 @@
 <?xml version="1.0" ?>
 <!-- auto generated, don't edit manually -->
 <releases>
+	<release version="0.1.2" date="2026-07-11" type="stable">
+		<url type="details">https://github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.2</url>
+	</release>
 	<release version="0.1.1" date="2026-07-10" type="development">
 		<url type="details">https://github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.1</url>
 	</release>
