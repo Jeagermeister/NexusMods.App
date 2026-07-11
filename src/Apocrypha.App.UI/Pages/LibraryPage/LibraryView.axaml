@@ -172,6 +172,15 @@
                                                      Fill="None"
                                                      LeftIcon="{x:Static icons:IconValues.Refresh}"
                                                      ToolTip.Tip="{x:Static resources:Language.FileOriginsPage_CheckForUpdates_ToolTip}" />
+                            <controls:StandardButton x:Name="RemoveDuplicatesButton"
+                                                     Text="Remove duplicates"
+                                                     ShowIcon="Left"
+                                                     ShowLabel="False"
+                                                     Size="Toolbar"
+                                                     Type="Tertiary"
+                                                     Fill="None"
+                                                     LeftIcon="{x:Static icons:IconValues.PlaylistRemove}"
+                                                     ToolTip.Tip="Find byte-identical duplicate downloads and remove the redundant copies (copies used by a loadout are kept)" />
                             <controls:StandardButton x:Name="UpdateAllButton"
                                                      Text="{x:Static resources:Language.FileOriginPage_UpdateAll}"
                                                      ShowIcon="Left"

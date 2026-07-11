@@ -29,6 +29,12 @@ public interface ILibraryViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> RemoveSelectedItemsCommand { get; }
     ReactiveCommand<Unit> DeselectItemsCommand { get; }
 
+    /// <summary>
+    /// Scans the Library for byte-identical duplicate downloads and offers to remove the
+    /// redundant copies (loadout-linked copies are always kept).
+    /// </summary>
+    ReactiveCommand<Unit> RemoveDuplicatesCommand { get; }
+
     public int SelectionCount { get; } 
     public int UpdatableSelectionCount { get; }
     public bool HasAnyUpdatesAvailable { get; }

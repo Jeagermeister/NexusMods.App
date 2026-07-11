@@ -279,6 +279,12 @@ public class MainWindowViewModel : AViewModel<IMainWindowViewModel>, IMainWindow
                                 ToastNotificationVariant.Neutral
                             );
                             return;
+                        case FailureReason.AlreadyInProgress alreadyInProgress:
+                            self._notificationService.ShowToast(
+                                $"Already downloading — {alreadyInProgress.Name}",
+                                ToastNotificationVariant.Neutral
+                            );
+                            return;
                         case FailureReason.GameNotManaged gameNotManaged:
                             self._notificationService.ShowToast(
                                 string.Format(Language.ToastNotification_Download_failed__game_is_not_managed____0_, gameNotManaged.Game),

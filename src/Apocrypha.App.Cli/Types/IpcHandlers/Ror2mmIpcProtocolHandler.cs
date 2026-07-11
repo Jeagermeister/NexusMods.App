@@ -26,6 +26,21 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
     /// </summary>
     private const int MaxParallelDownloads = 8;
 
+    /// <summary>
+    /// Package versions currently being downloaded by ANY invocation of this handler. The
+    /// already-downloaded check only sees completed downloads, so without this claim two
+    /// overlapping invocations (double-clicked links, two modpacks sharing dependencies)
+    /// download the same packages twice and produce duplicate library entries.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, byte> InFlightPackages = new();
+
+    /// <summary>
+    /// Root packages with a whole install (resolution + downloads) currently running. Rejects
+    /// a re-click of the same link immediately, including during the resolution phase when no
+    /// package download has started yet.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, byte> InFlightInstalls = new();
+
     /// <inheritdoc/>
     public string Protocol => Ror2mmUrl.Scheme;
 
@@ -72,6 +87,13 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
         var resolver = _serviceProvider.GetRequiredService<ThunderstoreDependencyResolver>();
         var library = _serviceProvider.GetRequiredService<ILibraryService>();
 
+        if (!InFlightInstalls.TryAdd(versionRef.FullName, 0))
+        {
+            _logger.LogInformation("Ignoring ror2mm link for `{Package}`: an install of it is already in progress", versionRef.FullName);
+            _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.AlreadyInProgress(versionRef.FullName)));
+            return;
+        }
+
         _eventBus.Send(new CliMessages.ModDownloadStarted());
 
         try
@@ -110,8 +132,20 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
                 new ParallelOptions { MaxDegreeOfParallelism = MaxParallelDownloads, CancellationToken = cancel },
                 async (resolved, token) =>
                 {
+                    // A concurrent invocation (double-clicked link, overlapping modpacks) may
+                    // be downloading this exact version — claim it or leave it to that one.
+                    if (!InFlightPackages.TryAdd(resolved.Version.FullName, 0))
+                    {
+                        _logger.LogInformation("Skipping `{Package}`: another install is already downloading it", resolved.Version.FullName);
+                        return;
+                    }
+
                     try
                     {
+                        // Re-check now that we hold the claim: it may have completed between
+                        // the pre-filter above and this download slot becoming free.
+                        if (thunderstoreLibrary.IsAlreadyDownloaded(resolved.Version)) return;
+
                         var downloadJob = await thunderstoreLibrary.CreateDownloadJob(resolved.Dto, knownCommunities, token);
                         var libraryFile = await library.AddDownload(downloadJob);
 
@@ -125,6 +159,10 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
                     catch (Exception e)
                     {
                         failures.Add((resolved.Version.FullName, e));
+                    }
+                    finally
+                    {
+                        InFlightPackages.TryRemove(resolved.Version.FullName, out _);
                     }
                 }
             );
@@ -160,6 +198,10 @@ public class Ror2mmIpcProtocolHandler : IIpcProtocolHandler
         {
             _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.Unknown(e)));
             throw;
+        }
+        finally
+        {
+            InFlightInstalls.TryRemove(versionRef.FullName, out _);
         }
     }
 }

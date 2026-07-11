@@ -16,7 +16,8 @@ namespace Apocrypha.App.UI.Pages.Library;
 /// </remarks>
 public static class LibraryItemRemover
 {
-    public static async Task RemoveAsync(
+    /// <returns>True when the user confirmed and the items were removed.</returns>
+    public static async Task<bool> RemoveAsync(
         IConnection conn,
         IOverlayController overlayController,
         ILibraryService libraryService,
@@ -28,5 +29,6 @@ public static class LibraryItemRemover
         var result = await overlayController.EnqueueAndWait(alphaWarningViewModel);
         if (result)
             await libraryService.RemoveLibraryItems(toRemove);
+        return result;
     }
 }

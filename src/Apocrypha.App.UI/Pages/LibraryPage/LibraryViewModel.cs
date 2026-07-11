@@ -68,6 +68,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     public ReactiveCommand<Unit> UpdateAndKeepOldSelectedItemsCommand { get; }
 
     public ReactiveCommand<Unit> RemoveSelectedItemsCommand { get; }
+    public ReactiveCommand<Unit> RemoveDuplicatesCommand { get; }
     
     public ReactiveCommand<Unit> DeselectItemsCommand { get; }
 
@@ -221,6 +222,12 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             executeAsync: (_, cancellationToken) => RemoveSelectedItems(cancellationToken),
             awaitOperation: AwaitOperation.Parallel,
             initialCanExecute: false,
+            configureAwait: false
+        );
+
+        RemoveDuplicatesCommand = new ReactiveCommand<Unit>(
+            executeAsync: (_, cancellationToken) => RemoveDuplicateItems(cancellationToken),
+            awaitOperation: AwaitOperation.Drop,
             configureAwait: false
         );
 
@@ -984,9 +991,23 @@ After asking design, we're choosing to simply open the mod page for now.
     {
         var db = _connection.Db;
         var toRemove = GetSelectedIds().Select(id => LibraryItem.Load(db, id)).ToArray();
-        await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
-        
-        _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
+        var removed = await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
+
+        if (removed) _notificationService.ShowToast(Language.ToastNotification_Items_deleted);
+    }
+
+    private async ValueTask RemoveDuplicateItems(CancellationToken cancellationToken)
+    {
+        var toRemove = LibraryDuplicateFinder.FindRemovableDuplicates(_connection.Db);
+        if (toRemove.Length == 0)
+        {
+            _notificationService.ShowToast("No duplicate downloads found.", ToastNotificationVariant.Neutral);
+            return;
+        }
+
+        var removed = await LibraryItemRemover.RemoveAsync(_connection, _serviceProvider.GetRequiredService<IOverlayController>(), _libraryService, toRemove);
+        if (removed)
+            _notificationService.ShowToast($"Removed {toRemove.Length} duplicate download(s).", ToastNotificationVariant.Success);
     }
 
     private async ValueTask AddFilesFromDisk(IStorageProvider storageProvider, CancellationToken cancellationToken)
