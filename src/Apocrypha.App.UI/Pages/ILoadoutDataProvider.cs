@@ -302,24 +302,42 @@ public static class LoadoutDataProviderHelper
         CompositeItemModel<EntityId> parentItemModel,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
+        // The toggle click skips collection-required (locked) and parent-disabled copies, so
+        // its VALUE must be aggregated the same way: a mod page carrying both a collection's
+        // locked copy and the user's own copy otherwise renders locked/indeterminate and the
+        // user's copy looks un-toggleable (collection + own mods coexistence, §46).
         var isEnabledObservable = linkedItemsObservable
-            .TransformOnObservable(item => item.IsEnabledObservable(connection))
+            .TransformOnObservable(item =>
+            {
+                var isLocked = IsLocked(item);
+                var isEnabledObservable = item.IsEnabledObservable(connection);
+
+                if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
+                    return isEnabledObservable.Select(isEnabled => (IsToggleable: !isLocked, IsEnabled: isEnabled));
+
+                return LoadoutItem.Observe(connection, collectionGroup)
+                    .CombineLatest(isEnabledObservable, (parentItem, isEnabled) =>
+                        (IsToggleable: !isLocked && !parentItem.IsDisabled, IsEnabled: isEnabled));
+            })
             .QueryWhenChanged(query =>
             {
-                var isEnabled = Optional<bool>.None;
-                foreach (var isItemEnabled in query.Items)
+                static bool? Aggregate(IEnumerable<bool> states)
                 {
-                    if (!isEnabled.HasValue)
+                    var isEnabled = Optional<bool>.None;
+                    foreach (var state in states)
                     {
-                        isEnabled = isItemEnabled;
+                        if (!isEnabled.HasValue) isEnabled = state;
+                        else if (isEnabled.Value != state) return null;
                     }
-                    else
-                    {
-                        if (isEnabled.Value != isItemEnabled) return (bool?)null;
-                    }
+                    return isEnabled.HasValue ? isEnabled.Value : null;
                 }
 
-                return isEnabled.HasValue ? isEnabled.Value : null;
+                var toggleable = query.Items.Where(tuple => tuple.IsToggleable).Select(tuple => tuple.IsEnabled).ToArray();
+                if (toggleable.Length != 0) return Aggregate(toggleable);
+
+                // Nothing toggleable (fully locked/disabled rows are covered by the lock and
+                // parent-disabled components) — keep the historical all-items aggregate.
+                return Aggregate(query.Items.Select(tuple => tuple.IsEnabled));
             });
 
         parentItemModel.Add(LoadoutColumns.EnabledState.EnabledStateToggleComponentKey, new LoadoutComponents.EnabledStateToggle(

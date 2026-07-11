@@ -907,14 +907,24 @@ After asking design, we're choosing to simply open the mod page for now.
             .Where(x => x.IsValid())
             .ToArray();
 
+        var installed = new bool[items.Length];
         await Parallel.ForAsync(
             fromInclusive: 0,
             toExclusive: items.Length,
-            body: (i, innerCancellationToken) => InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
+            body: async (i, innerCancellationToken) => installed[i] = await InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
             cancellationToken: cancellationToken
         );
-        
+
+        // Say WHERE the mods landed: with a read-only collection installed, users otherwise
+        // look for their new mods inside the collection and conclude installing failed
+        // (collection + own mods coexistence, §46).
+        var installedItems = items.Where((_, i) => installed[i]).ToArray();
+        if (installedItems.Length == 0) return;
         var targetCollection = LoadoutItem.Load(db, targetLoadoutGroup);
+        var summary = installedItems.Length == 1 ? installedItems[0].Name : $"{installedItems.Length} mods";
+        _notificationService.ShowToast(
+            $"Installed {summary} to \"{targetCollection.Name}\" — enabled and ready.",
+            ToastNotificationVariant.Success);
     }
 
     private LibraryItemId[] GetSelectedIds()
@@ -949,7 +959,7 @@ After asking design, we're choosing to simply open the mod page for now.
         return InstallItems(GetSelectedIds(), GetInstallationTarget(), useAdvancedInstaller, cancellationToken);
     }
 
-    private async ValueTask InstallLibraryItem(
+    private async ValueTask<bool> InstallLibraryItem(
         LibraryItem.ReadOnly libraryItem,
         LoadoutId loadout,
         LoadoutItemGroupId targetLoadoutGroup,
@@ -959,13 +969,14 @@ After asking design, we're choosing to simply open the mod page for now.
         try
         {
             await _loadoutManager.InstallItem(libraryItem, loadout, parent: targetLoadoutGroup, installer: useAdvancedInstaller ? _advancedInstaller : null);
-            var targetCollection  = LoadoutItem.Load(_connection.Db, targetLoadoutGroup);
+            return true;
         }
         catch (OperationCanceledException)
         {
             // User cancelled the installation - this is expected behavior, don't show error
             var logger = _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>();
             logger.LogInformation("Installation of {LibraryItem} was cancelled by user", libraryItem.Name);
+            return false;
         }
     }
 

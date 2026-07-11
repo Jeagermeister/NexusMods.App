@@ -531,7 +531,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                     {
                         await message.Match<Task>(
                             toggleEnableStateMessage => 
-                                HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection),
+                                HandleToggleItemEnabledState(toggleEnableStateMessage.Ids, _connection, _notificationService),
                             openCollectionMessage =>
                             {
                                 HandleOpenItemCollectionPage(openCollectionMessage.Ids, 
@@ -698,10 +698,13 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         return uri;
     }
 
-    internal static async Task HandleToggleItemEnabledState(LoadoutItemId[] ids, IConnection connection)
+    internal static async Task HandleToggleItemEnabledState(LoadoutItemId[] ids, IConnection connection, IWindowNotificationService? notificationService = null)
     {
-        var toggleableItems = ids
+        var items = ids
             .Select(loadoutItemId => LoadoutItem.Load(connection.Db, loadoutItemId))
+            .ToArray();
+
+        var toggleableItems = items
             // Exclude collection required items
             .Where(item => !IsRequired(item.Id, connection))
             // Exclude items that are part of a collection that is disabled
@@ -710,7 +713,27 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             )
             .ToArray();
 
-        if (toggleableItems.Length == 0) return;
+        if (toggleableItems.Length == 0)
+        {
+            // A click that changes nothing needs to say WHY, or the toggle just feels broken
+            // (collection + own mods coexistence, §46).
+            var lockedItem = items.FirstOrDefault(item => IsRequired(item.Id, connection));
+            if (lockedItem.IsValid())
+            {
+                var collectionName = lockedItem.Parent.AsLoadoutItem().Name;
+                notificationService?.ShowToast(
+                    $"This mod is required by the collection \"{collectionName}\" and can't be turned off. Mods you add yourself live in \"My Mods\" and toggle freely.",
+                    ToastNotificationVariant.Neutral);
+            }
+            else if (items.Length != 0)
+            {
+                var collectionName = items[0].Parent.AsLoadoutItem().Name;
+                notificationService?.ShowToast(
+                    $"The collection \"{collectionName}\" is switched off — turn the collection on to use its mods.",
+                    ToastNotificationVariant.Neutral);
+            }
+            return;
+        }
 
         // We only enable if all items are disabled, otherwise we disable
         var shouldEnable = toggleableItems.All(loadoutItem => loadoutItem.IsDisabled);
