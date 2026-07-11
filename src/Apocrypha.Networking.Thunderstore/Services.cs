@@ -22,6 +22,7 @@ public static class Services
             .AddSingleton<IThunderstoreApiClient, ThunderstoreApiClient>()
             .AddSingleton<IThunderstoreLibrary, ThunderstoreLibrary>()
             .AddSingleton<ThunderstoreDependencyResolver>()
+            .AddHostedService<ThunderstoreCommunityBackfill>()
             .AddThunderstoreVerbs();
     }
 }
