@@ -14,6 +14,11 @@ public record CollectionDownloadPageContext : IPageFactoryContext
 {
     public required LoadoutId TargetLoadout { get; init; }
     public required CollectionRevisionMetadataId CollectionRevisionMetadataId { get; init; }
+
+    /// <summary>
+    /// When set, the page opens with the Optional tab selected instead of the Required tab.
+    /// </summary>
+    public bool FocusOptionalTab { get; init; }
 }
 
 [UsedImplicitly]
@@ -38,7 +43,8 @@ public class CollectionDownloadPageFactory : APageFactory<ICollectionDownloadVie
             windowManager: WindowManager,
             serviceProvider: ServiceProvider,
             revisionMetadata: metadata,
-            targetLoadout: context.TargetLoadout
+            targetLoadout: context.TargetLoadout,
+            focusOptionalTab: context.FocusOptionalTab
         );
     }
 }

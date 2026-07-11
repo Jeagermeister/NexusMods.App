@@ -17,6 +17,7 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public LoadoutTreeDataGridAdapter Adapter { get; } = null!;
     public bool IsCollectionEnabled => true;
     public int InstalledModsCount { get; } = 10;
+    public int OptionalModsCount { get; } = 5;
     public string Name => "Vanilla+ [Quality of Life]";
     
     public ulong EndorsementCount => 123456;
@@ -35,7 +36,9 @@ public class CollectionLoadoutDesignViewModel : APageViewModel<ICollectionLoadou
     public BindableReactiveProperty<DynamicData.Kernel.Optional<RevisionNumber>> NewestRevisionNumber { get; } = new(value: DynamicData.Kernel.Optional<RevisionNumber>.None);
     public ReactiveCommand<Unit> CommandUpdateCollection { get; } = new ReactiveCommand();
 
-    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; } 
+    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; }
+        = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>(_ => System.Reactive.Unit.Default);
+    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewOptionalMods { get; }
         = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>(_ => System.Reactive.Unit.Default);
     public bool IsLocalCollection { get; } = false;
     public bool IsReadOnly { get; } = true;

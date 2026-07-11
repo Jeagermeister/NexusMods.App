@@ -74,6 +74,11 @@ public partial class CollectionLoadoutView : ReactiveUserControl<ICollectionLoad
             this.BindCommand(ViewModel, vm => vm.CommandUpdateCollection, view => view.ButtonUpdateCollection)
                 .AddTo(disposables);
 
+            this.BindCommand(ViewModel, vm => vm.CommandViewOptionalMods, view => view.ButtonViewOptionalMods)
+                .AddTo(disposables);
+            ButtonViewOptionalMods.IsVisible = ViewModel!.OptionalModsCount > 0;
+            ButtonViewOptionalMods.Text = $"View optional mods ({ViewModel!.OptionalModsCount:N0})";
+
             this.WhenAnyValue(
                     view => view.ViewModel!.IsUpdateAvailable.Value,
                     view => view.ViewModel!.NewestRevisionNumber.Value

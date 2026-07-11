@@ -34,6 +34,11 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     /// </summary>
     int InstalledModsCount { get; }
 
+    /// <summary>
+    /// Gets the number of optional mods offered by the collection revision (installed or not).
+    /// </summary>
+    int OptionalModsCount { get; }
+
     string Name { get; }
     
     /// <inheritdoc cref="CollectionMetadata.Endorsements"/>
@@ -67,6 +72,12 @@ public interface ICollectionLoadoutViewModel : IPageViewModelInterface
     R3.ReactiveCommand<R3.Unit> CommandMakeLocalEditableCopy { get; }
 
     ReactiveCommand<NavigationInformation, Unit> CommandViewCollectionDownloadPage { get; }
+
+    /// <summary>
+    /// Opens the collection download page on the Optional tab, where optional mods can be
+    /// downloaded and installed.
+    /// </summary>
+    ReactiveCommand<NavigationInformation, Unit> CommandViewOptionalMods { get; }
 
     /// <summary>
     /// Whether a newer published revision of this collection exists on Nexus Mods.

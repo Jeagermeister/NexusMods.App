@@ -138,7 +138,34 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
                 var workspaceController = GetWorkspaceController();
                 var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
                 workspaceController.OpenPage(WorkspaceId, pageData, behavior);
-                
+
+                return System.Reactive.Unit.Default;
+            }
+        );
+
+        OptionalModsCount = revisionMetadata.HasValue
+            ? CollectionDownloader.CountItems(revisionMetadata.Value, CollectionDownloader.ItemType.Optional)
+            : 0;
+
+        CommandViewOptionalMods = ReactiveUI.ReactiveCommand.Create<NavigationInformation, System.Reactive.Unit>
+        (
+            info =>
+            {
+                var pageData = new PageData
+                {
+                    FactoryId = CollectionDownloadPageFactory.StaticId,
+                    Context = new CollectionDownloadPageContext()
+                    {
+                        TargetLoadout = pageContext.LoadoutId,
+                        CollectionRevisionMetadataId = nexusCollectionGroup.RevisionId,
+                        FocusOptionalTab = true,
+                    },
+                };
+
+                var workspaceController = GetWorkspaceController();
+                var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
+                workspaceController.OpenPage(WorkspaceId, pageData, behavior);
+
                 return System.Reactive.Unit.Default;
             }
         );
@@ -321,6 +348,8 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
     [Reactive] public bool IsCollectionEnabled { get; private set; }
     
     [Reactive] public int InstalledModsCount { get; private set; }
+
+    public int OptionalModsCount { get; }
     
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; } = new(value: false);
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new(value: Optional<RevisionNumber>.None);
@@ -331,4 +360,5 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
     public ReactiveCommand<Unit> CommandMakeLocalEditableCopy { get; }
     public ReactiveCommand<Unit> CommandUpdateCollection { get; }
     public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewCollectionDownloadPage { get; }
+    public ReactiveUI.ReactiveCommand<NavigationInformation, System.Reactive.Unit> CommandViewOptionalMods { get; }
 }
