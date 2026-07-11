@@ -2,6 +2,7 @@ using System.Net.Http;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Games;
+using NexusMods.Abstractions.Thunderstore;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
@@ -70,6 +71,10 @@ public class RegistrationTests
             game.DiagnosticEmitters.Should().HaveCount(1);
             game.IconImage.Should().NotBeNull();
             game.TileImage.Should().NotBeNull();
+
+            // The capability UI surfaces use to discover the game's community (DESIGN-app-layout.md §5).
+            game.Should().BeAssignableTo<IThunderstoreCommunityGame>()
+                .Which.ThunderstoreCommunitySlug.Should().Be(game.Data.CommunitySlug);
         });
 
         // The pack installer is one shared singleton; plugin installers are per-game

@@ -61,7 +61,7 @@ itself as the `nxm://` and `ror2mm://` one-click handler.
 git clone https://github.com/Jeagermeister/Apocrypha
 cd Apocrypha
 git submodule update --init --recursive   # required once (SMAPI + docs)
-dotnet build NexusMods.App.sln            # .NET 9 SDK
+dotnet build Apocrypha.sln            # .NET 9 SDK
 dotnet run --project src/NexusMods.App    # launch the UI
 ```
 

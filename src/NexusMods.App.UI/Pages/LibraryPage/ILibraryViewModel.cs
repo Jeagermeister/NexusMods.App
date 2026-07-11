@@ -36,7 +36,15 @@ public interface ILibraryViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> OpenFilePickerCommand { get; }
     ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
+    ReactiveCommand<Unit> OpenThunderstoreCommand { get; }
     ReactiveCommand<Unit> AddCollectionFromLinkCommand { get; }
+
+    /// <summary>
+    /// Which mod sources the loadout's game actually has (DESIGN-app-layout.md §5):
+    /// the "get mods" entries show a row per available source, not a hardcoded Nexus one.
+    /// </summary>
+    public bool HasNexusModsSource { get; }
+    public bool HasThunderstoreSource { get; }
     
     IStorageProvider? StorageProvider { get; set; }
 }

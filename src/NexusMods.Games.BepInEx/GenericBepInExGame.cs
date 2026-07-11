@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Library.Installers;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Thunderstore;
 using NexusMods.Games.BepInEx.Emitters;
 using NexusMods.Games.BepInEx.Installers;
 using NexusMods.Paths;
@@ -21,7 +22,7 @@ namespace NexusMods.Games.BepInEx;
 /// <c>IGameData&lt;TSelf&gt;</c>: the static-abstract members are a per-class convention, and this
 /// class is instantiated once per game row.
 /// </summary>
-public class GenericBepInExGame : IGame
+public class GenericBepInExGame : IGame, IThunderstoreCommunityGame
 {
     private const string GcdnAssetsBaseUrl = "https://gcdn.thunderstore.io/assets/";
 
@@ -29,6 +30,8 @@ public class GenericBepInExGame : IGame
     private readonly InstallRuleRouter _installRuleRouter;
 
     public BepInExGameData Data => _data;
+
+    public string ThunderstoreCommunitySlug => _data.CommunitySlug;
 
     public GameId GameId => _data.GameId;
     public string DisplayName => _data.DisplayName;

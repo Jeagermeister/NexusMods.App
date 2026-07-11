@@ -2,6 +2,6 @@ version: 1.0
 failThreshold: 25
 linter: jetbrains/qodana-cdnet:2023.3-eap
 dotnet:
-  solution: NexusMods.App.sln
+  solution: Apocrypha.sln
 profile:
   name: qodana.recommended

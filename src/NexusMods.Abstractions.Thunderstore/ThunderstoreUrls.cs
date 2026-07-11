@@ -1,13 +1,18 @@
-using NexusMods.Abstractions.Thunderstore;
-
-namespace NexusMods.Networking.Thunderstore;
+namespace NexusMods.Abstractions.Thunderstore;
 
 /// <summary>
-/// Builders for the (stable, documented) Thunderstore URL shapes.
+/// Builders for the (stable, documented) Thunderstore URL shapes. Lives in abstractions
+/// (not networking) so UI surfaces can link Thunderstore pages without the API client.
 /// </summary>
 public static class ThunderstoreUrls
 {
     private const string BaseUrl = "https://thunderstore.io";
+
+    /// <summary>
+    /// A community's browse page on thunderstore.io.
+    /// </summary>
+    public static Uri GetCommunityUri(string communitySlug)
+        => new($"{BaseUrl}/c/{Uri.EscapeDataString(communitySlug)}/");
 
     /// <summary>
     /// The package page on thunderstore.io (not community-qualified — packages are global).

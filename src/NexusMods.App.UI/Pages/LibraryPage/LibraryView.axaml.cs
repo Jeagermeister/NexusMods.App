@@ -116,7 +116,20 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsCommand, view => view.GetModsFromNexusButton)
                     .AddTo(disposables);
 
+                this.BindCommand(ViewModel, vm => vm.OpenThunderstoreCommand, view => view.GetModsFromThunderstoreButton)
+                    .AddTo(disposables);
+
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsCollectionsCommand, view => view.GetCollectionFromNexusButton)
+                    .AddTo(disposables);
+
+                // Per-source entries only show for sources the game actually has (design §5).
+                this.OneWayBind(ViewModel, vm => vm.HasNexusModsSource, view => view.GetModsFromNexusButton.IsVisible)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasThunderstoreSource, view => view.GetModsFromThunderstoreButton.IsVisible)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasNexusModsSource, view => view.GetCollectionFromNexusButton.IsVisible)
                     .AddTo(disposables);
 
                 this.BindCommand(ViewModel, vm => vm.AddCollectionFromLinkCommand, view => view.AddCollectionFromLinkButton)
@@ -135,6 +148,15 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                     .AddTo(disposables);
 
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsCommand, view => view.EmptyLibraryLinkButton)
+                    .AddTo(disposables);
+
+                this.BindCommand(ViewModel, vm => vm.OpenThunderstoreCommand, view => view.EmptyLibraryThunderstoreButton)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasNexusModsSource, view => view.EmptyLibraryLinkButton.IsVisible)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasThunderstoreSource, view => view.EmptyLibraryThunderstoreButton.IsVisible)
                     .AddTo(disposables);
 
                 this.BindCommand(ViewModel, vm => vm.RefreshUpdatesCommand, view => view.Refresh)
