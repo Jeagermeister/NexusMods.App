@@ -18,6 +18,12 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
     {
         InitializeComponent();
 
+        // The in-app window controls exist because the window asks the OS for no native
+        // title bar (ExtendClientAreaToDecorationsHint in MainWindow). On Linux those
+        // hints are a no-op under X11/XWayland, so the WM draws its native bar anyway --
+        // showing these buttons there means TWO sets of window controls. Native wins.
+        if (OperatingSystem.IsLinux()) SystemButtonsBorder.IsVisible = false;
+
         this.WhenActivated(d =>
             {
                 this.OneWayBind(ViewModel, vm => vm.ActiveWorkspaceTitle, view => view.ActiveWorkspaceTitleTextBlock.Text)
