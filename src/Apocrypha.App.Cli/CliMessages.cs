@@ -60,6 +60,8 @@ public static class FailureReason
     public record NotLoggedIn : IFailureReason;
     
     public record AlreadyExists(string Name) : IFailureReason;
+
+    public record AlreadyInProgress(string Name) : IFailureReason;
     
     public record GameNotManaged(string Game) : IFailureReason;
 }
