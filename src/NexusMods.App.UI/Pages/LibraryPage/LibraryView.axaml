@@ -149,6 +149,12 @@
                                                 <icons:UnifiedIcon Value="{x:Static icons:IconValues.NexusColor}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem x:Name="GetModsFromThunderstoreButton"
+                                                  Header="From Thunderstore">
+                                            <MenuItem.Icon>
+                                                <icons:UnifiedIcon Value="{x:Static icons:IconValues.Thunderstore}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem x:Name="AddCollectionFromLinkMenuItem"
                                                   Header="Collection from link">
                                             <MenuItem.Icon>
@@ -181,11 +187,17 @@
                         <controls:EmptyState.Subtitle>
                             <StackPanel Orientation="Vertical" Spacing="16">
                                 <TextBlock x:Name="EmptyLibraryTextBlock" Text="Subtitle" />
-                                <controls:StandardButton x:Name="EmptyLibraryLinkButton"
-                                                         Text="Open Nexus Mods"
-                                                         ShowIcon="Left"
-                                                         LeftIcon="{x:Static icons:IconValues.Nexus}"
-                                                         HorizontalAlignment="Center" />
+                                <!-- one button per mod source the game actually has (design §5) -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                    <controls:StandardButton x:Name="EmptyLibraryLinkButton"
+                                                             Text="Open Nexus Mods"
+                                                             ShowIcon="Left"
+                                                             LeftIcon="{x:Static icons:IconValues.Nexus}" />
+                                    <controls:StandardButton x:Name="EmptyLibraryThunderstoreButton"
+                                                             Text="Open Thunderstore"
+                                                             ShowIcon="Left"
+                                                             LeftIcon="{x:Static icons:IconValues.Thunderstore}" />
+                                </StackPanel>
                             </StackPanel>
                         </controls:EmptyState.Subtitle>
 

@@ -16,6 +16,7 @@ using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
+using NexusMods.Abstractions.Thunderstore;
 using NexusMods.CLI.Types;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls;
@@ -74,7 +75,11 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
 
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
+    public ReactiveCommand<Unit> OpenThunderstoreCommand { get; }
     public ReactiveCommand<Unit> AddCollectionFromLinkCommand { get; }
+
+    public bool HasNexusModsSource { get; }
+    public bool HasThunderstoreSource { get; }
 
     [Reactive] public int SelectionCount { get; private set; }
     
@@ -231,14 +236,24 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             configureAwait: false
         );
 
+        // Per-source "get mods" entries (DESIGN-app-layout.md §5): the view shows a row per
+        // source the game actually has, so each command can assume its source exists.
+        HasNexusModsSource = game.NexusModsGameId.HasValue;
+        HasThunderstoreSource = game is IThunderstoreCommunityGame;
+
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ =>
         {
-            // TODO(design §15): offer the game's Thunderstore community here instead when it has no Nexus presence
             if (!game.NexusModsGameId.HasValue) return;
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetGameUri(gameDomain);
             osInterop.OpenUri(gameUri);
+        });
+
+        OpenThunderstoreCommand = new ReactiveCommand<Unit>(execute: _ =>
+        {
+            if (game is not IThunderstoreCommunityGame thunderstoreGame) return;
+            osInterop.OpenUri(ThunderstoreUrls.GetCommunityUri(thunderstoreGame.ThunderstoreCommunitySlug));
         });
 
         OpenNexusModsCollectionsCommand = new ReactiveCommand<Unit>(execute: _ =>
