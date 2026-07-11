@@ -78,9 +78,6 @@
 	<data name="AllFoldersAreaSubHeaderText_Select_from_full" xml:space="preserve">
 		<value>Escolha a partir da estrutura completa de pastas</value>
 	</data>
-	<data name="FileTree_ALL_MOD_FILES" xml:space="preserve">
-		<value>Todos os arquivos do mod</value>
-	</data>
 	<data name="PreviewHeader_INSTALL_LOCATION_PREVIEW" xml:space="preserve">
 		<value>PRÉ-visualização do caminho de instalação</value>
 	</data>
@@ -134,9 +131,6 @@
 	</data>
 	<data name="TreeEntryView_IncludedRemoveButtonTextBlock_Included" xml:space="preserve">
 		<value>Concluído</value>
-	</data>
-	<data name="AdvancedInstaller_Manual_Mod" xml:space="preserve">
-		<value>MOD manual</value>
 	</data>
 	<data name="SelectLocationViewModel_SuggestedLocationsSubtitle" xml:space="preserve">
 		<value>A moda para {0} geralmente é instalada nas seguintes pastas de jogo.</value>

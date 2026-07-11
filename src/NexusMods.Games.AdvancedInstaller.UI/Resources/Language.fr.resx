@@ -77,9 +77,6 @@
     <data name="AllFoldersAreaSubHeaderText_Select_from_full" xml:space="preserve">
         <value>Sélectionnez à partir de la structure complète des dossiers</value>
     </data>
-    <data name="FileTree_ALL_MOD_FILES" xml:space="preserve">
-        <value>Tous les fichiers de mod</value>
-    </data>
     <data name="PreviewHeader_INSTALL_LOCATION_PREVIEW" xml:space="preserve">
         <value>Aperçu de l'emplacement d'installation</value>
     </data>
@@ -133,9 +130,6 @@
     </data>
     <data name="TreeEntryView_IncludedRemoveButtonTextBlock_Included" xml:space="preserve">
         <value>Inclus</value>
-    </data>
-    <data name="AdvancedInstaller_Manual_Mod" xml:space="preserve">
-        <value>Mod manuel</value>
     </data>
     <data name="SelectLocationViewModel_SuggestedLocationsSubtitle" xml:space="preserve">
         <value>{0} Les mods sont généralement installés dans les dossiers de jeu suivants.</value>
