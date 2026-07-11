@@ -62,7 +62,10 @@ public class GenericBepInExGame : IGame, IThunderstoreCommunityGame
             SteamAppIds = data.SteamAppIds,
         };
 
-        IconImage = CreateArtFactory(provider, data.CommunityIconUrl,
+        // Legacy communities (subnautica, riskofrain2, valheim, ...) carry a cover but no
+        // 192x192 icon; icon-shaped surfaces (spine, detected grid) looked like placeholders
+        // for them. The cover beats a flat placeholder, so it doubles as the icon.
+        IconImage = CreateArtFactory(provider, data.CommunityIconUrl ?? data.CoverUrl,
             new EmbeddedResourceStreamFactory<GenericBepInExGame>("Apocrypha.Games.BepInEx.Resources.thumbnail.webp"));
         TileImage = CreateArtFactory(provider, data.CoverUrl,
             new EmbeddedResourceStreamFactory<GenericBepInExGame>("Apocrypha.Games.BepInEx.Resources.tile.webp"));

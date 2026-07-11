@@ -100,9 +100,11 @@ public class RegistrationTests
         games.Should().AllSatisfy(game => game.TileImage.Should().BeOfType<CachedHttpStreamFactory>());
 
         // Since PR G the RoR2 row is in the family; riskofrain2 is a legacy community with
-        // no community block, so like Subnautica its thumbnail stays the placeholder.
+        // no community block (no 192x192 icon) — its COVER doubles as the icon so the spine
+        // and detected grid show real art instead of the placeholder.
         var riskOfRain2 = games.Single(g => g.GameId == GameId.From("RiskOfRain2"));
-        riskOfRain2.IconImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>();
+        ((CachedHttpStreamFactory)riskOfRain2.IconImage).Uri.Should().Be(
+            new Uri("https://gcdn.thunderstore.io/assets/riskofrain2/riskofrain2-cover-360x480.webp"));
 
         var lethalCompany = games.Single(g => g.GameId == GameId.From("LethalCompany"));
         ((CachedHttpStreamFactory)lethalCompany.TileImage).Uri.Should().Be(
@@ -111,8 +113,9 @@ public class RegistrationTests
             new Uri("https://gcdn.thunderstore.io/assets/lethal-company/lethal-company-icon-192x192.webp"));
 
         var subnautica = games.Single(g => g.GameId == GameId.From("Subnautica"));
-        subnautica.IconImage.Should().BeOfType<EmbeddedResourceStreamFactory<GenericBepInExGame>>(
-            "legacy communities carry no icon — the thumbnail stays the placeholder");
+        ((CachedHttpStreamFactory)subnautica.IconImage).Uri.Should().Be(
+            new Uri("https://gcdn.thunderstore.io/assets/subnautica/subnautica-cover-360x480.webp"),
+            because: "legacy communities carry no icon — the cover doubles as the icon");
     }
 
     [Fact]
