@@ -1,0 +1,88 @@
+<reactiveUi:ReactiveUserControl x:TypeArguments="loadoutCard:ILoadoutCardViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:loadoutCard="clr-namespace:Apocrypha.App.UI.Controls.LoadoutCard"
+                                xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
+                                xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+                                xmlns:loadoutBadge="clr-namespace:Apocrypha.App.UI.Controls.LoadoutBadge"
+                                xmlns:spinner="clr-namespace:Apocrypha.App.UI.Controls.Spinner"
+                                xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+                                xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+                                mc:Ignorable="d"
+                                x:Class="Apocrypha.App.UI.Controls.LoadoutCard.LoadoutCardView">
+    <Design.DataContext>
+        <loadoutCard:LoadoutCardDesignViewModel />
+    </Design.DataContext>
+
+    <Border x:Name="ContainerBorder">
+        <Panel>
+            <Button x:Name="CardOuterButton">
+
+                <DockPanel>
+
+                    <!-- buttons -->
+                    <DockPanel DockPanel.Dock="Bottom" x:Name="ActionsDock">
+
+                        <controls:StandardButton x:Name="DeleteButton"
+                                                 ShowLabel="False"
+                                                 ShowIcon="Left"
+                                                 LeftIcon="{x:Static icons:IconValues.DeleteForever}"
+                                                 ToolTip.Tip="{x:Static resources:Language.LoadoutCard_DeleteLoadoutToolTip}"
+                                                 DockPanel.Dock="Right"/>
+
+                        <controls:StandardButton x:Name="CreateCopyButton"
+                                                 Text="{x:Static resources:Language.LoadoutCardViewCreateCopyButton}"
+                                                 HorizontalAlignment="Stretch"/>
+                    </DockPanel>
+
+                    <!-- content -->
+                    <StackPanel x:Name="ContentStack" Spacing="8">
+
+                        <!-- name -->
+                        <TextBlock x:Name="LoadoutNameTextBlock" />
+
+                        <!-- image -->
+                        <Border x:Name="ImageSectionBorder">
+                            <Panel>
+                                <Image x:Name="GameImage" />
+                                <Rectangle x:Name="GradientLayerRectangle" />
+                                <loadoutBadge:LoadoutBadge x:Name="LoadoutBadge" />
+                            </Panel>
+                        </Border>
+
+                        <!-- meta -->
+                        <StackPanel x:Name="DetailsSectionStack">
+
+                            <StackPanel x:Name="DetailsBodyStack">
+                                <StackPanel x:Name="CurrentlyAppliedStack">
+                                    <TextBlock x:Name="CurrentlyAppliedTextBlock"
+                                               Text="{x:Static resources:Language.LoadoutCardViewCurrentlyAppliedTextBlock}" />
+                                    <icons:UnifiedIcon x:Name="AppliedCheckBoxIcon"
+                                                       Value="{x:Static icons:IconValues.CheckBox}" />
+                                </StackPanel>
+                                <TextBlock x:Name="LastAppliedTimeTextBlock" IsVisible="False" />
+                                <TextBlock x:Name="CreatedTimeTextBlock" />
+                                <TextBlock x:Name="NumberOfModsTextBlock" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <!-- Needs to be on top of the card button to avoid the disabled opacity -->
+            <StackPanel x:Name="OverlayStack" IsVisible="False">
+                <StackPanel x:Name="OverlaySpinnerStack">
+                    <spinner:Spinner x:Name="OverlaySpinner" />
+                    <TextBlock x:Name="OverlayTextBlock"
+                               Text="{x:Static resources:Language.LoadoutCardViewDeletingText}" />
+                </StackPanel>
+                <Border />
+            </StackPanel>
+        </Panel>
+    </Border>
+
+
+</reactiveUi:ReactiveUserControl>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Apocrypha.Library/Apocrypha.Library.csproj" />
+    <ProjectReference Include="../../src/Apocrypha.Abstractions.Downloads/Apocrypha.Abstractions.Downloads.csproj" />
+    <ProjectReference Include="../../src/Apocrypha.Networking.HttpDownloader/Apocrypha.Networking.HttpDownloader.csproj" />
+    <ProjectReference Include="../../src/Apocrypha.Abstractions.HttpDownloads/Apocrypha.Abstractions.HttpDownloads.csproj" />
+    <ProjectReference Include="../../src/Apocrypha.Abstractions.NexusModsLibrary/Apocrypha.Abstractions.NexusModsLibrary.csproj" />
+    <ProjectReference Include="..\..\src\Apocrypha.Backend\Apocrypha.Backend.csproj" />
+    <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="NexusMods.MnemonicDB" />
+  </ItemGroup>
+</Project>

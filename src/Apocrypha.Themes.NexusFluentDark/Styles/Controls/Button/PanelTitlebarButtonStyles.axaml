@@ -1,0 +1,103 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <WrapPanel Width="300">
+                <Button Classes="PanelTitlebar Close" />
+                <Button Classes="PanelTitlebar Close" IsEnabled="False"/>
+                <Button Classes="PanelTitlebar Close Active"/>
+                <Button Classes="PanelTitlebar OpenInWindow" />
+                <Button Classes="PanelTitlebar AddTab" />
+                <Button Classes="PanelTitlebar ScrollRight" />
+                <Button Classes="PanelTitlebar ScrollLeft" />
+            </WrapPanel>
+        </Border>
+    </Design.PreviewWith>
+
+    <!-- Add Styles Here -->
+    <Style Selector="Button.PanelTitlebar">
+
+        <Style Selector="^ icons|UnifiedIcon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralSubduedBrush}" />
+            <Setter Property="Size" Value="24" />
+        </Style>
+
+        <Style Selector="^ Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
+            <Setter Property="CornerRadius" Value="{StaticResource Rounded-lg}" />
+        </Style>
+
+        <Style Selector="^:pointerover icons|UnifiedIcon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
+        </Style>
+
+        <Style Selector="^:pointerover Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceTranslucentLow}" />
+        </Style>
+
+        <Style Selector="^:pressed Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceTransparentBrush}" />
+        </Style>
+
+        <Style Selector="^:disabled icons|UnifiedIcon">
+            <Setter Property="Opacity" Value="{StaticResource OpacityDisabledElement}" />
+        </Style>
+
+        <Style Selector="^.Active icons|UnifiedIcon">
+            <Setter Property="Foreground" Value="{StaticResource NeutralStrongBrush}" />
+        </Style>
+
+        <Style Selector="^.Close">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border>
+                        <icons:UnifiedIcon Classes="Close" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^.OpenInWindow">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border>
+                        <icons:UnifiedIcon Classes="OpenInNew" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^.AddTab">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border>
+                        <icons:UnifiedIcon Classes="Plus" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^.ScrollRight">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border>
+                        <icons:UnifiedIcon Classes="ChevronRight" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^.ScrollLeft">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border>
+                        <icons:UnifiedIcon Classes="ChevronLeft" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+    </Style>
+
+</Styles>

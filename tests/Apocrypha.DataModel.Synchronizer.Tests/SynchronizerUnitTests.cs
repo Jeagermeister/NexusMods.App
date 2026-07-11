@@ -1,0 +1,98 @@
+using FluentAssertions;
+using MartinCostello.Logging.XUnit;
+using Microsoft.Extensions.DependencyInjection;
+using Apocrypha.Abstractions.Loadouts;
+using Apocrypha.Games.RedEngine;
+using Apocrypha.Games.RedEngine.Cyberpunk2077;
+using Apocrypha.Games.TestFramework;
+using Apocrypha.Games.TestFramework.FluentAssertionExtensions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
+using Apocrypha.Sdk.Games;
+using Apocrypha.StandardGameLocators.TestHelpers;
+using Xunit.Abstractions;
+
+namespace Apocrypha.DataModel.Synchronizer.Tests;
+
+/// <summary>
+/// Tests for specific issues or regressions in the Synchronizer.
+/// </summary>
+public class SynchronizerUnitTests(ITestOutputHelper testOutputHelper) : ACyberpunkIsolatedGameTest<SynchronizerUnitTests>(testOutputHelper)
+{
+    
+    [Fact]
+    [GithubIssue(2077)]
+    public async Task EmptyFoldersAreRemovedWhenSwitchingLoadouts()
+    {
+        var loadoutA = await CreateLoadout();
+
+        var nestedFile = new GamePath(LocationId.Game, "a/b/nested.txt");
+        var nestedFileFullPath = GameInstallation.Locations.ToAbsolutePath(nestedFile);
+
+        nestedFileFullPath.Parent.CreateDirectory();
+        await nestedFileFullPath.WriteAllTextAsync("Nested File");
+
+        loadoutA = await Synchronizer.Synchronize(loadoutA);
+
+        LoadoutItem.FindByLoadout(loadoutA.Db, loadoutA).Should().ContainSingle(f => f.Name == "nested.txt");
+
+        // Create new empty loadout
+        var loadoutB = await CreateLoadout();
+
+        // Switch to empty loadout
+        loadoutB = await Synchronizer.Synchronize(loadoutB);
+        
+        // 'a/' directory should be deleted
+        nestedFileFullPath.Parent.Parent.DirectoryExists().Should().BeFalse();
+    }
+    
+    [Fact]
+    [GithubIssue(1925)]
+    public async Task EmptyChildFoldersDontDeleteNonEmptyParents()
+    {
+        var loadout = await CreateLoadout();
+
+        var parentFile = new GamePath(LocationId.Game, "a/parent.txt");
+        var grandChildFile = new GamePath(LocationId.Game, "a/b/c/grandchild.txt");
+        
+        var parentFileFullPath = GameInstallation.Locations.ToAbsolutePath(parentFile);
+        var grandChildFileFullPath = GameInstallation.Locations.ToAbsolutePath(grandChildFile);
+        
+        parentFileFullPath.Parent.CreateDirectory();
+        await parentFileFullPath.WriteAllTextAsync("Parent File");
+        
+        grandChildFileFullPath.Parent.CreateDirectory();
+        await grandChildFileFullPath.WriteAllTextAsync("Grand Child File");
+        
+        loadout = await Synchronizer.Synchronize(loadout);
+        
+        LoadoutItem.FindByLoadout(loadout.Db, loadout).Should().ContainSingle(f => f.Name == "parent.txt");
+        LoadoutItem.FindByLoadout(loadout.Db, loadout).Should().ContainSingle(f => f.Name == "grandchild.txt");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var toDelete =LoadoutItem.FindByLoadout(loadout.Db, loadout).First(f => f.Name == "grandchild.txt").Id;
+            tx.Delete(toDelete, false);
+            await tx.Commit();
+        }
+
+        loadout = loadout.Rebase();
+        loadout = await Synchronizer.Synchronize(loadout);
+         
+        // a/b/c/grandchild.txt
+        grandChildFileFullPath.FileExists.Should().BeFalse();
+        // a/b/c
+        grandChildFileFullPath.Parent.DirectoryExists().Should().BeFalse();
+        // a/b
+        grandChildFileFullPath.Parent.Parent.DirectoryExists().Should().BeFalse();
+
+        // a/parent.txt
+        parentFileFullPath.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoadoutsContainLocatorMetadata()
+    {
+        var loadout = await CreateLoadout();
+        loadout.LocatorIds.Should().BeEquivalentTo([LocatorId.From("StubbedGameState.zip")]);
+    }
+}

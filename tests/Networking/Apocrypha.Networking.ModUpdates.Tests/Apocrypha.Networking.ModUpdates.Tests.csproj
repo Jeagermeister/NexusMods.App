@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Networking.ModUpdates.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Apocrypha.Networking.ModUpdates\Apocrypha.Networking.ModUpdates.csproj" />
+      <ProjectReference Include="..\..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+
+</Project>

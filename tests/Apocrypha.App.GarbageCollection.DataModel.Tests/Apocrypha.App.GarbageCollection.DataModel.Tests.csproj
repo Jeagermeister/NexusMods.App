@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.App.GarbageCollection.DataModel\Apocrypha.App.GarbageCollection.DataModel.csproj"/>
+        <ProjectReference Include="..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="FindUsedFiles\MarkGameFiles\" />
+    </ItemGroup>
+
+</Project>

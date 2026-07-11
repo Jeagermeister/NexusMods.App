@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.CLI.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.App.Cli\Apocrypha.App.Cli.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.App\Apocrypha.App.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.SingleProcess\Apocrypha.SingleProcess.csproj" />
+        <ProjectReference Include="..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+        <ProjectReference Include="..\Networking\Apocrypha.Networking.HttpDownloader.Tests\Apocrypha.Networking.HttpDownloader.Tests.csproj" />
+        <ProjectReference Include="..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="Resources\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Remove="StartupModeTests.TestStartupModeParsing_input=as-main.verified.txt" />
+        <None Remove="StartupModeTests.TestStartupModeParsing_input=.verified.txt" />
+        <None Remove="StartupModeTests.TestStartupModeParsing_input=--help.verified.txt" />
+        <None Remove="StartupModeTests.TestStartupModeParsing_input=as-main --help.verified.txt" />
+        <None Remove="StartupModeTests.TestStartupModeParsing_input=as-main-ui.verified.txt" />
+        <None Remove="VerbTests\flatten-loadout.table.txt.verified.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Spectre.Console.Testing" />
+    </ItemGroup>
+</Project>

@@ -11,9 +11,9 @@ import json
 import re
 import sys
 
-SCHEMA = "src/NexusMods.Games.BepInEx/Assets/ecosystem-schema.json"
-GAMES_JSON = "src/NexusMods.Networking.NexusWebApi/Assets/games.json"
-OUT = "src/NexusMods.Games.BepInEx/Assets/bepinex-nexus-ids.json"
+SCHEMA = "src/Apocrypha.Games.BepInEx/Assets/ecosystem-schema.json"
+GAMES_JSON = "src/Apocrypha.Networking.NexusWebApi/Assets/games.json"
+OUT = "src/Apocrypha.Games.BepInEx/Assets/bepinex-nexus-ids.json"
 
 
 def norm(name: str) -> str:

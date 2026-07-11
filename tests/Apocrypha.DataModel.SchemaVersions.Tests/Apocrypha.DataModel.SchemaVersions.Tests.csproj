@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.DataModel.SchemaVersions.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Apocrypha.App\Apocrypha.App.csproj" />
+      <ProjectReference Include="..\..\src\Apocrypha.DataModel.SchemaVersions\Apocrypha.DataModel.SchemaVersions.csproj" />
+      <ProjectReference Include="..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Verify" />
+      <PackageReference Include="Verify.Xunit" />  
+    </ItemGroup>
+</Project>

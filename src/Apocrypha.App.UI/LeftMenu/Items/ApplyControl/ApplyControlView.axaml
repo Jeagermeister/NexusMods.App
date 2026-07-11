@@ -1,0 +1,111 @@
+﻿<reactiveUi:ReactiveUserControl x:TypeArguments="items:IApplyControlViewModel" xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:items="clr-namespace:Apocrypha.App.UI.LeftMenu.Items"
+                                xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+                                xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+                                xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+                                xmlns:spinner="clr-namespace:Apocrypha.App.UI.Controls.Spinner"
+                                mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
+                                x:Class="Apocrypha.App.UI.LeftMenu.Items.ApplyControlView">
+    <Design.DataContext>
+        <items:ApplyControlDesignViewModel />
+    </Design.DataContext>
+
+    <Border
+        Background="{StaticResource SurfaceLowBrush}"
+        CornerRadius="{StaticResource Rounded-lg}"
+        Padding="12"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Bottom"
+        MinHeight="68">
+
+        <StackPanel Orientation="Vertical"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Stretch"
+                    Spacing="{StaticResource Spacing-2}">
+
+            <!-- Linux fork: recognise installed game version locally (shown only when the version is unknown) -->
+            <Button x:Name="RecognizeVersionButton"
+                    HorizontalAlignment="Stretch"
+                    IsVisible="False"
+                    ToolTip.Tip="Recognize this game's installed version locally (no login or download) so a vanilla install isn't treated as fully modified.">
+                <TextBlock Text="Recognize installed version"
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+            </Button>
+
+            <StackPanel x:Name="RecognizingVersionPanel"
+                        Orientation="Horizontal"
+                        IsVisible="False"
+                        Spacing="8">
+                <spinner:Spinner Width="20"
+                                 Height="20"
+                                 VerticalAlignment="Center"
+                                 Foreground="{StaticResource NeutralStrongBrush}" />
+                <TextBlock x:Name="RecognizingVersionText"
+                           Text="Recognizing installed version..."
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           Foreground="{StaticResource NeutralModerateBrush}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- preview changes button -->
+            <navigation:NavigationControl x:Name="PreviewChangesButton"
+                                          Text="{x:Static resources:Language.ApplyControlView_ViewApplyChanges}"
+                                          Type="Tertiary"
+                                          Fill="Weak"
+                                          Size="Small"
+                                          ToolTip.Tip="{x:Static resources:Language.ApplyControlView_ViewApplyChanges_ToolTip}"
+                                          HorizontalAlignment="Stretch" />
+            
+            <StackPanel x:Name="ProcessingChangesStackPanel"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,0,0,6">
+                <spinner:Spinner Width="12"
+                         Height="24"
+                         Foreground="{StaticResource NeutralStrongBrush}"/>
+                <TextBlock Text="Processing changes..."
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           Foreground="{StaticResource NeutralModerateBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            
+                <!-- Apply button -->
+            <Button x:Name="ApplyButton"
+                    HorizontalAlignment="Stretch"
+                    Height="44"
+                    ToolTip.Tip="{x:Static resources:Language.ApplyControlView_Apply_ToolTip}">
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="{StaticResource Spacing-1}">
+                    <icons:UnifiedIcon Size="24" Value="{x:Static icons:IconValues.Sync}" />
+                    <TextBlock x:Name="ApplyButtonTextBlock"
+                               Theme="{StaticResource TitleSMSemiTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- Progress bar -->
+            <ProgressBar x:Name="ProgressBarControl"
+                         IsIndeterminate="True"
+                         ShowProgressText="True"
+                         ProgressTextFormat="Applying..."
+                         Minimum="0"
+                         Maximum="1"
+                         ToolTip.Tip="{x:Static resources:Language.ApplyControlView__ApplyingToolTip}" />
+
+            <!-- Launch button -->
+            <items:LaunchButtonView x:Name="LaunchButtonView"
+                                    HorizontalAlignment="Stretch" />
+
+
+        </StackPanel>
+    </Border>
+</reactiveUi:ReactiveUserControl>

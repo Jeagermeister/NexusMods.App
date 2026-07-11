@@ -1,0 +1,48 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="workspace:IPanelTabHeaderViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:workspace="clr-namespace:Apocrypha.App.UI.WorkspaceSystem"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+    mc:Ignorable="d" d:DesignWidth="400"
+    x:Class="Apocrypha.App.UI.WorkspaceSystem.PanelTabHeaderView">
+
+    <Design.DataContext>
+        <workspace:PanelTabHeaderDesignViewModel />
+    </Design.DataContext>
+
+    <Border x:Name="Container" HorizontalAlignment="Left">
+
+        <DockPanel MinWidth="100" MaxWidth="260"
+                   Height="36"
+                   LastChildFill="False">
+
+            <controls:StandardButton x:Name="CloseTabButton"
+                                     ShowIcon="Left"
+                                     ShowLabel="False"
+                                     LeftIcon="{x:Static icons:IconValues.Close}"
+                                     Fill="None"
+                                     Size="Toolbar"
+                                     DockPanel.Dock="Right" Margin="0, 0, 8, 0" />
+
+            <DockPanel
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Margin="16,0,0,0">
+                <icons:UnifiedIcon x:Name="Icon" DockPanel.Dock="Left" />
+                <TextBlock x:Name="TitleTextBlock"
+                           Theme="{StaticResource BodySMNormalTheme}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="8,0,8,0" />
+            </DockPanel>
+
+        </DockPanel>
+
+    </Border>
+
+</reactive:ReactiveUserControl>

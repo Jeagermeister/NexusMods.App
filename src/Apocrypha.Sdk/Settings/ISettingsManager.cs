@@ -1,0 +1,56 @@
+using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
+using JetBrains.Annotations;
+using R3;
+
+namespace Apocrypha.Sdk.Settings;
+
+/// <summary>
+/// Represents a settings manager.
+/// </summary>
+[PublicAPI]
+public interface ISettingsManager
+{
+    /// <summary>
+    /// Sets the current value of <typeparamref name="T"/>.
+    /// </summary>
+    void Set<T>(T value, string? key = null) where T : class, ISettings, new();
+
+    /// <summary>
+    /// Gets the current value for <typeparamref name="T"/>.
+    /// </summary>
+    /// <returns>The current value, or the default value for type T if not set.</returns>
+    T Get<T>(string? key = null) where T : class, ISettings, new();
+    
+    /// <summary>
+    /// Gets the current value of <typeparamref name="T"/>, if it was set.
+    /// </summary>
+    /// <returns>True if a value was set, false otherwise.</returns>
+    bool TryGet<T>([NotNullWhen(true)] out T? value, string? key = null) where T : class, ISettings, new();
+
+    /// <summary>
+    /// Gets the default value for <typeparamref name="T"/>.
+    /// </summary>
+    T GetDefault<T>() where T : class, ISettings, new ();
+
+    /// <summary>
+    /// Allows you to update the current value of <typeparamref name="T"/>.
+    /// </summary>
+    /// <param name="updater">
+    /// Lambda for updating the current value of <typeparamref name="T"/>.
+    /// Only the return value of this will be saved. Modifications to the input
+    /// value will be ignored, unless the modified input value gets returned.
+    /// </param>
+    /// <returns>The updated value.</returns>
+    T Update<T>(Func<T, T> updater, string? key = null) where T : class, ISettings, new();
+
+    /// <summary>
+    /// Gets an observable stream to be notified about changes to <typeparamref name="T"/>.
+    /// </summary>
+    Observable<T> GetChanges<T>(string? key = null, bool prependCurrent = false) where T : class, ISettings, new();
+
+    /// <summary>
+    /// Gets configs for all registered settings.
+    /// </summary>
+    FrozenDictionary<Type, SettingsConfig> Configs { get; }
+}

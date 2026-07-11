@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.DataModel.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Apocrypha.Abstractions.GuidedInstallers\Apocrypha.Abstractions.GuidedInstallers.csproj" />
+      <ProjectReference Include="..\..\src\Apocrypha.Games.RedEngine\Apocrypha.Games.RedEngine.csproj" />
+      <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+      <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+      <ProjectReference Include="..\..\src\Apocrypha.Library\Apocrypha.Library.csproj" />
+      <ProjectReference Include="..\Games\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+      <ProjectReference Include="..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Verify.Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopyResources" AfterTargets="PostBuildEvent">
+        <ItemGroup>
+            <_Resources Include="Resources\**" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(_Resources)" DestinationFolder="$(TargetDir)\Resources" />
+    </Target>
+</Project>

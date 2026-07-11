@@ -1,0 +1,71 @@
+<reactiveUi:ReactiveUserControl
+    mc:Ignorable="d"
+    x:Class="Apocrypha.App.UI.Overlays.Generic.MessageBox.OkCancel.MessageBoxOkCancelView"
+    x:TypeArguments="okCancel:IMessageBoxOkCancelViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:okCancel="clr-namespace:Apocrypha.App.UI.Overlays.Generic.MessageBox.OkCancel"
+    xmlns:base="clr-namespace:Apocrypha.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk">
+
+    <base:MessageBoxBackground>
+        
+        <base:MessageBoxBackground.TopContent>
+            <DockPanel Margin="24, 16">
+
+                <!-- Title -->
+                <DockPanel DockPanel.Dock="Top" Margin="0 0 0 8">
+
+                    <!-- 'Cross' button. -->
+                    <controls:StandardButton
+                        x:Name="CloseButton" DockPanel.Dock="Right"
+                        LeftIcon="{x:Static icons:IconValues.Close}"
+                        ShowIcon="Left"
+                        ShowLabel="False"
+                        Type="Tertiary"
+                        Fill="None" />
+
+                    <TextBlock x:Name="HeadingText"
+                               Text="HeadingText"
+                               VerticalAlignment="Center"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+
+                <StackPanel Orientation="Vertical" Spacing="8">
+                    <!-- Message -->
+                    <TextBlock x:Name="MessageTextBlock"
+                               TextWrapping="Wrap"
+                               TextTrimming="WordEllipsis" />
+
+                </StackPanel>
+
+            </DockPanel>
+
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+
+            <!-- Buttons -->
+            <StackPanel>
+                <controls:StandardButton
+                    x:Name="CancelButton"
+                    Text="{x:Static resources:Language.MessageBox_Button_No}"
+                    Type="Tertiary"
+                    Fill="None" />
+                <controls:StandardButton
+                    x:Name="OkButton"
+                    Text="{x:Static resources:Language.MessageBox_Button_Yes}"
+                    Type="Primary"
+                    Fill="Strong" />
+            </StackPanel>
+
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+
+</reactiveUi:ReactiveUserControl>

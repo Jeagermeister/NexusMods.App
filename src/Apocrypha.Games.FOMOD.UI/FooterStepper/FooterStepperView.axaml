@@ -1,0 +1,39 @@
+<reactiveUi:ReactiveUserControl
+    x:TypeArguments="ui:IFooterStepperViewModel" xmlns="https://github.com/avaloniaui"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="clr-namespace:Apocrypha.Games.FOMOD.UI"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:resources="clr-namespace:Apocrypha.Games.FOMOD.UI.Resources"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls;assembly=Apocrypha.App.UI"
+    mc:Ignorable="d"
+    d:DesignWidth="650"
+    x:Class="Apocrypha.Games.FOMOD.UI.FooterStepperView">
+
+    <Design.DataContext>
+        <ui:FooterStepperDesignViewModel />
+    </Design.DataContext>
+
+    <Grid ColumnDefinitions="Auto, *, Auto">
+
+        <controls:StandardButton x:Name="GoToPrevButton"
+                                 Grid.Column="0"
+                                 HorizontalAlignment="Left"
+                                 Text="{x:Static resources:Language.FooterStepperView_FooterStepperView_Previous}"
+                                 Fill="Weak" />
+
+        <ProgressBar x:Name="ProgressBar"
+                     Grid.Column="1" Classes="Stepper" Minimum="0" Maximum="1"
+                     Margin="24,0" />
+
+        <controls:StandardButton x:Name="GoToNextButton"
+                                 Grid.Column="2"
+                                 HorizontalAlignment="Left"
+                                 Text="{x:Static resources:Language.FooterStepperView_FooterStepperView_Next}"
+                                 Type="Primary"
+                                 Fill="Strong" />
+    </Grid>
+
+</reactiveUi:ReactiveUserControl>

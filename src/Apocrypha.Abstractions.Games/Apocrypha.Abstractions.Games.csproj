@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="System.Linq.Async" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.DataModel.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Library.Installers\Apocrypha.Abstractions.Library.Installers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts.Synchronizers\Apocrypha.Abstractions.Loadouts.Synchronizers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts\Apocrypha.Abstractions.Loadouts.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.NexusWebApi\Apocrypha.Abstractions.NexusWebApi.csproj" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="SortOrder\SortItemLoadoutData.cs">
+        <DependentUpon>ISortItemLoadoutData.cs</DependentUpon>
+      </Compile>
+      <Compile Update="SortOrder\ASortOrderVariety.cs">
+        <DependentUpon>ISortOrderVariety.cs</DependentUpon>
+      </Compile>
+      <Compile Update="SortOrder\SortOrderManager.cs">
+        <DependentUpon>ISortOrderManager.cs</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="**\*.sql" />
+        <UpToDateCheckInput Include="**\*.sql"/>
+    </ItemGroup>
+</Project>

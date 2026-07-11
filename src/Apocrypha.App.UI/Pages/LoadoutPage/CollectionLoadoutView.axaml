@@ -1,0 +1,227 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="loadoutPage:ICollectionLoadoutViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:loadoutPage="clr-namespace:Apocrypha.App.UI.Pages.LoadoutPage"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:controls="clr-namespace:Apocrypha.App.UI.Controls"
+    xmlns:navigation="clr-namespace:Apocrypha.App.UI.Controls.Navigation"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+    mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="450"
+    x:Class="Apocrypha.App.UI.Pages.LoadoutPage.CollectionLoadoutView">
+
+    <Design.DataContext>
+        <loadoutPage:CollectionLoadoutDesignViewModel />
+    </Design.DataContext>
+
+    <reactive:ReactiveUserControl.Resources>
+        <!-- statusbar at top, tree data grid fill the remaining space -->
+        <DockPanel x:Key="TabItemContent">
+            <!-- statusbar -->
+            <controls:Statusbar Classes="Primary" DockPanel.Dock="Top">
+
+                <!-- Dots menu button -->
+                <controls:StandardButton LeftIcon="{x:Static icons:IconValues.MoreVertical}"
+                                         ShowLabel="False"
+                                         ShowIcon="Left"
+                                         Size="Toolbar"
+                                         ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_More_ToolTip}">
+
+                    <controls:StandardButton.Flyout>
+                        <MenuFlyout>
+                            <navigation:NavigationMenuItem Header="{x:Static resources:Language.CollectionLoadoutView_MakeEditableLocalCopy}"
+                                                           x:Name="MakeEditableLocalCopy">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Size="16"
+                                                       Value="{x:Static icons:IconValues.Copy}" />
+                                </MenuItem.Icon>
+                            </navigation:NavigationMenuItem>
+                            <navigation:NavigationMenuItem Header="{x:Static resources:Language.CollectionLoadoutView_ViewCollectionDownloadMenuItem}"
+                                                           x:Name="ViewCollectionDownloadMenuItem">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Size="16"
+                                                       Value="{x:Static icons:IconValues.Downloading}" />
+                                </MenuItem.Icon>
+                            </navigation:NavigationMenuItem>
+                            <MenuItem Header="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection}"
+                                      x:Name="RemoveCollectionMenuItem"
+                                      ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_UninstallCollection_ToolTip}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Size="16"
+                                                       Value="{x:Static icons:IconValues.PlaylistRemove}" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </controls:StandardButton.Flyout>
+                </controls:StandardButton>
+                <!-- nexus mods logo -->
+                <StackPanel x:Name="NexusModsLogo"
+                            Orientation="Horizontal"
+                            Spacing="4">
+                    <icons:UnifiedIcon Size="16"
+                                       Value="{x:Static icons:IconValues.NexusColor}" />
+                    <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_NexusMods}"
+                               Theme="{StaticResource BodySMNormalTheme}"
+                               Foreground="{StaticResource PrimaryStrongBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- read only pill -->
+                <StackPanel x:Name="ReadOnlyPillStack"
+                            Orientation="Horizontal"
+                            Spacing="8">
+
+                    <Ellipse Fill="{StaticResource StrokeTranslucentModerateBrush}" Width="4" Height="4" />
+
+                    <Border
+                        ToolTip.Tip="{x:Static resources:Language.CollectionLoadoutView_ReadOnly_ToolTip}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <icons:UnifiedIcon Size="16"
+                                               Foreground="{StaticResource NeutralTranslucentModerateBrush}"
+                                               Value="{x:Static icons:IconValues.Info}" />
+                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_ReadOnly}"
+                                       Foreground="{StaticResource NeutralTranslucentModerateBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- update available -->
+                <controls:StandardButton IsVisible="False" x:Name="ButtonUpdateCollection"
+                                         Text="{x:Static resources:Language.CollectionDownloadViewModel_UpdateCollection}"
+                                         Size="Toolbar"
+                                         Type="Primary"
+                                         Fill="Weak"
+                                         LeftIcon="{x:Static icons:IconValues.Update}"
+                                         ShowIcon="Left" />
+            </controls:Statusbar>
+
+            <Border x:Name="DownloadsTreeContainer"
+                    Padding="0 8 0 0"
+                    Background="{StaticResource SurfaceLowBrush}">
+                <!-- tree data grid -->
+                <TreeDataGrid Grid.Row="2" x:Name="TreeDataGrid"
+                              ShowColumnHeaders="True"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="True"
+                              Classes="MainListsStyling" >
+                    <TreeDataGrid.Styles>
+                        <Style Selector="TreeDataGridRow">
+                            <Setter Property="ContextFlyout" Value="{StaticResource LoadoutItemMenuFlyout}" />
+                        </Style>
+                    </TreeDataGrid.Styles>
+                </TreeDataGrid>
+            </Border>
+        </DockPanel>
+    </reactive:ReactiveUserControl.Resources>
+
+    <Border x:Name="HeaderBorderBackground">
+
+        <!-- header, tabcontrol -->
+        <Grid x:Name="Body" RowDefinitions="Auto, *">
+
+            <!-- first row (header) -->
+            <Border x:Name="HeaderBorder" Grid.Row="0">
+
+                <StackPanel x:Name="Header">
+
+                    <!-- first header row (image and metadata) -->
+                    <Border x:Name="MainContentBorder">
+                        <Grid x:Name="MainContent" ColumnDefinitions="*, Auto">
+
+                            <!-- left column (image and headings) -->
+                            <DockPanel Grid.Column="0" x:Name="CollectionTitles">
+                                <Border DockPanel.Dock="Left" x:Name="CollectionImageBorder">
+                                    <Image x:Name="CollectionImage" />
+                                </Border>
+                                <StackPanel>
+                                    <TextBlock x:Name="Title" Text="{x:Static resources:Language.CollectionLoadoutView_CollectionInstalled}" />
+                                    <TextBlock x:Name="CollectionName" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <!-- right column (metadata) -->
+                            <StackPanel Grid.Column="1" x:Name="CollectionDetails">
+
+                                <StackPanel x:Name="TagsPanel">
+
+                                    <!-- author and avatar -->
+                                    <StackPanel x:Name="AuthorStackPanel">
+                                        <Border x:Name="AuthorAvatarBorder">
+                                            <Image x:Name="AuthorAvatar" />
+                                        </Border>
+                                        <TextBlock x:Name="AuthorName" />
+                                    </StackPanel>
+
+                                    <Ellipse Fill="{StaticResource NeutralTranslucentWeakBrush}" Width="4" Height="4" />
+
+                                    <!-- revision -->
+                                    <StackPanel x:Name="RevisionsPanel">
+                                        <TextBlock x:Name="Revision" />
+                                        <!-- <icons:UnifiedIcon x:Name="ArrowRight" -->
+                                        <!--                    Value="{x:Static icons:IconValues.ArrowForward}" -->
+                                        <!--                    IsVisible="True" /> -->
+                                        <!-- <TextBlock x:Name="NewestRevision" IsVisible="True" /> -->
+                                    </StackPanel>
+
+                                </StackPanel>
+
+                                <StackPanel x:Name="StatsPanel">
+                                    <StackPanel x:Name="OverallRatingPanel"
+                                                ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsRating_ToolTip}">
+                                        <icons:UnifiedIcon x:Name="OverallRatingIcon"
+                                                           Value="{x:Static icons:IconValues.CheckCircle}" />
+                                        <TextBlock x:Name="OverallRating" />
+                                    </StackPanel>
+
+                                    <StackPanel x:Name="EndorsementsPanel"
+                                                ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsEndorsements_ToolTip}">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.ThumbUpOutline}" />
+                                        <TextBlock x:Name="Endorsements" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="DownloadsPanel"
+                                                ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsDownloads_ToolTip}">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.TrayArrowDown}" />
+                                        <TextBlock x:Name="TotalDownloads" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="TotalSizePanel"
+                                                ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsSize_ToolTip}">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.HardDrive}" />
+                                        <TextBlock x:Name="TotalSize" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="ModsPanel"
+                                                ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_StatsMods_ToolTip}">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" />
+                                        <TextBlock x:Name="NumDownloads" />
+                                        <ToggleSwitch x:Name="CollectionToggle" Classes="ExtraSmall"
+                                                      ToolTip.Tip="{x:Static resources:Language.CollectionDownloadViewModel_Toggle_ToolTip}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- second row (tab control) -->
+            <TabControl x:Name="TabControl" Grid.Row="1">
+                <TabItem x:Name="RequiredTab" Content="{StaticResource TabItemContent}">
+                    <TabItem.Header>
+                        <StackPanel x:Name="RequiredModsPanel" Classes="TabItemHeaderStack">
+                            <TextBlock Text="{x:Static resources:Language.CollectionLoadoutView_Required}" />
+                            <Border>
+                                <TextBlock x:Name="RequiredDownloadsCount" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Border>
+
+
+</reactive:ReactiveUserControl>

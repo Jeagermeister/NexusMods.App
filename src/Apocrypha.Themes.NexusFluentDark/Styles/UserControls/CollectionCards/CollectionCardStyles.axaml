@@ -1,0 +1,143 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
+        xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+        xmlns:collections="clr-namespace:Apocrypha.App.UI.Pages.LibraryPage.Collections;assembly=Apocrypha.App.UI">
+
+    <Design.PreviewWith>
+        <Border Classes="Low" Width="400" Height="220">
+            <Border.Resources>
+                <collections:CollectionCardDesignViewModel x:Key="LoadoutCardDesignViewModel" />
+            </Border.Resources>
+            <collections:CollectionCardView DataContext="{StaticResource LoadoutCardDesignViewModel}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="collections|CollectionCardView">
+
+        <Setter Property="Background" Value="{StaticResource SurfaceMidBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Rounded}" />
+        <Setter Property="ClipToBounds" Value="False" />
+
+        <Style Selector="^ Border#CardCollectionBorder">
+            <Setter Property="BoxShadow" Value="{StaticResource DropShadowXS}" />
+            <Setter Property="CornerRadius" Value="{StaticResource Rounded}" />
+
+            <Style Selector="^ Border#BackgroundLayerBorder">
+                <Setter Property="Background" Value="{StaticResource CollectionCardLinearGradientBrush}" />
+                <Setter Property="CornerRadius" Value="4,4,0,0" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+                <Setter Property="Padding" Value="16,8" />
+
+                <Style Selector="^ StackPanel#BackgroundLayerStack">
+                    <Setter Property="Orientation" Value="Horizontal" />
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                    <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                    <!-- default textblock style -->
+                    <Style Selector="^ TextBlock">
+                        <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
+                        <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                    </Style>
+
+                    <Style Selector="^ > icons|UnifiedIcon">
+                        <Setter Property="Size" Value="20" />
+                    </Style>
+                    
+                    <Style Selector="^ StackPanel#RevisionsStack">
+                        <Setter Property="Orientation" Value="Horizontal" />
+                        <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                        <Style Selector="^ StackPanel#RevisionUpdateStack">
+                            <Setter Property="Orientation" Value="Horizontal" />
+                            <Setter Property="Spacing" Value="{StaticResource Spacing-1}" />
+
+                            <Style Selector="^ > icons|UnifiedIcon">
+                                <Setter Property="Size" Value="16" />
+                                <Setter Property="Foreground"
+                                        Value="{StaticResource InfoStrongBrush}" />
+                            </Style>
+                            <Style Selector="^ > TextBlock#NewestRevision">
+                                <Setter Property="Foreground"
+                                        Value="{StaticResource InfoStrongBrush}" />
+                            </Style>
+                        </Style>
+                    </Style>
+                </Style>
+            </Style>
+
+            <Style Selector="^ DockPanel#ForegroundLayerDock">
+                <Setter Property="Margin" Value="16" />
+
+                <!-- left column -->
+                <Style Selector="^ Border#TileImageBorder">
+                    <Setter Property="VerticalAlignment" Value="Top" />
+                    <Setter Property="CornerRadius" Value="{StaticResource Rounded}" />
+                    <Setter Property="ClipToBounds" Value="True" />
+                    <!-- NOTE(insomnious): not sure if we need fixed sizes on both elements, but figma does -->
+                    <Setter Property="Width" Value="126" />
+                    <Setter Property="Height" Value="158" />
+                    <Style Selector="^ Image#TileImage">
+                        <Setter Property="Width" Value="126" />
+                        <Setter Property="Height" Value="158" />
+                        <Setter Property="Stretch" Value="UniformToFill" />
+                    </Style>
+                </Style>
+
+                <Style Selector="^ DockPanel#DetailsDock">
+                    <Setter Property="Margin" Value="16,28,0,0" />
+
+                    <Style Selector="^ > TextBlock#TitleText">
+                        <Setter Property="Theme" Value="{StaticResource BodyLGBoldTheme}" />
+                        <Setter Property="Foreground" Value="{StaticResource NeutralModerateBrush}" />
+                        <Setter Property="Margin" Value="0,0,0,4" />
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                        <Setter Property="MaxHeight" Value="48" />
+                    </Style>
+
+                    <Style Selector="^ > StackPanel#ActionStack">
+                        <Setter Property="Orientation" Value="Horizontal" />
+                    </Style>
+
+                    <Style Selector="^ panels|FlexPanel#StatsPanel">
+                        <Setter Property="RowSpacing" Value="4" />
+                        <Setter Property="ColumnSpacing" Value="4" />
+                        <Setter Property="Wrap" Value="Wrap" />
+                        <Setter Property="AlignContent" Value="FlexStart" />
+
+                        <Style Selector="^ TextBlock">
+                            <Setter Property="Theme" Value="{StaticResource BodySMNormalTheme}" />
+                            <Setter Property="Foreground" Value="{StaticResource NeutralSubduedBrush}" />
+                        </Style>
+                        
+                        <Style Selector="^ TextBlock#AuthorName">
+                            <Setter Property="MaxWidth" Value="117" />
+                            <Setter Property="TextWrapping" Value="NoWrap" />
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                        </Style>
+
+                        <Style Selector="^ Ellipse">
+                            <Setter Property="Width" Value="4" />
+                            <Setter Property="Height" Value="4" />
+                            <Setter Property="Fill" Value="{StaticResource NeutralWeakBrush}" />
+                        </Style>
+
+                        <Style Selector="^ > StackPanel">
+                            <Setter Property="Orientation" Value="Horizontal" />
+                            <Setter Property="Spacing" Value="4" />
+                        </Style>
+                    </Style>
+
+                </Style>
+
+            </Style>
+
+
+        </Style>
+
+    </Style>
+</Styles>

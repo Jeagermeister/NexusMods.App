@@ -1,4 +1,4 @@
-namespace NexusMods.App.UI;
+namespace Apocrypha.App.UI;
 
 public class ${NAME}DesignViewModel : AViewModel<I${NAME}ViewModel>, I${NAME}ViewModel
 {

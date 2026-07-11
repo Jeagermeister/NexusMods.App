@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+      <PackageReference Include="NexusMods.MnemonicDB" />
+      <PackageReference Include="NexusMods.MnemonicDB.Abstractions" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.EpicGameStore\Apocrypha.Abstractions.EpicGameStore.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Steam\Apocrypha.Abstractions.Steam.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.GOG\Apocrypha.Abstractions.GOG.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Attributes\EpicGameStore\" />
+    </ItemGroup>
+
+</Project>

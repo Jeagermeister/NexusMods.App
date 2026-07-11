@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Abstractions.Collections\Apocrypha.Abstractions.Collections.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Games.FileHashes\Apocrypha.Abstractions.Games.FileHashes.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.GC\Apocrypha.Abstractions.GC.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts\Apocrypha.Abstractions.Loadouts.csproj" />
+      <PackageReference Include="CommunityToolkit.HighPerformance" />
+      <PackageReference Include="NexusMods.Hashing.xxHash3" />
+      <PackageReference Include="NexusMods.Hashing.xxHash3.Paths" />
+        <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+      <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+      <PackageReference Include="System.Linq" />
+      <PackageReference Include="System.Linq.Async" />
+    </ItemGroup>
+    <ItemGroup>
+      <InternalsVisibleTo Include="Apocrypha.Benchmarks" />
+    </ItemGroup>
+
+</Project>

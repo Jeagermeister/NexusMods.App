@@ -1,0 +1,53 @@
+using Microsoft.Extensions.DependencyInjection;
+using Apocrypha.CLI.Types;
+using Apocrypha.Sdk;
+using Apocrypha.Sdk.ProxyConsole;
+
+namespace Apocrypha.CLI;
+
+/// <summary>
+/// CLI verbs for the protocols
+/// </summary>
+public static class ProtocolVerbs
+{
+    /// <summary>
+    /// Adds the protocol verbs to the <see cref="IServiceCollection"/>
+    /// </summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddProtocolVerbs(this IServiceCollection services) =>
+        services.AddVerb(() => AssociateNxm)
+            .AddVerb(() => AssociateRor2mm)
+            .AddVerb(() => ProtocolInvoke);
+
+
+    [Verb("associate-nxm", "Associate the nxm:// protocol with this application")]
+    private static async Task<int> AssociateNxm([Injected] IOSInterop osInterop)
+    {
+        await osInterop.RegisterUriSchemeHandler("nxm");
+        return 0;
+    }
+
+    [Verb("associate-ror2mm", "Associate the ror2mm:// protocol (Thunderstore one-click installs) with this application")]
+    private static async Task<int> AssociateRor2mm([Injected] IOSInterop osInterop)
+    {
+        await osInterop.RegisterUriSchemeHandler("ror2mm");
+        return 0;
+    }
+    
+    [Verb("protocol-invoke", "Handle a URL with custom protocol")]
+    private static async Task<int> ProtocolInvoke([Injected] IRenderer renderer,
+        [Option("u", "url", "The URL to handle")] Uri uri,
+        [Injected] IEnumerable<IIpcProtocolHandler> handlers,
+        [Injected] CancellationToken token)
+    {
+        var handler = handlers.FirstOrDefault(iter => iter.Protocol == uri.Scheme);
+        if (handler == null)
+            throw new Exception($"Unsupported protocol \"{uri.Scheme}\"");
+
+        await handler.Handle(uri.ToString(), token);
+
+        return 0;
+    }
+
+}

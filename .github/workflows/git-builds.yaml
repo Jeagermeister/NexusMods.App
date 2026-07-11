@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  ProjectFile: "src/NexusMods.App/NexusMods.App.csproj"
+  ProjectFile: "src/Apocrypha.App/Apocrypha.App.csproj"
 
 jobs:
   transformInputs:

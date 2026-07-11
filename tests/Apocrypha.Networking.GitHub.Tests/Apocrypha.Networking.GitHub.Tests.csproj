@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Apocrypha.Networking.GitHub\Apocrypha.Networking.GitHub.csproj" />
+    <ProjectReference Include="..\..\src\Apocrypha.Sdk\Apocrypha.Sdk.csproj" />
+  </ItemGroup>
+</Project>

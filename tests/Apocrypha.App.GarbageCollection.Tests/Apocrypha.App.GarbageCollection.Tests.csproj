@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.App.GarbageCollection\Apocrypha.App.GarbageCollection.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="NexusMods.Paths.TestingHelpers"/>
+    </ItemGroup>
+</Project>

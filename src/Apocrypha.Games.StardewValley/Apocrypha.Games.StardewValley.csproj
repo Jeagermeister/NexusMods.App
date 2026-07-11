@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <None Remove="Resources\game_image.jpg" />
+        <None Remove="Resources\icon.png" />
+        <None Remove="Resources\thumbnail.webp" />
+        <EmbeddedResource Include="Resources\thumbnail.webp" />
+        <None Remove="Resources\tile.webp" />
+        <EmbeddedResource Include="Resources\tile.webp" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.Games.StardewValley.Tests" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="LinqGen" />
+        <PackageReference Include="NexusMods.Paths" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Apocrypha.Games.FileHashes\Apocrypha.Games.FileHashes.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.StardewValley.SMAPI\Apocrypha.Games.StardewValley.SMAPI.csproj" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="WebAPI\SMAPIWebApi.cs">
+        <DependentUpon>ISMAPIWebApi.cs</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+</Project>

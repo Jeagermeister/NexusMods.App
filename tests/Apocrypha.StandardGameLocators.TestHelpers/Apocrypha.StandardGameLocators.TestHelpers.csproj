@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Apocrypha.Games.StardewValley\Apocrypha.Games.StardewValley.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+        <ProjectReference Include="..\..\src\Apocrypha.DataModel\Apocrypha.DataModel.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Resources\question_mark_game.png" />
+        <EmbeddedResource Include="Resources\question_mark_game.png" />
+        <None Update="xunit.runner.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Resources\StubbedGameState.zip">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Resources\StubbedGameState_game_v2.zip">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

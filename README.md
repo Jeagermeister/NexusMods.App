@@ -62,7 +62,7 @@ git clone https://github.com/Jeagermeister/Apocrypha
 cd Apocrypha
 git submodule update --init --recursive   # required once (SMAPI + docs)
 dotnet build Apocrypha.sln            # .NET 9 SDK
-dotnet run --project src/NexusMods.App    # launch the UI
+dotnet run --project src/Apocrypha.App    # launch the UI
 ```
 
 ## Provenance & license

@@ -1,0 +1,122 @@
+using System.Text;
+using System.Text.Json;
+using JetBrains.Annotations;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NexusMods.Paths;
+using Apocrypha.Sdk;
+using Apocrypha.Sdk.Settings;
+
+namespace Apocrypha.Backend;
+
+[UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
+public sealed class JsonStorageBackend : IStorageBackend
+{
+    public StorageBackendId Id { get; } = StorageBackends.Json;
+
+    private readonly ILogger _logger;
+    private readonly Lazy<JsonSerializerOptions> _jsonOptions;
+    private readonly AbsolutePath _configDirectory;
+
+    /// <summary>
+    /// Constructor.
+    /// </summary>
+    public JsonStorageBackend(
+        ILogger<JsonStorageBackend> logger,
+        IServiceProvider serviceProvider)
+    {
+        _logger = logger;
+        _jsonOptions = new Lazy<JsonSerializerOptions>(serviceProvider.GetRequiredService<JsonSerializerOptions>);
+
+        var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+        _configDirectory = GetConfigsFolderPath(fileSystem);
+        _configDirectory.CreateDirectory();
+    }
+
+    private static AbsolutePath GetConfigsFolderPath(IFileSystem fileSystem)
+    {
+        var os = fileSystem.OS;
+        var baseKnownPath = os.MatchPlatform(
+            onWindows: () => KnownPath.LocalApplicationDataDirectory,
+            onLinux: () => KnownPath.XDG_DATA_HOME
+        );
+
+        return fileSystem.GetKnownPath(baseKnownPath).Combine($"{ApplicationIdentity.DataDirectoryName}/Configs");
+    }
+
+    private AbsolutePath GetConfigPath<T>(string? key)
+    {
+        var typeName = typeof(T).FullName ?? typeof(T).Name;
+        var fileName = string.IsNullOrWhiteSpace(key) ? $"{typeName}.json" : $"{typeName}_{key}.json";
+        return _configDirectory.Combine(fileName);
+    }
+
+    /// <summary>
+    /// Config files written before the R5 namespace rebrand are named after the old
+    /// <c>NexusMods.*</c> type full names; fall back to them on read so settings survive
+    /// the rename (the file is rewritten under the new name on the next save).
+    /// </summary>
+    private AbsolutePath? GetLegacyConfigPath<T>(string? key)
+    {
+        var typeName = typeof(T).FullName ?? typeof(T).Name;
+        if (!typeName.StartsWith("Apocrypha.", StringComparison.Ordinal)) return null;
+        var legacyTypeName = "NexusMods." + typeName["Apocrypha.".Length..];
+        var fileName = string.IsNullOrWhiteSpace(key) ? $"{legacyTypeName}.json" : $"{legacyTypeName}_{key}.json";
+        return _configDirectory.Combine(fileName);
+    }
+
+    private void Serialize<T>(Stream stream ,T value) where T : class
+    {
+        try
+        {
+            JsonSerializer.Serialize(stream, value, _jsonOptions.Value);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception while serializing `{Type}` with value `{Value}`", typeof(T), value);
+        }
+    }
+
+    private T? Deserialize<T>(string json) where T : class
+    {
+        try
+        {
+            var value = JsonSerializer.Deserialize<T>(json, _jsonOptions.Value);
+            return value;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception while deserializing to `{Type}` with JSON `{Json}`", typeof(T), json);
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Save<T>(T value, string? key) where T : class, ISettings, new()
+    {
+        var configPath = GetConfigPath<T>(key);
+        using var stream = configPath.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+        Serialize(stream, value);
+    }
+
+    /// <inheritdoc/>
+    public T? Load<T>(string? key) where T : class, ISettings, new()
+    {
+        var configPath = GetConfigPath<T>(key);
+        if (!configPath.FileExists)
+        {
+            var legacyPath = GetLegacyConfigPath<T>(key);
+            if (legacyPath is null || !legacyPath.Value.FileExists) return null;
+            configPath = legacyPath.Value;
+        }
+
+        using var stream = configPath.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var sr = new StreamReader(stream, Encoding.UTF8);
+
+        var json = sr.ReadToEnd();
+        return Deserialize<T>(json);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() {}
+}

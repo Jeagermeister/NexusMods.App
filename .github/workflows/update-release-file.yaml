@@ -35,7 +35,7 @@ jobs:
       # workflow failed on every release ("Missing arg <output>", exit 1).
       - name: Run Script
         run: |
-          python scripts/python/releases-to-appstream.py src/NexusMods.App/io.github.jeagermeister.apocrypha.releases.xml
+          python scripts/python/releases-to-appstream.py src/Apocrypha.App/io.github.jeagermeister.apocrypha.releases.xml
 
       # 5. Configure Git for committing changes
       - name: Configure Git

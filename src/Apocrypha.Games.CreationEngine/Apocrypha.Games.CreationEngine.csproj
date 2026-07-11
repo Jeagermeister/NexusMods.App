@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
+        <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="Resources\SkyrimSE\thumbnail.webp" />
+      <EmbeddedResource Include="Resources\SkyrimSE\thumbnail.webp" />
+      <None Remove="Resources\SkyrimSE\tile.webp" />
+      <EmbeddedResource Include="Resources\SkyrimSE\tile.webp" />
+      <None Remove="Resources\Fallout4\thumbnail.webp" />
+      <EmbeddedResource Include="Resources\Fallout4\thumbnail.webp" />
+      <None Remove="Resources\Fallout4\tile.webp" />
+      <EmbeddedResource Include="Resources\Fallout4\tile.webp" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="Mutagen.Bethesda.Fallout4" />
+      <PackageReference Include="Mutagen.Bethesda.Skyrim" />
+    </ItemGroup>
+
+</Project>

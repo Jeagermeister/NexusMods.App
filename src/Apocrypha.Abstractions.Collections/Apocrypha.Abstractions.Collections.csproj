@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!-- NuGet Package Shared Details -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('NuGet.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <ItemGroup>
+        <PackageReference Include="BsDiff" />
+        <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apocrypha.Games.FOMOD\Apocrypha.Games.FOMOD.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.Loadouts\Apocrypha.Abstractions.Loadouts.csproj" />
+      <ProjectReference Include="..\Apocrypha.Abstractions.NexusModsLibrary\Apocrypha.Abstractions.NexusModsLibrary.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Apocrypha.ProxyConsole\Apocrypha.ProxyConsole.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Nerdbank.FullDuplexStream" />
+      <PackageReference Include="Nerdbank.Streams" />
+      <PackageReference Include="Spectre.Console.Testing" />
+    </ItemGroup>
+
+</Project>

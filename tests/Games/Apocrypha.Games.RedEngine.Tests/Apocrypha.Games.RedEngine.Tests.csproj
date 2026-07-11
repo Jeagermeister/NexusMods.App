@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Games.RedEngine.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Apocrypha.Games.RedEngine\Apocrypha.Games.RedEngine.csproj" />
+        <ProjectReference Include="..\..\Apocrypha.StandardGameLocators.TestHelpers\Apocrypha.StandardGameLocators.TestHelpers.csproj" />
+        <ProjectReference Include="..\Apocrypha.Games.TestFramework\Apocrypha.Games.TestFramework.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.Games.RedEngine.Tests" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <None Update="xunit.runner.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="LibraryArchiveInstallerTests\Resources\several_red_mods.7z">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="LibraryArchiveInstallerTests\Resources\one_mod.7z">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Remove="LibraryArchiveInstallerTests\RedModInstallerTests.CanInstallRedMod.verified.txt" />
+    </ItemGroup>
+
+    <Target Name="CopyResources" AfterTargets="PostBuildEvent">
+        <ItemGroup>
+            <_Resources Include="Resources\**" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(_Resources)" DestinationFolder="$(TargetDir)\Resources" />
+    </Target>
+</Project>

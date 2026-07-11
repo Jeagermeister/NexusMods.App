@@ -44,4 +44,4 @@ coverage.json
 .venv
 
 # PupNet output
-src/NexusMods.App/Deploy/
+src/Apocrypha.App/Deploy/

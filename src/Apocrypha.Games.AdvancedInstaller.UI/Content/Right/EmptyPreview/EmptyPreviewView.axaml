@@ -1,0 +1,33 @@
+﻿<reactiveUi:ReactiveUserControl x:TypeArguments="emptyPreview:IEmptyPreviewViewModel"
+                                xmlns="https://github.com/avaloniaui"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                                xmlns:reactiveUi="http://reactiveui.net"
+                                xmlns:resources="clr-namespace:Apocrypha.Games.AdvancedInstaller.UI.Resources"
+                                xmlns:emptyPreview="clr-namespace:Apocrypha.Games.AdvancedInstaller.UI.EmptyPreview"
+                                mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+                                x:Class="Apocrypha.Games.AdvancedInstaller.UI.EmptyPreview.EmptyPreviewView">
+    <Design.DataContext>
+        <emptyPreview:EmptyPreviewViewModel />
+    </Design.DataContext>
+
+    <Border Classes="Rounded-lg OutlineModerate" BorderThickness="2">
+        
+        <Border.Styles>
+            <Style Selector="TextBlock#EmptyPreviewTextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="TextAlignment" Value="Center" />
+            </Style>
+        </Border.Styles>
+
+        <ScrollViewer>
+            <TextBlock Theme="{StaticResource BodyMDNormalTheme}"
+                Classes="ForegroundSubdued"
+                Text="{x:Static resources:Language.EmptyPreviewText_Select_files_to_install}"
+                x:Name="EmptyPreviewTextBlock" />
+        </ScrollViewer>
+    </Border>
+
+</reactiveUi:ReactiveUserControl>
