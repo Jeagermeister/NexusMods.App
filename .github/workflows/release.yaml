@@ -84,12 +84,8 @@ jobs:
       # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
       ProjectFile: ${{ needs.transformInputs.outputs.ProjectFile }}
       RetentionDays: 1
-      SignExecutable: true
-    secrets:
-      ES_USERNAME: ${{ secrets.ES_USERNAME }}
-      ES_PASSWORD: ${{ secrets.ES_PASSWORD }}
-      ES_CREDENTIAL_ID: ${{ secrets.ES_CREDENTIAL_ID }}
-      ES_TOTP_SECRET: ${{ secrets.ES_TOTP_SECRET }}
+      # Apocrypha has no SSL.com eSigner secrets — ship unsigned like the PR builds do.
+      SignExecutable: false
 
   release-github:
     runs-on: ubuntu-latest
