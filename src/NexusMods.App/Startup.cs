@@ -8,8 +8,6 @@ using NexusMods.App.UI;
 using NexusMods.App.UI.Converters;
 using NexusMods.App.UI.Windows;
 using NexusMods.Sdk;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
 using Projektanker.Icons.Avalonia;
 using Projektanker.Icons.Avalonia.MaterialDesign;
 using R3;
@@ -46,13 +44,6 @@ public class Startup
         logger.LogInformation("Version: {Version} Commit: {CommitHash} Build Date: {BuildDate}", ApplicationConstants.Version, ApplicationConstants.CommitHash, ApplicationConstants.BuildDate);
 
         var builder = BuildAvaloniaApp(provider);
-        
-        // NOTE(erri120): DI is lazy by default and these services
-        // do additional initialization inside their constructors.
-        // We need to make sure their constructors are called to
-        // finalize our OpenTelemetry configuration.
-        provider.GetService<MeterProvider>();
-        provider.GetService<TracerProvider>();
 
         try
         {

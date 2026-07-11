@@ -6,7 +6,6 @@ using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using AvaloniaEdit.Search;
 using JetBrains.Annotations;
-using NexusMods.Telemetry;
 using R3;
 using ReactiveUI;
 using static NexusMods.App.UI.Controls.Filters.Filter;
@@ -34,12 +33,6 @@ public partial class SearchControl : UserControl
         AvaloniaProperty.Register<SearchControl, ISearchableTreeDataGridAdapter?>(nameof(Adapter));
 
     /// <summary>
-    /// The name of the page for telemetry tracking.
-    /// </summary>
-    public static readonly StyledProperty<string> PageNameProperty =
-        AvaloniaProperty.Register<SearchControl, string>(nameof(PageName), defaultValue: "Unknown");
-
-    /// <summary>
     /// The size of the search button.
     /// </summary>
     public static readonly StyledProperty<StandardButton.Sizes> ButtonSizeProperty =
@@ -49,12 +42,6 @@ public partial class SearchControl : UserControl
     {
         get => GetValue(AdapterProperty);
         set => SetValue(AdapterProperty, value);
-    }
-
-    public string PageName
-    {
-        get => GetValue(PageNameProperty);
-        set => SetValue(PageNameProperty, value);
     }
 
     public StandardButton.Sizes ButtonSize
@@ -105,8 +92,6 @@ public partial class SearchControl : UserControl
                     // Focus the textbox when the search panel becomes visible
                     SearchTextBox.Focus();
 
-                    // Tracking
-                    Tracking.AddEvent(Events.Search.OpenSearch, new EventMetadata(name: PageName));
                 }
             });
     }

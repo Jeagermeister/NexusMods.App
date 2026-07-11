@@ -13,7 +13,6 @@ using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceAttachments;
 using NexusMods.Sdk;
-using NexusMods.Telemetry;
 using ReactiveUI;
 
 namespace NexusMods.App.UI.WorkspaceSystem;
@@ -341,18 +340,6 @@ internal sealed class WorkspaceController : ReactiveObject, IWorkspaceController
 
         if (!TryGetWorkspace(workspaceId, out WorkspaceViewModel? workspaceViewModel)) return;
         workspaceViewModel.OpenPage(pageData, behavior, selectTab, checkOtherPanels);
-
-        if (Tracking.IsEnabled && pageData.HasValue)
-        {
-            var pageType = pageData.Value.Context.TrackingName;
-            var eventDefinition = behavior.Match(
-                f0: _ => Events.Page.ReplaceTab,
-                f1: _ => Events.Page.NewTab,
-                f2: _ => Events.Page.NewPanel
-            );
-
-            Tracking.AddEvent(eventDefinition, new EventMetadata(name: pageType));
-        }
     }
 
     public void SwapPanels(WorkspaceId workspaceId, PanelId firstPanelId, PanelId secondPanelId)

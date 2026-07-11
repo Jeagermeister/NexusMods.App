@@ -49,7 +49,6 @@
 
                         <ItemsControl>
                             <search:SearchControl x:Name="SearchControl"
-                                                  PageName="Library"
                                                   ButtonSize="Toolbar" />
                         </ItemsControl>
 

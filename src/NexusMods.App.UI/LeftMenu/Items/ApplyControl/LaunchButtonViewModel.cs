@@ -12,7 +12,6 @@ using NexusMods.App.UI.Resources;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
-using NexusMods.Telemetry;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -74,13 +73,11 @@ public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunch
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    Tracking.AddEvent(Events.Game.LaunchGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
                     await _toolManager.RunTool(tool, marker, _monitor, token: token);
                 }
                 finally
                 {
                     var duration = sw.Elapsed;
-                    Tracking.AddEvent(Events.Game.ExitGame, EventMetadata.Create(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}", value: duration.TotalSeconds));
                 }
             }, token);
         }

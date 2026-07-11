@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.Changelog;
@@ -20,7 +19,6 @@ using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.CrossPlatform;
 using NexusMods.Paths;
 using NexusMods.Sdk;
-using NexusMods.Telemetry;
 using NexusMods.UI.Sdk;
 using R3;
 using ReactiveUI;
@@ -109,7 +107,6 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
                 var behavior = workspaceController.GetOpenPageBehavior(page, info);
                 workspaceController.OpenPage(workspaceController.ActiveWorkspace.Id, page, behavior);
 
-                Tracking.AddEvent(Events.Help.ViewChangelog, metadata: new EventMetadata(name: null));
             }
         );
 
@@ -119,7 +116,6 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
             var logPath = loggingSettings.MainProcessLogFilePath.ToPath(fileSystem);
             osInterop.OpenFileInDirectory(logPath);
 
-            Tracking.AddEvent(Events.Help.ViewAppLogs, metadata: new EventMetadata(name: null));
         });
 
         ShowWelcomeMessageCommand = ReactiveCommand.Create(() =>
@@ -127,7 +123,6 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
             var welcomeOverlayViewModel = serviceProvider.GetRequiredService<IWelcomeOverlayViewModel>();
             overlayController.Enqueue(welcomeOverlayViewModel);
 
-            Tracking.AddEvent(Events.Help.GiveFeedback, metadata: new EventMetadata(name: null));
         });
 
         var canLogin = this.WhenAnyValue(x => x.IsLoggedIn).Select(isLoggedIn => !isLoggedIn).ToObservable();

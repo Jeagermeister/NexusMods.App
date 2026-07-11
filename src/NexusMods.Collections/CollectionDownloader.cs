@@ -13,7 +13,6 @@ using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.DatomIterators;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
@@ -195,7 +194,7 @@ public class CollectionDownloader
         else
         {
             var domain = _mappingCache[download.FileUid.GameId];
-            _osInterop.OpenUri(NexusModsUrlBuilder.GetFileDownloadUri(domain, download.ModUid.ModId, download.FileUid.FileId, useNxmLink: true, campaign: NexusModsUrlBuilder.CampaignCollections));
+            _osInterop.OpenUri(NexusModsUrlBuilder.GetFileDownloadUri(domain, download.ModUid.ModId, download.FileUid.FileId, useNxmLink: true));
         }
     }
 
@@ -307,7 +306,7 @@ public class CollectionDownloader
             if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
             {
                 var domain = _mappingCache[nexusModsDownload.FileUid.GameId];
-                var uri = NexusModsUrlBuilder.GetFileDownloadUri(domain, nexusModsDownload.ModUid.ModId, nexusModsDownload.FileUid.FileId, useNxmLink: false, source: null);
+                var uri = NexusModsUrlBuilder.GetFileDownloadUri(domain, nexusModsDownload.ModUid.ModId, nexusModsDownload.FileUid.FileId, useNxmLink: false);
                 results.Add((download, uri));
             } else if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
             {
