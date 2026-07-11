@@ -65,9 +65,7 @@ public static class ServiceExtensions
             .AddSingleton<IGameLocationsService, GameLocationsService>()
             .AddSingleton<IGameRegistry, GameRegistry>()
             .AddGameInstallMetadataModel()
-            .AddSettings<GameLocatorSettings>()
-            .AddSingleton<IGameLocator, ManuallyAddedLocator>()
-            .AddManuallyAddedGameModel();
+            .AddSettings<GameLocatorSettings>();
     }
 
     public static IServiceCollection AddOSInterop(this IServiceCollection serviceCollection, IOSInformation? os = null)
