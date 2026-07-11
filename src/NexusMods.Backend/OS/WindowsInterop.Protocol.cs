@@ -14,6 +14,16 @@ internal partial class WindowsInterop
     {
         if (!IsWindows()) return ValueTask.CompletedTask;
 
+        // Same guard as LinuxInterop: under a framework-dependent launch (test hosts,
+        // `dotnet <dll>`) the process path is the bare dotnet host — registering it would
+        // overwrite a working ProgID command with one that swallows every link.
+        var runningExecutable = GetRunningExecutablePath(out _);
+        if (runningExecutable.FileName is "dotnet" or "dotnet.exe")
+        {
+            _logger.LogWarning("Skipping URI scheme registration for `{Scheme}`: no apphost binary to point the handler at", scheme);
+            return ValueTask.CompletedTask;
+        }
+
         // NOTE(erri120): See this comment for an in-depth guide on protocol handlers:
         // https://github.com/Nexus-Mods/NexusMods.App/pull/1691#issuecomment-2194418849
         // We've decided use the same method that Vortex and MO2 use, which is using a

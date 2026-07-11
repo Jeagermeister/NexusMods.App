@@ -16,6 +16,18 @@ internal partial class LinuxInterop
 
     public async ValueTask RegisterUriSchemeHandler(string scheme, bool setAsDefaultHandler, CancellationToken cancellationToken)
     {
+        // A framework-dependent launch without an apphost (`dotnet <dll>`, test hosts) has no
+        // executable a handler could point at: GetRunningExecutablePath falls back to the bare
+        // dotnet host, and a `dotnet %u` Exec swallows every link. Registering that would
+        // CLOBBER a previously working registration (running the test suite on a dev box used
+        // to break nxm/ror2mm handling this way) — leave the existing registration alone.
+        var executable = GetRunningExecutablePath(out _);
+        if (executable.FileName == "dotnet")
+        {
+            _logger.LogWarning("Skipping URI scheme registration for `{Scheme}`: no apphost binary to point the handler at", scheme);
+            return;
+        }
+
         var canWriteDesktopFile = ApplicationConstants.InstallationMethod is InstallationMethod.AppImage or InstallationMethod.Manually;
         var canRegisterAsDefault = ApplicationConstants.InstallationMethod is not InstallationMethod.Flatpak and not InstallationMethod.PackageManager;
 
