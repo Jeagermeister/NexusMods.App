@@ -14,6 +14,7 @@ using NexusMods.Networking.GOG;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.HttpDownloader.Tests;
 using NexusMods.Networking.NexusWebApi;
+using NexusMods.Networking.Thunderstore;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
@@ -53,6 +54,7 @@ public class Startup
                 .AddCLI()
                 .AddHttpDownloader()
                 .AddGOG()
+                .AddThunderstore()
                 .AddSingleton<NexusMods.Sdk.EventBus.IEventBus, EventBus>()
                 .AddNexusWebApi(true)
                 .AddLoadoutAbstractions()

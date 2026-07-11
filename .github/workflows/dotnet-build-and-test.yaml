@@ -1,0 +1,73 @@
+name: .NET build and test
+
+# Vendored from Nexus-Mods/NexusMods.App.Meta (dotnet-build-and-test-with-osx.yaml)
+# so the fork controls its own test matrix: Linux + Windows only, no macOS.
+# Differences from upstream: macOS dropped, checkout v4, LFS always on (the fork
+# vendors the game-hashes DB via git-lfs), codecov upload removed.
+
+on:
+  workflow_call:
+    inputs:
+      project-file:
+        type: string
+        required: false
+        default: ""
+        description: "Path to the .csproj or .sln file"
+      test-filter:
+        type: string
+        required: false
+        default: "Category!=Disabled"
+        description: "Filter for tests passed to the 'dotnet test' command using '--filter'"
+      test-logger:
+        type: string
+        required: false
+        default: "GitHubActions"
+        description: "Test logger passed to the 'dotnet test' command using '--logger'"
+      extra-build-args:
+        type: string
+        required: false
+        default: ""
+        description: "Extra arguments passed to 'dotnet build'"
+      extra-test-args:
+        type: string
+        required: false
+        default: ""
+        description: "Extra arguments passed to 'dotnet test'"
+
+jobs:
+  build-and-test:
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        if: runner.os == 'Linux'
+        uses: jlumbroso/free-disk-space@main
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          lfs: true
+
+      - name: Setup .NET 9.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Print debug info
+        run: dotnet --info
+
+      - name: Install dependencies
+        run: dotnet restore ${{ inputs.project-file }}
+
+      - name: Build
+        run: dotnet build ${{ inputs.project-file }} --no-restore ${{ inputs.extra-build-args }}
+
+      - name: Test
+        env:
+          # https://github.com/microsoft/vstest/issues/2952#issuecomment-2234253765
+          VSTEST_TESTHOST_SHUTDOWN_TIMEOUT: 60000 #ms
+        run: dotnet test ${{ inputs.project-file }} --no-restore --verbosity normal --filter "${{ inputs.test-filter }}" --logger "${{ inputs.test-logger }}" ${{ inputs.extra-test-args }}
