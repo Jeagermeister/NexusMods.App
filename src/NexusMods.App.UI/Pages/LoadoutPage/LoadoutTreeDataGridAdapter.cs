@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Controls.Navigation;
+using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.MnemonicDB.Abstractions;
 using OneOf;
 using R3;
@@ -145,6 +146,7 @@ public class LoadoutTreeDataGridAdapter :
         return
         [
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
+            ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>(),
             ColumnCreator.Create<EntityId, SharedColumns.InstalledDate>(sortDirection: ListSortDirection.Descending),
             ColumnCreator.Create<EntityId, LoadoutColumns.Collections>(),
             ColumnCreator.Create<EntityId, LoadoutColumns.EnabledState>(),

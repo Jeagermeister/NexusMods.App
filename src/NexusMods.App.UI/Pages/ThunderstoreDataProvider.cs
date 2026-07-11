@@ -137,7 +137,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
             .RefCount();
 
         var hasChildrenObservable = linkedItemsObservable.IsNotEmpty();
-        var childrenObservable = linkedItemsObservable.Transform(loadoutItem => ToThunderstoreChildLoadoutItemModel(_connection, loadoutItem));
+        var childrenObservable = linkedItemsObservable.Transform(loadoutItem => ToThunderstoreChildLoadoutItemModel(_connection, loadoutItem, item.Version.VersionNumber));
 
         var parentItemModel = new CompositeItemModel<EntityId>(item.Id)
         {
@@ -147,6 +147,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: item.AsLibraryItem().Name));
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
+        parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: item.Version.VersionNumber));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, item.GetCreatedAt(), linkedItemsObservable);
         LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
@@ -162,10 +163,11 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         return parentItemModel;
     }
 
-    private static CompositeItemModel<EntityId> ToThunderstoreChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
+    private static CompositeItemModel<EntityId> ToThunderstoreChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem, string versionNumber)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: false);
+        childModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: versionNumber));
         return childModel;
     }
 }

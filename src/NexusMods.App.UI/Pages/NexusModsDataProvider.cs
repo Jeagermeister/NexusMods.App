@@ -381,6 +381,45 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: modPage.Name));
             parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_thumbnailLoader.Value, modPage.Id, initialValue: ImagePipelines.ModPageThumbnailFallback));
 
+            // Version: highest version among the installed files
+            var installedVersionObservable = linkedItemsObservable
+                .TransformImmutable(item =>
+                {
+                    var rawVersion = GetLinkedFileMetadata(_connection, item).Convert(static fileMetadata => fileMetadata.Version).ValueOr(string.Empty);
+                    _ = NuGetVersion.TryParse(rawVersion, out var parsedVersion);
+
+                    return (rawVersion, parsedVersion: Optional<NuGetVersion>.Create(parsedVersion));
+                })
+                .QueryWhenChanged(static query =>
+                {
+                    var max = query.Items.OptionalMaxBy(static tuple => tuple.parsedVersion.ValueOr(new NuGetVersion(0, 0, 0)));
+                    if (!max.HasValue) return string.Empty;
+                    return max.Value.rawVersion;
+                });
+
+            parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(
+                initialValue: string.Empty,
+                valueObservable: installedVersionObservable
+            ));
+
+            // Update available: same source as the Library page, but showing the installed version as current
+            var newestVersionObservable = _modUpdateService.GetNewestModPageVersionObservable(modPage)
+                .Select(static optional => optional.Convert(static updatesOnPage => updatesOnPage.NewestFile().Version))
+                .OnUI();
+
+            parentItemModel.AddObservable(
+                key: LibraryColumns.ItemVersion.NewVersionComponentKey,
+                observable: newestVersionObservable,
+                componentFactory: (valueObservable, initialValue) => new LibraryComponents.NewVersionAvailable(
+                    currentVersion: new VersionComponent(
+                        initialValue: string.Empty,
+                        valueObservable: installedVersionObservable
+                    ),
+                    newVersion: initialValue,
+                    newVersionObservable: valueObservable
+                )
+            );
+
             LoadoutDataProviderHelper.AddDateComponent(parentItemModel, modPage.GetCreatedAt(), linkedItemsObservable);
             LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
             LoadoutDataProviderHelper.AddParentCollectionsDisabled(_connection, parentItemModel, linkedItemsObservable);
@@ -396,11 +435,44 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         });
     }
     
-    private static CompositeItemModel<EntityId> ToNexusChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
+    private CompositeItemModel<EntityId> ToNexusChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);
         LoadoutDataProviderHelper.AddViewModPageActionComponent(childModel, isEnabled: true);
+
+        var fileMetadataOptional = GetLinkedFileMetadata(connection, loadoutItem);
+        if (fileMetadataOptional.HasValue)
+        {
+            var fileMetadata = fileMetadataOptional.Value;
+
+            childModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: fileMetadata.Version));
+
+            var newestVersionObservable = _modUpdateService
+                .GetNewestFileVersionObservable(fileMetadata)
+                .Select(static optional => optional.Convert(static updateOnPage => updateOnPage.NewestFile.Version))
+                .OnUI();
+
+            childModel.AddObservable(
+                key: LibraryColumns.ItemVersion.NewVersionComponentKey,
+                observable: newestVersionObservable,
+                componentFactory: (valueObservable, initialValue) => new LibraryComponents.NewVersionAvailable(
+                    currentVersion: new VersionComponent(value: fileMetadata.Version),
+                    newVersion: initialValue,
+                    newVersionObservable: valueObservable
+                )
+            );
+        }
+
         return childModel;
+    }
+
+    private static Optional<NexusModsFileMetadata.ReadOnly> GetLinkedFileMetadata(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
+    {
+        var linkedItem = LibraryLinkedLoadoutItem.Load(connection.Db, loadoutItem.Id);
+        if (!linkedItem.IsValid()) return Optional<NexusModsFileMetadata.ReadOnly>.None;
+        if (!linkedItem.LibraryItem.TryGetAsNexusModsLibraryItem(out var nexusLibraryItem)) return Optional<NexusModsFileMetadata.ReadOnly>.None;
+
+        return nexusLibraryItem.FileMetadata;
     }
 
     public IObservable<int> CountLoadoutItems(LoadoutFilter loadoutFilter)

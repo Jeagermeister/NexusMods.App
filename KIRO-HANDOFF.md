@@ -1702,7 +1702,7 @@ release.
 
 ---
 
-## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §35 (CI failure-email triage)
+## 32. ⏯️ RESUME POINTER — state at hand-off (2026-07-09) — newest session log: §37 (loadout update indicator)
 
 **🚀 APOCRYPHA v0.1.0 IS RELEASED:**
 **github.com/Jeagermeister/Apocrypha/releases/tag/v0.1.0** — the AppImage (234MB,
@@ -1907,3 +1907,58 @@ rows show no update state at all. Work = wire `NewVersionAvailable`+`UpdateActio
 lighter indicator variant) into the loadout data provider path (`LoadoutDataProviderHelper`
 → composite item models), plus optionally a row highlight in the Library. Good first-PR-size
 follow-up to #34.
+
+## 37. Session log — 2026-07-10 (cont.) — Per-row update indicator on loadout pages (§36 backlog item)
+
+**The gap:** Library rows showed "current → new" version + Update button
+(`LibraryComponents.NewVersionAvailable`/`UpdateAction` fed by `ModUpdateService`), but
+LoadoutPage/CollectionLoadout grids had NO version column at all — installed mods gave no
+update signal. Scoped in §36; shipped here as the lighter indicator variant (no per-row
+Update button on loadout rows — the Library's update flow with its premium/free branching
+stays the single place updates run; adding the button would mean duplicating
+LibraryViewModel's UpdateAndReplace machinery into LoadoutViewModel).
+
+**How it's wired (3 files):**
+1. `LoadoutTreeDataGridAdapter.CreateColumns` — added
+   `ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>()` between Name and
+   InstalledDate. KEY REUSE INSIGHT: the Library's version-column DataTemplate lives in
+   app-global resources (App.axaml merges both TreeDataGrid resource dictionaries), and
+   CollectionDownloadViewModel already reuses `LibraryColumns.ItemVersion` cross-page —
+   so the loadout grid gets the arrow rendering for free, zero new XAML. One adapter
+   serves BOTH LoadoutPage and CollectionLoadoutViewModel, so both grids got the column.
+2. `NexusModsDataProvider` loadout path — parent (mod-page) rows: current version = max
+   NuGetVersion among installed files (resolved loadoutItem → `LibraryLinkedLoadoutItem`
+   → `TryGetAsNexusModsLibraryItem` → FileMetadata, same pattern FileConflictsViewModel
+   uses); indicator = same `GetNewestModPageVersionObservable` the Library uses, but with
+   the INSTALLED version as the "current" side of the arrow. Child (file) rows: exact
+   version + `GetNewestFileVersionObservable`. `ToNexusChildLoadoutItemModel` became an
+   instance method to reach `_modUpdateService`.
+3. `ThunderstoreDataProvider` loadout path — current version only (no update service for
+   Thunderstore yet, §36 known gap). Local-file/manual/bundled providers show an empty
+   cell, same as they do in the Library.
+
+**Semantics note:** `ModUpdateService` mappings already account for library contents
+(downloading the newest file clears the old file's mapping), so the loadout indicator
+inherits that + the hidden-updates filter. Known edge: newer version downloaded but not
+installed → no arrow on the loadout row (library-driven, not install-driven) — acceptable
+because the Library page shows the same state, consistent app-wide.
+
+**Verified:** UI test suite 544/544 passed. Live on the :99 rig with real data: downloaded
+7 mods from the htknoa collection (premium direct downloads), installed 5 into Stardew
+My Mods → grid showed Content Patcher 1.24.3→2.9.1, CP Animations 1.1.13→1.2.4, Animated
+Fish + Mining Pack 1.2.0→1.3.0, and BusLocations 1.0.7 with NO arrow (correct negative).
+Screenshots in session scratchpad (s25/s26). Those 5 installed mods + 7 library entries
+were left in Brian's Stardew data as demo artifacts (like htknoa itself, 1-click delete).
+
+**Rig lessons (adds to §36):** no WM on rootful Xwayland :99 → app window can't
+maximize/resize, but TreeDataGrid columns cut off at the right edge are reachable by
+dragging the grid's thin horizontal scrollbar at the list's bottom edge. Avalonia flyout
+menus (toolbar Install split-button) can wedge open as separate black X windows holding a
+pointer grab — clicks pass to menu ITEMS but nothing else; Escape doesn't dismiss; restart
+the app to clear (state persists in MnemonicDB, harmless). Library bulk-select toolbar
+Install is a split button: click opens Install/Advanced Install menu, not immediate action.
+
+**Next candidates (unchanged from §36 + standing queue):** v0.1.2 release (share/join +
+this indicator aren't in any release), Windows .msi/.exe for the friend test (dormant
+PupNet workflow), DESIGN-webservice.md, AUR claim, layout epic L2–L5, move internal docs
+out of repo before announcing.
