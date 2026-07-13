@@ -44,11 +44,13 @@ public class ModIoUrlsTests
         ModIoUrls.GetGamesApiUri("KEY", nameId: "baldursgate3").ToString()
             .Should().Be("https://api.mod.io/v1/games?api_key=KEY&name_id=baldursgate3");
 
-        ModIoUrls.GetModsApiUri("KEY", gameId: 3049, nameId: "some-mod").ToString()
-            .Should().Be("https://api.mod.io/v1/games/3049/mods?api_key=KEY&name_id=some-mod");
+        // game-scoped endpoints live on per-game modapi.io subdomains — the legacy
+        // api.mod.io host 404s them with a deprecation notice (live-verified 2026-07-12)
+        ModIoUrls.GetModsApiUri("KEY", gameId: 6715, nameId: "some-mod").ToString()
+            .Should().Be("https://g-6715.modapi.io/v1/games/6715/mods?api_key=KEY&name_id=some-mod");
 
-        ModIoUrls.GetModApiUri("KEY", gameId: 3049, modId: 12345).ToString()
-            .Should().Be("https://api.mod.io/v1/games/3049/mods/12345?api_key=KEY");
+        ModIoUrls.GetModApiUri("KEY", gameId: 6715, modId: 12345).ToString()
+            .Should().Be("https://g-6715.modapi.io/v1/games/6715/mods/12345?api_key=KEY");
     }
 
     [Fact]

@@ -57,7 +57,13 @@ public class ModIoApiClient : IModIoApiClient
 
     private async Task<T?> Get<T>(Uri uri, CancellationToken cancellationToken) where T : class
     {
-        using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        // Cross-platform games (BG3 ships console builds too) return an EMPTY modfile
+        // object unless the request targets a platform. We install the windows build
+        // (native or under Proton) on every OS the app runs on.
+        request.Headers.Add("X-Modio-Platform", "windows");
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
 
         if (!response.IsSuccessStatusCode)
