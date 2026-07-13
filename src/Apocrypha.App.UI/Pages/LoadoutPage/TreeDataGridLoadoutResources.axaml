@@ -53,6 +53,33 @@
             </controls:ComponentControl.ComponentTemplate>
         </controls:ComponentControl>
         
+        <!-- Move to collection (submenu with one entry per movable-to collection) -->
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="local:LoadoutComponents+MoveToCollectionAction"
+                                            ComponentKey="{x:Static local:LoadoutColumns+EnabledState.MoveToCollectionComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type local:LoadoutComponents+MoveToCollectionAction}">
+                            <MenuItem Header="{CompiledBinding DisplayText.Value}"
+                                      ItemsSource="{CompiledBinding Targets}"
+                                      IsEnabled="{CompiledBinding IsEnabled.Value}">
+                                <MenuItem.Icon>
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.Collections}" />
+                                </MenuItem.Icon>
+                                <MenuItem.ItemContainerTheme>
+                                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                  x:DataType="local:LoadoutComponents+MoveToCollectionTarget">
+                                        <Setter Property="Header" Value="{Binding Name}" />
+                                        <Setter Property="Command" Value="{Binding Command}" />
+                                    </ControlTheme>
+                                </MenuItem.ItemContainerTheme>
+                            </MenuItem>
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+        </controls:ComponentControl>
+
         <!-- Uninstall item action -->
         <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>

@@ -18,12 +18,13 @@ public readonly record struct OpenCollectionMessage(LoadoutItemId[] Ids, Navigat
 public readonly record struct ViewModPageMessage(LoadoutItemId[] Ids);
 public readonly record struct ViewModFilesMessage(LoadoutItemId[] Ids, NavigationInformation NavigationInformation);
 public readonly record struct UninstallItemMessage(LoadoutItemId[] Ids);
+public readonly record struct MoveToCollectionMessage(LoadoutItemId[] Ids, CollectionGroupId TargetCollection);
 
 public class LoadoutTreeDataGridAdapter :
     TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>,
-    ITreeDataGirdMessageAdapter<OneOf<ToggleEnableStateMessage, OpenCollectionMessage, ViewModPageMessage, ViewModFilesMessage, UninstallItemMessage>>
+    ITreeDataGirdMessageAdapter<OneOf<ToggleEnableStateMessage, OpenCollectionMessage, ViewModPageMessage, ViewModFilesMessage, UninstallItemMessage, MoveToCollectionMessage>>
 {
-    public Subject<OneOf<ToggleEnableStateMessage, OpenCollectionMessage, ViewModPageMessage, ViewModFilesMessage, UninstallItemMessage>> MessageSubject { get; } = new();
+    public Subject<OneOf<ToggleEnableStateMessage, OpenCollectionMessage, ViewModPageMessage, ViewModFilesMessage, UninstallItemMessage, MoveToCollectionMessage>> MessageSubject { get; } = new();
 
     private readonly ILoadoutDataProvider[] _loadoutDataProviders;
     private readonly LoadoutFilter _loadoutFilter;
@@ -130,6 +131,18 @@ public class LoadoutTreeDataGridAdapter :
                 var ids = GetLoadoutItemIds(model).ToArray();
 
                 self.MessageSubject.OnNext(new UninstallItemMessage(ids));
+            })
+        );
+
+        model.SubscribeToComponentAndTrack<LoadoutComponents.MoveToCollectionAction, LoadoutTreeDataGridAdapter>(
+            key: LoadoutColumns.EnabledState.MoveToCollectionComponentKey,
+            state: this,
+            factory: static (self, itemModel, component) => component.MoveRequests.Subscribe((self, itemModel, component), static (targetCollection, state) =>
+            {
+                var (self, model, _) = state;
+                var ids = GetLoadoutItemIds(model).ToArray();
+
+                self.MessageSubject.OnNext(new MoveToCollectionMessage(ids, targetCollection));
             })
         );
     }

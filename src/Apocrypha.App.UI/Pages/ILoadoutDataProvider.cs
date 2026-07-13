@@ -99,6 +99,7 @@ public static class LoadoutDataProviderHelper
         AddLockedEnabledState(itemModel, loadoutItem);
         AddEnabledStateToggle(connection, itemModel, loadoutItem);
         AddUninstallItemComponent(itemModel, loadoutItem);
+        AddMoveToCollectionComponent(connection, loadoutItem.LoadoutId, itemModel, loadoutItem);
 
         return itemModel;
     }
@@ -215,6 +216,80 @@ public static class LoadoutDataProviderHelper
        itemModel.Add(LoadoutColumns.EnabledState.UninstallItemComponentKey,
            new SharedComponents.UninstallItemAction(canUninstallObservable)
        );
+    }
+
+    public static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        LoadoutItem.ReadOnly loadoutItem)
+    {
+        var rowStateObservable = LoadoutItem.Observe(connection, loadoutItem.Id)
+            .Select(static item => IsCollectionManaged(item)
+                ? (MovableParents: Array.Empty<EntityId>(), HasMovableItems: false)
+                : (MovableParents: item.HasParent() ? new[] { item.ParentId.Value } : Array.Empty<EntityId>(), HasMovableItems: true)
+            );
+
+        AddMoveToCollectionComponent(connection, loadoutId, itemModel, rowStateObservable);
+    }
+
+    public static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
+    {
+        var rowStateObservable = linkedItemsObservable
+            .TransformImmutable(static item => (IsMovable: !IsCollectionManaged(item), Parent: item.HasParent() ? item.ParentId.Value : default(EntityId?)))
+            .QueryWhenChanged(static query =>
+            {
+                var movableParents = query.Items
+                    .Where(static tuple => tuple.IsMovable && tuple.Parent.HasValue)
+                    .Select(static tuple => tuple.Parent!.Value)
+                    .Distinct()
+                    .ToArray();
+
+                var hasMovableItems = query.Items.Any(static tuple => tuple.IsMovable);
+                return (MovableParents: movableParents, HasMovableItems: hasMovableItems);
+            });
+
+        AddMoveToCollectionComponent(connection, loadoutId, itemModel, rowStateObservable);
+    }
+
+    private static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        IObservable<(EntityId[] MovableParents, bool HasMovableItems)> rowStateObservable)
+    {
+        var targetsObservable = LoadoutQueries2.MutableCollections(connection, loadoutId)
+            .Observe(static r => r.GroupId)
+            .QueryWhenChanged(static query => query.Items
+                .OrderBy(static r => r.GroupId.Value)
+                .Select(static r => (Id: CollectionGroupId.From(r.GroupId), r.Name))
+                .ToArray()
+            );
+
+        var stateObservable = targetsObservable.CombineLatest(rowStateObservable, static (targets, rowState) =>
+        {
+            // Hide a target when the row's movable items already all live there
+            var visibleTargets = rowState.MovableParents.Length == 1
+                ? targets.Where(target => !target.Id.Value.Equals(rowState.MovableParents[0])).ToArray()
+                : targets;
+
+            return new LoadoutComponents.MoveToCollectionState(visibleTargets, rowState.HasMovableItems);
+        });
+
+        itemModel.Add(LoadoutColumns.EnabledState.MoveToCollectionComponentKey, new LoadoutComponents.MoveToCollectionAction(stateObservable));
+    }
+
+    /// <summary>
+    /// Whether the item was put into the loadout by a collection (required or optional) —
+    /// such items stay with their collection and can't be moved.
+    /// </summary>
+    public static bool IsCollectionManaged<T>(T entity) where T : struct, IReadOnlyModel<T>
+    {
+        return NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(entity).HasValue;
     }
 
     public static void AddCollections(

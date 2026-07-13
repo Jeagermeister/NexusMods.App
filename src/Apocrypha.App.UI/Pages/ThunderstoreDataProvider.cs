@@ -183,6 +183,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddMoveToCollectionComponent(_connection, loadoutFilter.LoadoutId, parentItemModel, linkedItemsObservable);
 
         return parentItemModel;
     }

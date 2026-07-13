@@ -170,10 +170,11 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddMoveToCollectionComponent(_connection, loadoutFilter.LoadoutId, parentItemModel, linkedItemsObservable);
 
         return parentItemModel;
     }
-    
+
     private static CompositeItemModel<EntityId> ToLocalChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);

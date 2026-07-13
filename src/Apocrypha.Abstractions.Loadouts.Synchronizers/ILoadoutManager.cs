@@ -87,6 +87,14 @@ public interface ILoadoutManager
     ValueTask RemoveItems(LoadoutItemGroupId[] groupIds);
 
     /// <summary>
+    /// Moves the items into another collection group within the same loadout by reparenting them.
+    /// Skips items that are managed by a collection (see <see cref="NexusCollectionItemLoadoutGroup"/>),
+    /// items already in the target and items from other loadouts.
+    /// </summary>
+    /// <returns>The number of items that were actually moved.</returns>
+    ValueTask<int> MoveItems(LoadoutItemGroupId[] groupIds, CollectionGroupId targetCollection);
+
+    /// <summary>
     /// Removes a collection.
     /// </summary>
     ValueTask RemoveCollection(CollectionGroupId collection);

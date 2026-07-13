@@ -116,7 +116,12 @@
                         </ItemsControl>
 
                         <ItemsControl x:Name="InstallationTargetControlGroup">
-                            <ComboBox x:Name="InstallationTargetSelector">
+                            <TextBlock Text="Install to:"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,4,0"
+                                       Classes="BodySMNormal ForegroundSubdued" />
+                            <ComboBox x:Name="InstallationTargetSelector"
+                                      ToolTip.Tip="New installs go into this collection">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate DataType="local:InstallationTarget">
                                         <TextBlock Text="{CompiledBinding Name}" />

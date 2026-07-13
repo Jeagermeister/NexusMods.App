@@ -75,6 +75,92 @@ public static class LoadoutComponents
         public int CompareTo(MixLockedAndParentDisabled? other) => 0;
     }
 
+    /// <summary>
+    /// A single entry in the "Move to collection" submenu. The command is created by
+    /// <see cref="MoveToCollectionAction"/> and funnels into its <see cref="MoveToCollectionAction.MoveRequests"/>.
+    /// </summary>
+    public sealed record MoveToCollectionTarget(CollectionGroupId Id, string Name, ReactiveCommand<Unit> Command);
+
+    /// <summary>
+    /// Snapshot of what a row can be moved to: the mutable collections that don't already
+    /// contain all of the row's movable items, and whether the row has any movable items at all
+    /// (items delivered by a collection are not movable).
+    /// </summary>
+    public readonly record struct MoveToCollectionState(IReadOnlyList<(CollectionGroupId Id, string Name)> Targets, bool HasMovableItems);
+
+    public sealed class MoveToCollectionAction : ReactiveR3Object, IItemModelComponent<MoveToCollectionAction>, IComparable<MoveToCollectionAction>
+    {
+        public int CompareTo(MoveToCollectionAction? other) => 0;
+
+        private const string EnabledText = "Move to collection";
+        private const string ManagedByCollectionText = "Move to collection (managed by a collection)";
+        private const string NoTargetsText = "Move to collection (no other collection)";
+
+        public System.Collections.ObjectModel.ObservableCollection<MoveToCollectionTarget> Targets { get; } = new();
+
+        private readonly BindableReactiveProperty<bool> _isEnabled = new(false);
+        public IReadOnlyBindableReactiveProperty<bool> IsEnabled => _isEnabled;
+
+        private readonly BindableReactiveProperty<string> _displayText = new(EnabledText);
+        public IReadOnlyBindableReactiveProperty<string> DisplayText => _displayText;
+
+        private readonly Subject<CollectionGroupId> _moveRequests = new();
+        public Observable<CollectionGroupId> MoveRequests => _moveRequests;
+
+        private readonly IDisposable _activationDisposable;
+        private readonly CompositeDisposable _targetCommandDisposables = new();
+
+        public MoveToCollectionAction(IObservable<MoveToCollectionState> stateObservable)
+        {
+            _activationDisposable = this.WhenActivated(stateObservable, static (self, state, disposables) =>
+            {
+                state
+                    .ToObservable()
+                    .ObserveOnUIThreadDispatcher()
+                    .Subscribe(self, static (snapshot, self) => self.ApplyState(snapshot))
+                    .AddTo(disposables);
+            });
+        }
+
+        private void ApplyState(MoveToCollectionState state)
+        {
+            _targetCommandDisposables.Clear();
+            Targets.Clear();
+
+            foreach (var (id, name) in state.Targets)
+            {
+                var command = new ReactiveCommand<Unit>();
+                command
+                    .Subscribe((self: this, id), static (_, tuple) => tuple.self._moveRequests.OnNext(tuple.id))
+                    .AddTo(_targetCommandDisposables);
+                command.AddTo(_targetCommandDisposables);
+
+                Targets.Add(new MoveToCollectionTarget(id, name, command));
+            }
+
+            _isEnabled.Value = state.HasMovableItems && Targets.Count > 0;
+            _displayText.Value = !state.HasMovableItems
+                ? ManagedByCollectionText
+                : Targets.Count == 0 ? NoTargetsText : EnabledText;
+        }
+
+        private bool _isDisposed;
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                _isDisposed = true;
+
+                if (disposing)
+                {
+                    Disposable.Dispose(_activationDisposable, _targetCommandDisposables, _moveRequests, _isEnabled, _displayText);
+                }
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
     public sealed class EnabledStateToggle : ReactiveR3Object, IItemModelComponent<EnabledStateToggle>, IComparable<EnabledStateToggle>
     {
         public ReactiveCommand<Unit> CommandToggle { get; } = new();
@@ -161,6 +247,7 @@ public static class LoadoutColumns
         public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModPageAction));
         public static readonly ComponentKey ViewModFilesComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.ViewModFilesAction));
         public static readonly ComponentKey UninstallItemComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SharedComponents.UninstallItemAction));
+        public static readonly ComponentKey MoveToCollectionComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(LoadoutComponents.MoveToCollectionAction));
         public static string GetColumnHeader() => "Actions";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
