@@ -115,6 +115,20 @@
     <Color x:Key="PrimitiveViolet100">#EDE9FE</Color>
     <Color x:Key="PrimitiveViolet50">#F5F3FF</Color>
 
+    <!-- Royal Purple (Apocrypha accent — anchored on classic royal purple #7851A9 at 500;
+         400 is the primary-button base and keeps ~4.4:1 contrast against BrandNeutral950 text) -->
+    <Color x:Key="PrimitiveRoyalPurple950">#1D112C</Color>
+    <Color x:Key="PrimitiveRoyalPurple900">#2E1C44</Color>
+    <Color x:Key="PrimitiveRoyalPurple800">#40285D</Color>
+    <Color x:Key="PrimitiveRoyalPurple700">#533577</Color>
+    <Color x:Key="PrimitiveRoyalPurple600">#654390</Color>
+    <Color x:Key="PrimitiveRoyalPurple500">#7851A9</Color>
+    <Color x:Key="PrimitiveRoyalPurple400">#8B5FBF</Color>
+    <Color x:Key="PrimitiveRoyalPurple300">#A57FD1</Color>
+    <Color x:Key="PrimitiveRoyalPurple200">#CBB3E6</Color>
+    <Color x:Key="PrimitiveRoyalPurple100">#E7DBF5</Color>
+    <Color x:Key="PrimitiveRoyalPurple50">#F5F0FB</Color>
+
     
     <!-- TranslucentWhite -->
     <!-- NOTE: Avalonia uses ARGB, while Figma uses RGBA -->
