@@ -3,6 +3,10 @@
 *A full-repository audit of efficiency, optimization, mod-source extensibility, and mod
 loading / load-order — commissioned 2026-07-13, against `linux-fork` @ `80037f4`.*
 
+> **📌 Resuming this review later?** Start at
+> [`docs/CODE_REVIEW_UNVERIFIED.md`](./CODE_REVIEW_UNVERIFIED.md) — it has a "Future AI, start
+> here" block, the 37 findings still needing verification, and the prioritized fix order.
+
 ---
 
 ## 1. How to read this document

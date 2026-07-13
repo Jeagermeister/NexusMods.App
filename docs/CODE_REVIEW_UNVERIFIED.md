@@ -1,3 +1,31 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
+> ## 📌 FUTURE AI — START HERE
+>
+> **Hi. A human (the repo owner) is resuming a code review that was paused partway. Please
+> do the following, in order, before touching any code:**
+>
+> 1. **Read the two review docs first:** [`docs/CODE_REVIEW.md`](./CODE_REVIEW.md) is the full
+>    analysis (verdict, subsystem scorecard, the owner's three questions, prioritized roadmap,
+>    and the 175-finding table). This file is the list of work that was left unfinished.
+> 2. **Finish the verification pass.** 37 findings were raised but never adversarially
+>    verified, and the "completeness critic" pass never ran. Both are detailed below, with the
+>    exact prompt to reproduce the method and the workflow-resume command. Do this **before**
+>    treating any unverified finding as settled — verification refuted 2 findings and downgraded
+>    several in the parts that *did* finish, so expect the 37 to shrink or re-rank.
+> 3. **Then, and only then, start making changes** — work the **Tier 1 roadmap** in
+>    `CODE_REVIEW.md` §7 first (7 small, high-confidence fixes: the `SortOrderManager` singleton
+>    clobber, `CopyLoadout` data loss, HTTP decompression, the resume-corruption bug, the plugin
+>    `Sorter` tie-break, migration `_0009`, and `NxFileStore.BackupFiles` chunking). Confirm each
+>    fix against the code before editing, and add a regression test where the roadmap names one.
+> 4. **Ask the owner which track they want** if it's ambiguous — (a) finish verification, (b) start
+>    implementing Tier 1 fixes, or (c) run a fresh full review for an independent second opinion.
+>    Don't assume; the roadmap is prioritized but the owner drives.
+>
+> *Everything you need to resume is in this file and `CODE_REVIEW.md`. Welcome back. 👋*
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
 # Code Review — Unfinished Verification (handoff)
 
 The review in [`CODE_REVIEW.md`](./CODE_REVIEW.md) ran all 14 domain reviewers to completion,
