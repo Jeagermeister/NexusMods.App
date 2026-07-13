@@ -108,7 +108,17 @@ public static class LoadoutDataProviderHelper
     {
         if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
-        itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(value: collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().Name));
+        // Observe the item so the column follows "Move to collection" reparents
+        var nameObservable = LoadoutItem.Observe(connection, loadoutItem.Id)
+            .Select(static item => item.Parent.TryGetAsCollectionGroup(out var group)
+                ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
+                : string.Empty
+            );
+
+        itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(
+            initialValue: collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().Name,
+            valueObservable: nameObservable
+        ));
     }
 
     public static void AddParentCollectionDisabled(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
@@ -240,7 +250,10 @@ public static class LoadoutDataProviderHelper
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
         var rowStateObservable = linkedItemsObservable
-            .TransformImmutable(static item => (IsMovable: !IsCollectionManaged(item), Parent: item.HasParent() ? item.ParentId.Value : default(EntityId?)))
+            // Observe each item so the submenu targets follow reparents live
+            .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id)
+                .Select(static live => (IsMovable: !IsCollectionManaged(live), Parent: live.HasParent() ? live.ParentId.Value : default(EntityId?)))
+            )
             .QueryWhenChanged(static query =>
             {
                 var movableParents = query.Items
@@ -293,20 +306,21 @@ public static class LoadoutDataProviderHelper
     }
 
     public static void AddCollections(
+        IConnection connection,
         CompositeItemModel<EntityId> parentItemModel,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
+        // Observe each item so the column follows "Move to collection" reparents
         var collectionsObservable = linkedItemsObservable
+            .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id)
+                .Select(static live => live.Parent.TryGetAsCollectionGroup(out var group)
+                    ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
+                    : string.Empty
+                )
+            )
             .QueryWhenChanged(query => query.Items
-                .Where(static item => item.Parent.IsCollectionGroup())
-                .GroupBy(static item => item.ParentId)
-                .Select(static grouping =>
-                {
-                    var optional = grouping.FirstOrOptional(static _ => true);
-                    return optional.Convert(static item => item.Parent.AsLoadoutItem().Name);
-                })
-                .Where(static optional => optional.HasValue)
-                .Select(static optional => optional.Value)
+                .Where(static name => name.Length != 0)
+                .Distinct()
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .SafeAggregate(defaultValue: string.Empty, static (a, b) => $"{a}, {b}")
             );
