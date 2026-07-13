@@ -129,6 +129,18 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.OneWayBind(ViewModel, vm => vm.HasThunderstoreSource, view => view.GetModsFromThunderstoreButton.IsVisible)
                     .AddTo(disposables);
 
+                this.BindCommand(ViewModel, vm => vm.OpenModIoCommand, view => view.GetModsFromModIoButton)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasModIoSource, view => view.GetModsFromModIoButton.IsVisible)
+                    .AddTo(disposables);
+
+                this.BindCommand(ViewModel, vm => vm.AddModIoModFromLinkCommand, view => view.AddModIoModFromLinkMenuItem)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasModIoSource, view => view.AddModIoModFromLinkMenuItem.IsVisible)
+                    .AddTo(disposables);
+
                 this.OneWayBind(ViewModel, vm => vm.HasNexusModsSource, view => view.GetCollectionFromNexusButton.IsVisible)
                     .AddTo(disposables);
 
@@ -157,6 +169,12 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                     .AddTo(disposables);
 
                 this.OneWayBind(ViewModel, vm => vm.HasThunderstoreSource, view => view.EmptyLibraryThunderstoreButton.IsVisible)
+                    .AddTo(disposables);
+
+                this.BindCommand(ViewModel, vm => vm.OpenModIoCommand, view => view.EmptyLibraryModIoButton)
+                    .AddTo(disposables);
+
+                this.OneWayBind(ViewModel, vm => vm.HasModIoSource, view => view.EmptyLibraryModIoButton.IsVisible)
                     .AddTo(disposables);
 
                 this.BindCommand(ViewModel, vm => vm.RefreshUpdatesCommand, view => view.Refresh)

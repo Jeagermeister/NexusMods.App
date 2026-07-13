@@ -1,5 +1,6 @@
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.NexusModsLibrary;
+using Apocrypha.Abstractions.ModIo.Models;
 using Apocrypha.Abstractions.Thunderstore.Models;
 using Apocrypha.Sdk.Library;
 using Apocrypha.Sdk.Loadouts;
@@ -23,7 +24,7 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
         var info = new LibraryItemRemovalInfo();
 
         // Check if it's a file which was downloaded from a redownloadable mod source.
-        if (toRemove.TryGetAsNexusModsLibraryItem(out _) || toRemove.TryGetAsThunderstoreLibraryItem(out _))
+        if (toRemove.TryGetAsNexusModsLibraryItem(out _) || toRemove.TryGetAsThunderstoreLibraryItem(out _) || toRemove.TryGetAsModIoLibraryItem(out _))
         {
             info.IsNexus = true;
             info.IsNonPermanent = !info.IsNexus;

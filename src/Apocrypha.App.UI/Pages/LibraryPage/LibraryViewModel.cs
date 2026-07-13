@@ -16,6 +16,7 @@ using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusModsLibrary.Models;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
+using Apocrypha.Abstractions.ModIo;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.CLI.Types;
 using Apocrypha.Sdk.Settings;
@@ -77,10 +78,13 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
     public ReactiveCommand<Unit> OpenThunderstoreCommand { get; }
+    public ReactiveCommand<Unit> OpenModIoCommand { get; }
     public ReactiveCommand<Unit> AddCollectionFromLinkCommand { get; }
+    public ReactiveCommand<Unit> AddModIoModFromLinkCommand { get; }
 
     public bool HasNexusModsSource { get; }
     public bool HasThunderstoreSource { get; }
+    public bool HasModIoSource { get; }
 
     [Reactive] public int SelectionCount { get; private set; }
     
@@ -247,6 +251,10 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         // source the game actually has, so each command can assume its source exists.
         HasNexusModsSource = game.NexusModsGameId.HasValue;
         HasThunderstoreSource = game is IThunderstoreCommunityGame;
+        // gated on the experimental setting: the paste-a-link entry is mod.io's only
+        // in-app surface, so hiding it is what "disabled" means (unlike Thunderstore,
+        // whose gate lives on the protocol handler)
+        HasModIoSource = game is IModIoGame && serviceProvider.GetRequiredService<ISettingsManager>().Get<ModIoSettings>().EnableModIo;
 
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ =>
@@ -262,6 +270,75 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             if (game is not IThunderstoreCommunityGame thunderstoreGame) return;
             osInterop.OpenUri(ThunderstoreUrls.GetCommunityUri(thunderstoreGame.ThunderstoreCommunitySlug));
         });
+
+        OpenModIoCommand = new ReactiveCommand<Unit>(execute: _ =>
+        {
+            if (game is not IModIoGame modIoGame) return;
+            osInterop.OpenUri(ModIoUrls.GetGamePageUri(modIoGame.ModIoGameNameId));
+        });
+
+        AddModIoModFromLinkCommand = new ReactiveCommand<Unit>(async (_, cancellationToken) =>
+        {
+            var dialog = LibraryDialogs.AddModIoModFromLink();
+            var dialogResult = await WindowManager.ShowDialog(dialog, DialogWindowType.Modal);
+            if (dialogResult.ButtonId != ButtonDefinitionId.Accept) return;
+
+            if (!ModIoUrls.TryParseModUrl(dialogResult.InputText, out var gameNameId, out var modNameId))
+            {
+                _notificationService.ShowToast("That doesn't look like a mod.io mod link (expected https://mod.io/g/{game}/m/{mod}).", ToastNotificationVariant.Failure);
+                return;
+            }
+
+            // first use: prompt for the free read-only API key (no free-text settings
+            // container exists yet, DESIGN-modio.md decision 1)
+            var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
+            if (string.IsNullOrWhiteSpace(settingsManager.Get<ModIoSettings>().ApiKey))
+            {
+                var keyDialog = LibraryDialogs.SetModIoApiKey();
+                var keyResult = await WindowManager.ShowDialog(keyDialog, DialogWindowType.Modal);
+                if (keyResult.ButtonId != ButtonDefinitionId.Accept || string.IsNullOrWhiteSpace(keyResult.InputText)) return;
+
+                var settings = settingsManager.Get<ModIoSettings>();
+                settings.ApiKey = keyResult.InputText.Trim();
+                settingsManager.Set(settings);
+            }
+
+            try
+            {
+                var modIoLibrary = serviceProvider.GetRequiredService<IModIoLibrary>();
+                var file = await modIoLibrary.ResolveLatestFile(gameNameId, modNameId, cancellationToken);
+
+                if (modIoLibrary.IsAlreadyDownloaded(file.FileId))
+                {
+                    _notificationService.ShowToast($"'{file.Mod.Name}' is already in your Library.", ToastNotificationVariant.Neutral);
+                    return;
+                }
+
+                _notificationService.ShowToast($"Downloading '{file.Mod.Name}' from mod.io…");
+
+                var job = await modIoLibrary.CreateDownloadJob(file, cancellationToken);
+                await _libraryService.AddDownload(job);
+
+                _notificationService.ShowToast($"'{file.Mod.Name}' added to your Library.", ToastNotificationVariant.Success);
+            }
+            catch (ModIoApiKeyMissingException)
+            {
+                _notificationService.ShowToast("mod.io needs an API key — get a free one at mod.io/me/access.", ToastNotificationVariant.Failure);
+            }
+            catch (ModIoApiException e) when (e.HttpStatusCode == 401)
+            {
+                _notificationService.ShowToast("mod.io rejected the API key — check it at mod.io/me/access.", ToastNotificationVariant.Failure);
+            }
+            catch (KeyNotFoundException e)
+            {
+                _notificationService.ShowToast(e.Message, ToastNotificationVariant.Failure);
+            }
+            catch (Exception e)
+            {
+                _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>().LogError(e, "Failed to add mod.io mod `{Game}/{Mod}` from link", gameNameId, modNameId);
+                _notificationService.ShowToast("Something went wrong adding that mod.", ToastNotificationVariant.Failure);
+            }
+        }, configureAwait: false);
 
         OpenNexusModsCollectionsCommand = new ReactiveCommand<Unit>(execute: _ =>
         {

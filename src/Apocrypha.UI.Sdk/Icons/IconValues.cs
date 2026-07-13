@@ -718,6 +718,12 @@ public static class IconValues
     ));
 
     /// <summary>
+    /// Placeholder mark for contexts where mod.io is the mod SOURCE — a dedicated brand
+    /// mark is art-pass material (DESIGN-modio.md decision 5).
+    /// </summary>
+    public static readonly IconValue ModIo = new ProjektankerIcon("mdi-gamepad-square");
+
+    /// <summary>
     /// Brand pictogram for Health
     /// </summary>
     public static readonly IconValue PictogramHealth = new AvaloniaSvg("avares://Apocrypha.App.UI/Assets/Pictograms/health.svg");

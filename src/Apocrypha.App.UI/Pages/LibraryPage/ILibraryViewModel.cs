@@ -43,7 +43,9 @@ public interface ILibraryViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
     ReactiveCommand<Unit> OpenThunderstoreCommand { get; }
+    ReactiveCommand<Unit> OpenModIoCommand { get; }
     ReactiveCommand<Unit> AddCollectionFromLinkCommand { get; }
+    ReactiveCommand<Unit> AddModIoModFromLinkCommand { get; }
 
     /// <summary>
     /// Which mod sources the loadout's game actually has (DESIGN-app-layout.md §5):
@@ -51,6 +53,7 @@ public interface ILibraryViewModel : IPageViewModelInterface
     /// </summary>
     public bool HasNexusModsSource { get; }
     public bool HasThunderstoreSource { get; }
+    public bool HasModIoSource { get; }
     
     IStorageProvider? StorageProvider { get; set; }
 }

@@ -3,13 +3,27 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0xE6B76C6D86189BE6
-   - Total attributes: 243
-   - Total namespaces: 79
+   - Fingerprint: 0x875DB52FC420AC43
+   - Total attributes: 257
+   - Total namespaces: 82
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
 | ---------------------------------------------------------------------------------- | ----------------------- | ------- | ----- | --------- | 
+| Apocrypha.ModIo.ModIoFileMetadata/FileId                                           | UInt64                  | True    | False | False     | 
+| Apocrypha.ModIo.ModIoFileMetadata/FileName                                         | Utf8                    | False   | False | False     | 
+| Apocrypha.ModIo.ModIoFileMetadata/Mod                                              | Reference               | False   | False | False     | 
+| Apocrypha.ModIo.ModIoFileMetadata/Size                                             | UInt64                  | False   | False | False     | 
+| Apocrypha.ModIo.ModIoFileMetadata/UploadedAt                                       | Int64                   | False   | False | False     | 
+| Apocrypha.ModIo.ModIoFileMetadata/Version                                          | Utf8                    | False   | False | False     | 
+| Apocrypha.ModIo.ModIoLibraryItem/File                                              | Reference               | False   | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/GameId                                            | UInt64                  | False   | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/GameNameId                                        | Utf8                    | True    | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/LogoUri                                           | Utf8                    | False   | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/ModId                                             | UInt64                  | True    | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/Name                                              | Utf8                    | False   | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/NameId                                            | Utf8                    | False   | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/ProfileUri                                        | Utf8                    | False   | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.GogBuild/BuildId                           | UInt64                  | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.GogBuild/Depots                            | Reference               | False   | True  | False     | 
 | NexusMods.Abstractions.Games.FileHashes.GogBuild/Files                             | Reference               | False   | True  | False     | 

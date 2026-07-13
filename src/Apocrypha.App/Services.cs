@@ -27,6 +27,7 @@ using Apocrypha.Networking.GOG;
 using Apocrypha.Networking.HttpDownloader;
 using Apocrypha.Networking.NexusWebApi;
 using Apocrypha.Networking.Steam;
+using Apocrypha.Networking.ModIo;
 using Apocrypha.Networking.Thunderstore;
 using NexusMods.Paths;
 using Apocrypha.ProxyConsole;
@@ -97,6 +98,7 @@ public static class Services
                 .AddStatusVerbs()
                 .AddSteamCli()
                 .AddThunderstore()
+                .AddModIo()
                 .AddGOG()
                 .AddFileHashes()
                 .AddGitHubApi();
