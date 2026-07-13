@@ -160,8 +160,20 @@
                                                 <icons:UnifiedIcon Value="{x:Static icons:IconValues.Thunderstore}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem x:Name="GetModsFromModIoButton"
+                                                  Header="From mod.io">
+                                            <MenuItem.Icon>
+                                                <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModIo}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem x:Name="AddCollectionFromLinkMenuItem"
                                                   Header="Collection from link">
+                                            <MenuItem.Icon>
+                                                <icons:UnifiedIcon Value="{x:Static icons:IconValues.Link}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem x:Name="AddModIoModFromLinkMenuItem"
+                                                  Header="Mod from mod.io link">
                                             <MenuItem.Icon>
                                                 <icons:UnifiedIcon Value="{x:Static icons:IconValues.Link}" />
                                             </MenuItem.Icon>
@@ -211,6 +223,10 @@
                                                              Text="Open Thunderstore"
                                                              ShowIcon="Left"
                                                              LeftIcon="{x:Static icons:IconValues.Thunderstore}" />
+                                    <controls:StandardButton x:Name="EmptyLibraryModIoButton"
+                                                             Text="Open mod.io"
+                                                             ShowIcon="Left"
+                                                             LeftIcon="{x:Static icons:IconValues.ModIo}" />
                                 </StackPanel>
                             </StackPanel>
                         </controls:EmptyState.Subtitle>

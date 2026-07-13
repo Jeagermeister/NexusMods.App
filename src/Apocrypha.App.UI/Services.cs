@@ -309,6 +309,8 @@ public static class Services
             .AddSingleton<ILoadoutDataProvider, NexusModsDataProvider>()
             .AddSingleton<ILibraryDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
+            .AddSingleton<ILibraryDataProvider, ModIoDataProvider>()
+            .AddSingleton<ILoadoutDataProvider, ModIoDataProvider>()
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()

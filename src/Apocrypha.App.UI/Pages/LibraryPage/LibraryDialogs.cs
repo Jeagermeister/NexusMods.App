@@ -29,4 +29,54 @@ public static class LibraryDialogs
             DialogWindowSize.Small
         );
     }
+
+    public static IDialog AddModIoModFromLink()
+    {
+        return DialogFactory.CreateStandardDialog(
+            "Add a Mod From a mod.io Link",
+            new StandardDialogParameters()
+            {
+                Text = "Paste a link to a mod on mod.io. The mod's latest file will be downloaded into your Library.",
+                InputLabel = "Mod link",
+                InputWatermark = "e.g. https://mod.io/g/baldursgate3/m/some-mod",
+            },
+            [
+                DialogStandardButtons.Cancel,
+                new DialogButtonDefinition(
+                    "Add mod",
+                    ButtonDefinitionId.Accept,
+                    ButtonAction.Accept,
+                    ButtonStyling.Primary
+                ),
+            ],
+            DialogWindowSize.Small
+        );
+    }
+
+    public static IDialog SetModIoApiKey()
+    {
+        return DialogFactory.CreateStandardDialog(
+            "Connect to mod.io",
+            new StandardDialogParameters()
+            {
+                Text = """
+                       Downloading from mod.io needs a free API key (read-only access).
+
+                       Get one at mod.io/me/access, then paste it here. It's stored locally and only sent to mod.io.
+                       """,
+                InputLabel = "API key",
+                InputWatermark = "paste your mod.io API key",
+            },
+            [
+                DialogStandardButtons.Cancel,
+                new DialogButtonDefinition(
+                    "Save key",
+                    ButtonDefinitionId.Accept,
+                    ButtonAction.Accept,
+                    ButtonStyling.Primary
+                ),
+            ],
+            DialogWindowSize.Small
+        );
+    }
 }

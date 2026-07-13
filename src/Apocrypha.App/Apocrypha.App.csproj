@@ -31,6 +31,7 @@
         <ProjectReference Include="..\\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />
         <ProjectReference Include="..\\Apocrypha.Networking.Steam\Apocrypha.Networking.Steam.csproj" />
         <ProjectReference Include="..\Apocrypha.Networking.Thunderstore\Apocrypha.Networking.Thunderstore.csproj" />
+        <ProjectReference Include="..\Apocrypha.Networking.ModIo\Apocrypha.Networking.ModIo.csproj" />
         <ProjectReference Include="..\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />
         <ProjectReference Include="..\\Apocrypha.Networking.Steam\Apocrypha.Networking.Steam.csproj" />
         <ProjectReference Include="..\Apocrypha.App.UI\Apocrypha.App.UI.csproj" />

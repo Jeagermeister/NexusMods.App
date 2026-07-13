@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <XunitStartupAssembly>Apocrypha.Networking.ModIo.Tests</XunitStartupAssembly>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Apocrypha.Abstractions.ModIo\Apocrypha.Abstractions.ModIo.csproj" />
+      <ProjectReference Include="..\..\..\src\Apocrypha.Networking.ModIo\Apocrypha.Networking.ModIo.csproj" />
+    </ItemGroup>
+</Project>

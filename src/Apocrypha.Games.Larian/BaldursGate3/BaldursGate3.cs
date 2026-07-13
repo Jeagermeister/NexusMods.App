@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.Diagnostics.Emitters;
 using Apocrypha.Abstractions.Games;
 using Apocrypha.Abstractions.Library.Installers;
+using Apocrypha.Abstractions.ModIo;
 using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Games.Generic.Installers;
 using Apocrypha.Games.Larian.BaldursGate3.Emitters;
@@ -15,10 +16,14 @@ using Apocrypha.Sdk.IO;
 
 namespace Apocrypha.Games.Larian.BaldursGate3;
 
-public class BaldursGate3 : IGame, IGameData<BaldursGate3>
+public class BaldursGate3 : IGame, IGameData<BaldursGate3>, IModIoGame
 {
     public static GameId GameId { get; } = GameId.From("Larian.BaldursGate3");
     public static string DisplayName => "Baldur's Gate 3";
+
+    /// <inheritdoc/>
+    /// <remarks>BG3 is mod.io-native (official in-game mod support since patch 7).</remarks>
+    public string ModIoGameNameId => "baldursgate3";
     public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(3474);
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)

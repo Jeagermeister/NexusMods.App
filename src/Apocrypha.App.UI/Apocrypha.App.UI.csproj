@@ -97,6 +97,7 @@
         <ProjectReference Include="..\Apocrypha.Abstractions.Logging\Apocrypha.Abstractions.Logging.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.NexusModsLibrary\Apocrypha.Abstractions.NexusModsLibrary.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Thunderstore\Apocrypha.Abstractions.Thunderstore.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.ModIo\Apocrypha.Abstractions.ModIo.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.GuidedInstallers\Apocrypha.Abstractions.GuidedInstallers.csproj" />
         <ProjectReference Include="..\Apocrypha.Networking.NexusWebApi\Apocrypha.Networking.NexusWebApi.csproj" />

@@ -3,6 +3,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Apocrypha.Abstractions.Games.Diagnostics\Apocrypha.Abstractions.Games.Diagnostics.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Games\Apocrypha.Abstractions.Games.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.ModIo\Apocrypha.Abstractions.ModIo.csproj" />
         <ProjectReference Include="..\Apocrypha.Games.Generic\Apocrypha.Games.Generic.csproj" />
         <ProjectReference Include="..\Apocrypha.App.Generators.Diagnostics\Apocrypha.App.Generators.Diagnostics.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
