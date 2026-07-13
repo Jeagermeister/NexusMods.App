@@ -174,7 +174,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(value: item.Version.VersionNumber));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, item.GetCreatedAt(), linkedItemsObservable);
-        LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddCollections(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddParentCollectionsDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddMixLockedAndParentDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddLockedEnabledStates(parentItemModel, linkedItemsObservable);
@@ -183,6 +183,7 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddMoveToCollectionComponent(_connection, loadoutFilter.LoadoutId, parentItemModel, linkedItemsObservable);
 
         return parentItemModel;
     }

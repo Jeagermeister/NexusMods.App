@@ -161,7 +161,7 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, localFile.GetCreatedAt(), linkedItemsObservable);
-        LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddCollections(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddParentCollectionsDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddMixLockedAndParentDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddLockedEnabledStates(parentItemModel, linkedItemsObservable);
@@ -170,10 +170,11 @@ internal class LocalFileDataProvider : ILibraryDataProvider, ILoadoutDataProvide
         LoadoutDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddMoveToCollectionComponent(_connection, loadoutFilter.LoadoutId, parentItemModel, linkedItemsObservable);
 
         return parentItemModel;
     }
-    
+
     private static CompositeItemModel<EntityId> ToLocalChildLoadoutItemModel(IConnection connection, LoadoutItem.ReadOnly loadoutItem)
     {
         var childModel = LoadoutDataProviderHelper.ToChildItemModel(connection, loadoutItem);

@@ -320,7 +320,10 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
                             connection, GetWorkspaceController());
                         return Task.CompletedTask;
                     },
-                    uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, connection)
+                    uninstallItemMessage => LoadoutViewModel.HandleUninstallItem(uninstallItemMessage.Ids, windowManager, connection),
+                    moveToCollectionMessage => LoadoutViewModel.HandleMoveToCollection(moveToCollectionMessage.Ids,
+                        moveToCollectionMessage.TargetCollection,
+                        serviceProvider.GetRequiredService<ILoadoutManager>(), connection, toastNotificationService)
                 );
             }, awaitOperation: AwaitOperation.Parallel, configureAwait: false).AddTo(disposables);
         });

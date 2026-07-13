@@ -99,6 +99,7 @@ public static class LoadoutDataProviderHelper
         AddLockedEnabledState(itemModel, loadoutItem);
         AddEnabledStateToggle(connection, itemModel, loadoutItem);
         AddUninstallItemComponent(itemModel, loadoutItem);
+        AddMoveToCollectionComponent(connection, loadoutItem.LoadoutId, itemModel, loadoutItem);
 
         return itemModel;
     }
@@ -107,7 +108,17 @@ public static class LoadoutDataProviderHelper
     {
         if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
-        itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(value: collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().Name));
+        // Observe the item so the column follows "Move to collection" reparents
+        var nameObservable = LoadoutItem.Observe(connection, loadoutItem.Id)
+            .Select(static item => item.Parent.TryGetAsCollectionGroup(out var group)
+                ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
+                : string.Empty
+            );
+
+        itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(
+            initialValue: collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().Name,
+            valueObservable: nameObservable
+        ));
     }
 
     public static void AddParentCollectionDisabled(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
@@ -217,21 +228,99 @@ public static class LoadoutDataProviderHelper
        );
     }
 
+    public static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        LoadoutItem.ReadOnly loadoutItem)
+    {
+        var rowStateObservable = LoadoutItem.Observe(connection, loadoutItem.Id)
+            .Select(static item => IsCollectionManaged(item)
+                ? (MovableParents: Array.Empty<EntityId>(), HasMovableItems: false)
+                : (MovableParents: item.HasParent() ? new[] { item.ParentId.Value } : Array.Empty<EntityId>(), HasMovableItems: true)
+            );
+
+        AddMoveToCollectionComponent(connection, loadoutId, itemModel, rowStateObservable);
+    }
+
+    public static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
+    {
+        var rowStateObservable = linkedItemsObservable
+            // Observe each item so the submenu targets follow reparents live
+            .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id)
+                .Select(static live => (IsMovable: !IsCollectionManaged(live), Parent: live.HasParent() ? live.ParentId.Value : default(EntityId?)))
+            )
+            .QueryWhenChanged(static query =>
+            {
+                var movableParents = query.Items
+                    .Where(static tuple => tuple.IsMovable && tuple.Parent.HasValue)
+                    .Select(static tuple => tuple.Parent!.Value)
+                    .Distinct()
+                    .ToArray();
+
+                var hasMovableItems = query.Items.Any(static tuple => tuple.IsMovable);
+                return (MovableParents: movableParents, HasMovableItems: hasMovableItems);
+            });
+
+        AddMoveToCollectionComponent(connection, loadoutId, itemModel, rowStateObservable);
+    }
+
+    private static void AddMoveToCollectionComponent(
+        IConnection connection,
+        LoadoutId loadoutId,
+        CompositeItemModel<EntityId> itemModel,
+        IObservable<(EntityId[] MovableParents, bool HasMovableItems)> rowStateObservable)
+    {
+        var targetsObservable = LoadoutQueries2.MutableCollections(connection, loadoutId)
+            .Observe(static r => r.GroupId)
+            .QueryWhenChanged(static query => query.Items
+                .OrderBy(static r => r.GroupId.Value)
+                .Select(static r => (Id: CollectionGroupId.From(r.GroupId), r.Name))
+                .ToArray()
+            );
+
+        var stateObservable = targetsObservable.CombineLatest(rowStateObservable, static (targets, rowState) =>
+        {
+            // Hide a target when the row's movable items already all live there
+            var visibleTargets = rowState.MovableParents.Length == 1
+                ? targets.Where(target => !target.Id.Value.Equals(rowState.MovableParents[0])).ToArray()
+                : targets;
+
+            return new LoadoutComponents.MoveToCollectionState(visibleTargets, rowState.HasMovableItems);
+        });
+
+        itemModel.Add(LoadoutColumns.EnabledState.MoveToCollectionComponentKey, new LoadoutComponents.MoveToCollectionAction(stateObservable));
+    }
+
+    /// <summary>
+    /// Whether the item was put into the loadout by a collection (required or optional) —
+    /// such items stay with their collection and can't be moved.
+    /// </summary>
+    public static bool IsCollectionManaged<T>(T entity) where T : struct, IReadOnlyModel<T>
+    {
+        return NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(entity).HasValue;
+    }
+
     public static void AddCollections(
+        IConnection connection,
         CompositeItemModel<EntityId> parentItemModel,
         IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedItemsObservable)
     {
+        // Observe each item so the column follows "Move to collection" reparents
         var collectionsObservable = linkedItemsObservable
+            .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id)
+                .Select(static live => live.Parent.TryGetAsCollectionGroup(out var group)
+                    ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
+                    : string.Empty
+                )
+            )
             .QueryWhenChanged(query => query.Items
-                .Where(static item => item.Parent.IsCollectionGroup())
-                .GroupBy(static item => item.ParentId)
-                .Select(static grouping =>
-                {
-                    var optional = grouping.FirstOrOptional(static _ => true);
-                    return optional.Convert(static item => item.Parent.AsLoadoutItem().Name);
-                })
-                .Where(static optional => optional.HasValue)
-                .Select(static optional => optional.Value)
+                .Where(static name => name.Length != 0)
+                .Distinct()
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .SafeAggregate(defaultValue: string.Empty, static (a, b) => $"{a}, {b}")
             );

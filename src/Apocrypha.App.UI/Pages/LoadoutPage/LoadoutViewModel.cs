@@ -553,7 +553,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                                     _connection, GetWorkspaceController());
                                 return Task.CompletedTask;
                             },
-                            uninstallItemMessage => HandleUninstallItem(uninstallItemMessage.Ids, windowManager, _connection)
+                            uninstallItemMessage => HandleUninstallItem(uninstallItemMessage.Ids, windowManager, _connection),
+                            moveToCollectionMessage => HandleMoveToCollection(moveToCollectionMessage.Ids, moveToCollectionMessage.TargetCollection, _loadoutManager, _connection, _notificationService)
                         );
                     }, awaitOperation: AwaitOperation.Parallel, configureAwait: false
                 ).AddTo(disposables);
@@ -624,6 +625,41 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                     .DisposeWith(disposables);
             }
         );
+    }
+
+    internal static async Task HandleMoveToCollection(
+        LoadoutItemId[] ids,
+        CollectionGroupId targetCollection,
+        ILoadoutManager loadoutManager,
+        IConnection connection,
+        IWindowNotificationService? notificationService)
+    {
+        var target = CollectionGroup.Load(connection.Db, targetCollection);
+        if (!target.IsValid() || target.IsReadOnly) return;
+        var targetName = target.AsLoadoutItemGroup().AsLoadoutItem().Name;
+
+        // Items delivered by a collection stay with it — mirror the manager's gate so the
+        // toast below is truthful about what happened
+        var movableIds = ids
+            .ToHashSet()
+            .Where(id => !NexusCollectionItemLoadoutGroup.IsRequired.GetOptional(LoadoutItem.Load(connection.Db, id)).HasValue)
+            .Select(x => (LoadoutItemGroupId)x.Value)
+            .ToArray();
+
+        if (movableIds.Length == 0)
+        {
+            notificationService?.ShowToast(
+                "These mods are managed by a collection and move with it. Install your own copy to organize it freely.",
+                ToastNotificationVariant.Neutral);
+            return;
+        }
+
+        var moved = await loadoutManager.MoveItems(movableIds, targetCollection);
+        notificationService?.ShowToast(
+            moved > 0
+                ? $"Moved to '{targetName}'"
+                : $"Already in '{targetName}' — nothing to move",
+            moved > 0 ? ToastNotificationVariant.Success : ToastNotificationVariant.Neutral);
     }
 
     private static async Task<StandardDialogResult> ShowUninstallModsConformationDialog(LoadoutItemGroupId[] ids, IWindowManager windowManager, IConnection connection)

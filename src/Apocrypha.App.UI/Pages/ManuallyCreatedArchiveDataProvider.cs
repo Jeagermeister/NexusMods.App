@@ -136,7 +136,7 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
 
         LoadoutDataProviderHelper.AddDateComponent(parentItemModel, archive.GetCreatedAt(), linkedItemsObservable);
-        LoadoutDataProviderHelper.AddCollections(parentItemModel, linkedItemsObservable);
+        LoadoutDataProviderHelper.AddCollections(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddParentCollectionsDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddMixLockedAndParentDisabled(_connection, parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddLockedEnabledStates(parentItemModel, linkedItemsObservable);
@@ -144,7 +144,7 @@ internal class ManuallyCreatedArchiveDataProvider : ILibraryDataProvider, ILoado
         LoadoutDataProviderHelper.AddLoadoutItemIds(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddViewModFilesActionComponent(parentItemModel, linkedItemsObservable);
         LoadoutDataProviderHelper.AddUninstallItemComponent(parentItemModel, linkedItemsObservable);
-        
+        LoadoutDataProviderHelper.AddMoveToCollectionComponent(_connection, loadoutFilter.LoadoutId, parentItemModel, linkedItemsObservable);
 
         return parentItemModel;
     }

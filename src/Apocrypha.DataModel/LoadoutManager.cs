@@ -457,6 +457,45 @@ internal partial class LoadoutManager : ILoadoutManager
         }
     }
 
+    public async ValueTask<int> MoveItems(LoadoutItemGroupId[] groupIds, CollectionGroupId targetCollection)
+    {
+        var db = _connection.Db;
+
+        var target = CollectionGroup.Load(db, targetCollection);
+        if (!target.IsValid()) throw new InvalidOperationException($"Target collection `{targetCollection}` doesn't exist");
+        if (target.IsReadOnly) throw new InvalidOperationException($"Target collection `{target.AsLoadoutItemGroup().AsLoadoutItem().Name}` is read-only");
+
+        var targetLoadoutId = target.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
+
+        using var tx = _connection.BeginTransaction();
+        var moved = 0;
+
+        foreach (var groupId in groupIds)
+        {
+            var group = LoadoutItemGroup.Load(db, groupId);
+            if (!group.IsValid()) continue;
+
+            // Never move collections themselves, only mods
+            if (group.TryGetAsCollectionGroup(out _)) continue;
+
+            // Items delivered by a collection stay with it: reparenting them would orphan
+            // the download linkage the collection uses to track its installed state
+            if (NexusCollectionItemLoadoutGroup.IsRequired.TryGetValue(group, out _)) continue;
+
+            var item = group.AsLoadoutItem();
+            if (!item.LoadoutId.Equals(targetLoadoutId)) continue;
+            if (item.HasParent() && item.ParentId.Value.Equals(targetCollection.Value)) continue;
+
+            tx.Add(groupId, LoadoutItem.Parent, targetCollection.Value);
+            moved++;
+        }
+
+        // Priorities are keyed on the loadout, not the collection, so a reparent within the
+        // same loadout leaves the conflict ordering untouched
+        if (moved > 0) await tx.Commit();
+        return moved;
+    }
+
     public async ValueTask RemoveCollection(CollectionGroupId collection)
     {
         var db = _connection.Db;
