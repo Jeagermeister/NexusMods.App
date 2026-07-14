@@ -16,6 +16,15 @@ public interface IGarbageCollectorRunner
     Task RunAsync();
 
     /// <summary>
+    /// Runs the Garbage Collector, but only if a previous run has not completed within
+    /// <paramref name="minInterval"/>; otherwise returns without running. Intended for the apply
+    /// hot path, which would otherwise run a full archive scan+repack after every single sync.
+    /// Runs inline (never concurrently with the caller), so it only ever *skips* the same safe
+    /// operation — unreferenced data skipped now is reclaimed by the next run.
+    /// </summary>
+    Task RunCoalescedAsync(TimeSpan minInterval);
+
+    /// <summary>
     /// Runs the Garbage Collector in the specified mode.
     /// </summary>
     /// <param name="gcRunMode">The mode to run the GC in.</param>

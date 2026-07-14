@@ -50,6 +50,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private readonly ScopedAsyncLock _lock = new();
     private readonly IFileStore _fileStore;
 
+    /// <summary>
+    /// Minimum time between archive garbage-collection runs triggered by a sync. Long enough that a
+    /// burst of applies (e.g. a collection install) coalesces to a single GC, short enough that
+    /// space is reclaimed promptly under normal use.
+    /// </summary>
+    private static readonly TimeSpan ArchiveGcCoalesceInterval = TimeSpan.FromMinutes(2);
+
     protected readonly ILogger Logger;
     private readonly IOSInformation _os;
     private readonly ISorter _sorter;
@@ -526,7 +533,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         job?.SetStatus("Archive Cleanup");
-        await _garbageCollectorRunner.RunAsync();
+        // Coalesce archive GC instead of running a full scan+repack after every single sync
+        // (CODE_REVIEW.md §4): a burst of applies — e.g. installing a large collection — no longer
+        // pays that cost N times. Skipped garbage is reclaimed by the next run; deferring never
+        // affects loadout correctness.
+        await _garbageCollectorRunner.RunCoalescedAsync(ArchiveGcCoalesceInterval);
 
 
         return loadout;
