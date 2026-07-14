@@ -10,6 +10,8 @@ using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
 using Apocrypha.Sdk.Games;
+using Apocrypha.Sdk.Loadouts;
+using OneOf;
 using Xunit.Abstractions;
 
 namespace Apocrypha.DataModel.Synchronizer.Tests;
@@ -135,7 +137,42 @@ public class GeneralLoadoutManagementTests(ITestOutputHelper helper) : ACyberpun
         await Verify(sb.ToString(), extension: "md");
     }
 
-    
+    /// <summary>
+    /// Regression test for the roadmap Tier 1 (#2) fix: CopyLoadout must also copy the load order
+    /// (SortOrder/SortOrderItem) and the file-conflict priorities (LoadoutItemGroupPriority), which
+    /// are keyed to the loadout rather than to LoadoutItems. Before the fix the clone silently lost
+    /// them — losing the hand-tuned load order and resolving conflicts by nondeterministic tie-break.
+    /// This exercises the SortOrder path; priorities are copied by the same entity-id-remap mechanism.
+    /// </summary>
+    [Fact]
+    public async Task CopyLoadout_CopiesLoadOrder()
+    {
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadoutA = await CreateLoadout();
+        LoadoutId loadoutAId = loadoutA;
+
+        // Attach a load order to loadoutA (mirrors how a SortOrderVariety creates one).
+        using (var tx = Connection.BeginTransaction())
+        {
+            _ = new SortOrder.New(tx)
+            {
+                LoadoutId = loadoutAId,
+                ParentEntity = OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutAId),
+                SortOrderTypeId = Guid.NewGuid(),
+            };
+            await tx.Commit();
+        }
+
+        SortOrder.FindByLoadout(Connection.Db, loadoutA).ToArray()
+            .Should().ContainSingle("precondition: loadoutA has a load order");
+
+        var loadoutC = await LoadoutManager.CopyLoadout(loadoutA);
+
+        var clonedSortOrders = SortOrder.FindByLoadout(Connection.Db, loadoutC).ToArray();
+        clonedSortOrders.Should().ContainSingle("CopyLoadout must copy the SortOrder onto the clone (previously it was silently dropped)");
+        clonedSortOrders[0].Loadout.Id.Should().Be(loadoutC.Id, "the copied SortOrder must reference the clone, not the original");
+    }
+
     /// <summary>
     /// Log the state of the actual disk, not the DiskStateEntries
     /// </summary>
