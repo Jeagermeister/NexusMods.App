@@ -14,13 +14,20 @@ public class OverlayController : ReactiveObject, IOverlayController
     private Queue<IOverlayViewModel> _queue = new();
     public void Enqueue(IOverlayViewModel overlayViewModel)
     {
+        bool changed;
         lock (_lockObject)
         {
             overlayViewModel.Controller = this;
             _queue.Enqueue(overlayViewModel);
-            
-            ProcessNext();
+
+            changed = ProcessNext();
         }
+
+        // DEADLOCK GUARD (CODE_REVIEW.md §7 #14): the notification synchronously marshals to the
+        // UI thread, so it must NEVER run while holding _lockObject — a background thread blocking
+        // on the UI thread while the UI thread blocks on the lock is a hard UI freeze. State
+        // mutations stay under the lock; the notification is raised after releasing it.
+        if (changed) NotifyCurrentOverlayChanged();
     }
 
     public async Task<TResult?> EnqueueAndWait<TResult>(IOverlayViewModel<TResult> overlayViewModel)
@@ -30,20 +37,20 @@ public class OverlayController : ReactiveObject, IOverlayController
         return overlayViewModel.Result;
     }
 
-    private void ProcessNext()
+    private bool ProcessNext()
     {
         if (CurrentOverlay != null)
         {
-            return;
+            return false;
         }
         if (_queue.Count == 0)
         {
-            return;
+            return false;
         }
-        
+
         CurrentOverlay = _queue.Dequeue();
         CurrentOverlay.Status = Status.Visible;
-        NotifyCurrentOverlayChanged();
+        return true;
     }
 
     private void NotifyCurrentOverlayChanged()
@@ -57,6 +64,7 @@ public class OverlayController : ReactiveObject, IOverlayController
 
     public void Remove(IOverlayViewModel model)
     {
+        var changed = false;
         lock (_lockObject)
         {
             if (CurrentOverlay == model)
@@ -64,8 +72,8 @@ public class OverlayController : ReactiveObject, IOverlayController
                 var oldOverlay = CurrentOverlay;
                 oldOverlay.Status = Status.Closed;
                 CurrentOverlay = null;
-                NotifyCurrentOverlayChanged();
                 ProcessNext();
+                changed = true;
             }
             else
             {
@@ -79,5 +87,8 @@ public class OverlayController : ReactiveObject, IOverlayController
                 }
             }
         }
+
+        // See the deadlock guard note in Enqueue: never notify while holding the lock.
+        if (changed) NotifyCurrentOverlayChanged();
     }
 }

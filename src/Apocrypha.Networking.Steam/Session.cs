@@ -23,8 +23,11 @@ namespace Apocrypha.Networking.Steam;
 /// </summary>
 public class Session : ISteamSession
 {
-    private bool _isConnected = false;
-    private bool _isLoggedOn = false;
+    private volatile bool _isConnected = false;
+    private volatile bool _isLoggedOn = false;
+
+    /// <summary>Non-OK result from the last logon attempt, if any (e.g. an expired refresh token).</summary>
+    private volatile EResult _lastLogonFailure = EResult.OK;
 
     internal readonly ILogger<Session> _logger;
     private readonly IAuthInterventionHandler _handler;
@@ -116,14 +119,30 @@ public class Session : ISteamSession
     
     private Task LoggedOnCallback(SteamUser.LoggedOnCallback callback)
     {
-        _isLoggedOn = true;
-        _logger.LogInformation("Logged on to Steam network.");
+        // This callback also fires for FAILED logons (expired refresh token, access denied…);
+        // treating those as success made every later call proceed against a dead session.
+        if (callback.Result == EResult.OK)
+        {
+            _lastLogonFailure = EResult.OK;
+            _isLoggedOn = true;
+            _logger.LogInformation("Logged on to Steam network.");
+        }
+        else
+        {
+            _lastLogonFailure = callback.Result;
+            _logger.LogWarning("Steam logon failed: {Result} / {ExtendedResult}", callback.Result, callback.ExtendedResult);
+        }
         return Task.CompletedTask;
     }
 
     private Task DisconnectedCallback(SteamClient.DisconnectedCallback callback)
     {
-        _logger.LogInformation("Disconnected from Steam network.");
+        // Without resetting these, a disconnect left the session claiming to be connected and
+        // logged on: ConnectedAsync then waited forever on callbacks that could never arrive
+        // (CODE_REVIEW.md §7 #14).
+        _isConnected = false;
+        _isLoggedOn = false;
+        _logger.LogInformation("Disconnected from Steam network (user initiated: {UserInitiated}).", callback.UserInitiated);
         return Task.CompletedTask;
     }
     
@@ -196,7 +215,19 @@ public class Session : ISteamSession
     /// </summary>
     private Action<T> WrapAsync<T>(Func<T, Task> action)
     {
-        return arg => Task.Run(async () => await action(arg));
+        return arg => Task.Run(async () =>
+        {
+            try
+            {
+                await action(arg);
+            }
+            catch (Exception e)
+            {
+                // A throwing callback used to vanish into an unobserved task, silently wedging
+                // the login flow; at minimum it must be visible in the logs.
+                _logger.LogError(e, "Exception in Steam callback handler for {Callback}", typeof(T).Name);
+            }
+        });
     }
 
     /// <inheritdoc />
@@ -223,14 +254,38 @@ public class Session : ISteamSession
     /// </summary>
     private async Task ConnectedAsync(CancellationToken cancellationToken)
     {
+        if (_isLoggedOn) return;
+
+        // Bounded state machine instead of an unbounded callback wait: a disconnect mid-login is
+        // retried a few times, and a definitive logon failure (e.g. expired refresh token) throws
+        // instead of hanging the caller forever.
+        const int maxReconnectAttempts = 3;
+        var attempts = 0;
+        _lastLogonFailure = EResult.OK;
+
         if (!_isConnected)
         {
+            attempts++;
             _steamClient.Connect();
         }
-        
+
         while (!_isLoggedOn)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_lastLogonFailure != EResult.OK)
+                throw new InvalidOperationException($"Steam logon failed with `{_lastLogonFailure}` — run `steam login` to re-authenticate.");
+
             await _callbacks.RunWaitCallbackAsync(cancellationToken);
+
+            if (!_isConnected && !_isLoggedOn)
+            {
+                if (attempts >= maxReconnectAttempts)
+                    throw new InvalidOperationException($"Unable to establish a Steam session after {attempts} attempts.");
+                attempts++;
+                _logger.LogInformation("Reconnecting to Steam (attempt {Attempt}/{Max})…", attempts, maxReconnectAttempts);
+                _steamClient.Connect();
+            }
         }
     }
 
