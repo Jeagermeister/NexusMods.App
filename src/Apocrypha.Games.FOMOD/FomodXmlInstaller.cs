@@ -170,16 +170,46 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         foreach (var installableFile in installableFiles)
         {
             installableFile.Source = FixPath(installableFile.Source, fomodArchiveFiles, isDirectory: installableFile.IsFolder, logger: logger);
-            installableFile.Destination = RelativePath.FromUnsanitizedInput(RemoveRoot(installableFile.Destination));
+            installableFile.Destination = SanitizeDestination(installableFile.Destination);
         }
     }
 
     private static readonly char[] TrimChars = ['\\', '/'];
+    private static readonly char[] SegmentTrimChars = [' ', '.'];
+
     internal static ReadOnlySpan<char> RemoveRoot(string? input)
     {
         if (string.IsNullOrWhiteSpace(input)) return ReadOnlySpan<char>.Empty;
         ReadOnlySpan<char> span = input;
         return span.TrimStart(TrimChars);
+    }
+
+    /// <summary>
+    /// Sanitizes an <b>untrusted</b> FOMOD destination path so it cannot escape the target
+    /// directory. A FOMOD's <c>ModuleConfig.xml</c> is attacker-controlled, and
+    /// <see cref="RelativePath.FromUnsanitizedInput"/> neither resolves nor rejects <c>..</c>
+    /// segments — so a destination such as <c>..\..\..\evil.dll</c> would otherwise be joined onto
+    /// the game path verbatim and written outside the game folder when the loadout is applied.
+    /// We drop every root, empty, and dot/space-only (<c>.</c> / <c>..</c>) segment, guaranteeing the
+    /// result stays contained. Mirrors how the archive extractor guards untrusted entry names.
+    /// </summary>
+    internal static RelativePath SanitizeDestination(string? input)
+    {
+        var withoutRoot = RemoveRoot(input);
+        if (withoutRoot.IsEmpty) return RelativePath.Empty;
+
+        var segments = withoutRoot.ToString().Split(TrimChars, StringSplitOptions.RemoveEmptyEntries);
+        var kept = new List<string>(segments.Length);
+        foreach (var segment in segments)
+        {
+            // Trailing dots/spaces are collapsed by the filesystem, so "..", "... ", "." and " "
+            // are traversal or no-op references; drop them (and anything they trim down to empty).
+            var normalized = segment.TrimEnd(SegmentTrimChars);
+            if (normalized.Length == 0) continue;
+            kept.Add(normalized);
+        }
+
+        return kept.Count == 0 ? RelativePath.Empty : RelativePath.FromUnsanitizedInput(string.Join('/', kept));
     }
 
     internal static string FixPath(
@@ -233,13 +263,18 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         GamePath gamePath)
     {
         var src = RelativePath.FromUnsanitizedInput(instruction.source);
-        var dest = RelativePath.FromUnsanitizedInput(instruction.destination);
+        var dest = SanitizeDestination(instruction.destination);
 
         if (!fomodArchiveFiles.TryGetValue(src, out var libraryArchiveFile))
         {
             _logger.LogError("Didn't find source file `{Path}` in FOMOD archive", src);
             return;
         }
+
+        // A hostile ModuleConfig.xml can specify a traversal-only destination (e.g. "..\..") that
+        // sanitizes away to nothing; fall back to the file's own name so it stays inside the target.
+        if (dest.Equals(RelativePath.Empty))
+            dest = libraryArchiveFile.Path.FileName;
 
         _ = new LoadoutFile.New(transaction, out var id)
         {

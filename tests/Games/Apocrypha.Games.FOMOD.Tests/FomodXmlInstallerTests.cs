@@ -43,6 +43,29 @@ public class FomodXmlInstallerTests(ITestOutputHelper outputHelper) : ALibraryAr
     }
 
     [Theory]
+    // Benign destinations are preserved (root stripping + separator normalization, as before).
+    [InlineData("foo/bar.esp", "foo/bar.esp")]
+    [InlineData("/foo\\bar.esp", "foo/bar.esp")]
+    [InlineData("Data/textures/x.dds", "Data/textures/x.dds")]
+    [InlineData("..gitignore", "..gitignore")] // a real name that merely starts with dots is kept
+    // Path traversal is neutralized: no ".." segment survives into the game path.
+    [InlineData("..\\..\\..\\Users\\x\\evil.dll", "Users/x/evil.dll")]
+    [InlineData("../../etc/cron.d/evil", "etc/cron.d/evil")]
+    [InlineData("foo/../../bar.esp", "foo/bar.esp")]
+    [InlineData("....//....//evil", "evil")]
+    // A destination that is nothing but traversal/roots sanitizes away entirely.
+    [InlineData("..", "")]
+    [InlineData("../..", "")]
+    [InlineData("/", "")]
+    [InlineData(null, "")]
+    public void Test_SanitizeDestination_StripsTraversal(string? input, string expected)
+    {
+        var actual = FomodXmlInstaller.SanitizeDestination(input);
+        actual.ToString().Should().Be(expected);
+        actual.ToString().Split('/').Should().NotContain("..", "a sanitized destination must never contain a parent-traversal segment");
+    }
+
+    [Theory]
     [MemberData(nameof(TestData_FixPath))]
     public void Test_FixPath(string? input, string expected, bool isDirectory, FrozenDictionary<RelativePath, LibraryArchiveFileEntry.ReadOnly> archiveFiles)
     {
