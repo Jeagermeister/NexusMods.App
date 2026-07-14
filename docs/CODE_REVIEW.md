@@ -403,11 +403,20 @@ validation/auto-sort assist over a user-editable order.
 
 Ordered by (impact × reachability) ÷ effort. The first tier is small, high-confidence fixes.
 
-> **✅ Status (2026-07-14): Tier 0 and all of Tier 1 are implemented and locally verified** on branch
+> **✅ Status (2026-07-14): Tiers 0–5 are implemented and locally verified** on branch
 > `claude/repo-improvements-analysis-ufkkla` — see [`CODE_REVIEW_FIXES.md`](./CODE_REVIEW_FIXES.md)
-> for the per-fix write-up. The full solution now builds with 0 errors and the FOMOD, Synchronizer,
-> and HttpDownloader suites are green on a local .NET 9 SDK. One exception: migration `_0009` (#6) is
-> fixed but deliberately left **unregistered** pending a legacy-DB test. Tier 2+ below is still open.
+> for the Tier 0/1 write-up; later tiers are documented in their commit messages. Highlights:
+> Tier 2 — #8 the fork-owned hash-DB feed is **live** (github.com/Jeagermeister/game-hashes,
+> `EnableRemoteUpdates=true`, verified e2e), #9 IModSource seam + Downloads game-association,
+> #10 Sorter memoization, #11 part 1 GC coalescing. Tier 3 — #12 effector tests (user.reg patcher
+> extracted+table-tested, duplicate finder, priority TxFuncs). Tier 4 — #14 all four (overlay
+> deadlock, OAuth refresh race, atomic+correct user.reg, Steam session hang), #15 mod.io MD5
+> verification. Tier 5 — #16 FOMOD-in-collection (all five findings), #17 locator platforms,
+> #18 diagnostics eviction, #19 Bannerlord, #20 parser hardening, #21 GC TOCTOU+fail-safe.
+>
+> **Still open:** migration `_0009` registration (needs a legacy-DB test), #11 part 2 (diff-based
+> loadout switching — needs real-game apply testing), #13 CI lanes, #15 at-rest secrets keyring,
+> the Heroic-EGS locator (#17, new feature), and #9's axaml flyout enumeration (parked, low value).
 
 ### Tier 0 — security (added by the completeness pass; do before the rest) — ✅ implemented
 
