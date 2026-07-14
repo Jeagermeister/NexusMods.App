@@ -143,11 +143,15 @@ in the store are expected and fine.
 
 ---
 
-## What's next (from the roadmap, not yet done)
+## What's next
 
-Tier 2+ remain: the fork-owned hash-DB update feed (§7 #8), the `IModSource` interface set before
-Modrinth (#9), plugin `Sorter` memoization (#10), post-sync GC debounce + diff-based loadout
-switching (#11), the effector test suite (#12–13), and the security hardening (#14–15). The
-completeness pass also surfaced high-value follow-ups (Tier 5): the FOMOD-in-collection hardening,
-the Linux Epic/GOG locator fixes, and the diagnostics observable-eviction leak. See
-`CODE_REVIEW.md` §7 and `CODE_REVIEW_VERIFICATION.md` §3.
+**Tiers 2–5 have since been implemented too** (2026-07-14, same branch) — per-fix details live in
+the individual commit messages, and the roadmap status block in `CODE_REVIEW.md` §7 summarizes.
+Highlights: the fork-owned hash-DB feed is live (`github.com/Jeagermeister/game-hashes`,
+remote updates re-enabled), the `IModSource` seam exists, the Sorter is memoized, post-sync GC is
+coalesced, the FOMOD-in-collection flow is hardened end-to-end, and the #14 concurrency fixes
+(overlay deadlock, OAuth refresh race, atomic `user.reg`, Steam session hang) are in with new
+directed tests.
+
+Everything deliberately deferred — with the reason and what each item needs — is tracked in
+[`CODE_REVIEW_TODO.md`](./CODE_REVIEW_TODO.md).
