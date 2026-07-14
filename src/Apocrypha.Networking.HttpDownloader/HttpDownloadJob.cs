@@ -179,15 +179,23 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
             }
         }
 
-        if (isRangeRequest && response.StatusCode == HttpStatusCode.OK)
+        if (response.StatusCode == HttpStatusCode.OK && _state.TotalBytesDownloaded > Size.Zero)
         {
-            // NOTE(erri120): We asked the server whether it supports range requests, the server responded with yes,
-            // then we do a range request, and suddenly the server changed its mind and says no...
-            Logger.LogWarning("Server `{ServerName}` responded with 200 to a valid range request for download from `{PageUri}`. The download will be reset", response.Headers.Server.ToString(), DownloadPageUri);
+            // A 200 response carries the ENTIRE file, but we have already written some bytes and
+            // seeked the stream to that offset (`fileStream.Position` above). Writing the full body
+            // at a non-zero position would leave the stale prefix in place and silently corrupt the
+            // download. This happens either because the server ignored a valid range request (206
+            // expected, 200 received) or because it does not support ranges at all and we retried
+            // after partial progress. Either way, reset and start from offset 0.
+            if (isRangeRequest)
+                Logger.LogWarning("Server `{ServerName}` responded with 200 to a valid range request for download from `{PageUri}`. The download will be reset", response.Headers.Server.ToString(), DownloadPageUri);
+            else
+                Logger.LogInformation("Server does not support resuming download from `{PageUri}`; restarting from scratch", DownloadPageUri);
 
-            // NOTE(erri120): The only thing we can do here is to reset everything and start from scratch.
             _state.TotalBytesDownloaded = Size.Zero;
             outputStream.Position = 0;
+            // Truncate the stale prefix; a known content length re-preallocates, otherwise drop to 0.
+            outputStream.SetLength(_state.ContentLength.HasValue ? (long)_state.ContentLength.Value.Value : 0);
             _state.AcceptRanges = false;
         }
 
