@@ -11,10 +11,26 @@
     xmlns:reactiveUi="http://reactiveui.net"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
-    xmlns:loadoutBadge="clr-namespace:Apocrypha.App.UI.Controls.LoadoutBadge">
+    xmlns:loadoutBadge="clr-namespace:Apocrypha.App.UI.Controls.LoadoutBadge"
+    xmlns:loadoutFlyout="clr-namespace:Apocrypha.App.UI.Controls.Spine.Buttons.Image.LoadoutFlyout"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources">
     <Design.DataContext>
         <buttons:ImageButtonDesignViewModel />
     </Design.DataContext>
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="LoadoutFlyoutItemTemplate" DataType="{x:Type loadoutFlyout:ILoadoutFlyoutItemViewModel}">
+            <Button x:Name="LoadoutFlyoutItemButton"
+                    Command="{CompiledBinding VisitLoadoutCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch">
+                <Grid ColumnDefinitions="Auto,*">
+                    <loadoutBadge:LoadoutBadge Grid.Column="0" DataContext="{CompiledBinding LoadoutBadgeViewModel}" />
+                    <TextBlock Grid.Column="1" Text="{CompiledBinding Name}" VerticalAlignment="Center" />
+                </Grid>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
 
     <Button Classes="ImageButton"
             x:Name="Button"
@@ -28,6 +44,28 @@
                 <loadoutBadge:LoadoutBadge x:Name="LoadoutBadge" />
                 <Rectangle x:Name="Mask" />
                 <Border x:Name="DecorationBorder" />
+
+                <!-- Loadout switcher: only visible/interactive when the game has more than one loadout -->
+                <Button x:Name="LoadoutFlyoutChevron"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                    <Button.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop">
+                            <StackPanel x:Name="LoadoutFlyoutContentStack" MinWidth="180" Spacing="4">
+                                <ItemsControl x:Name="LoadoutFlyoutItemsControl"
+                                              ItemTemplate="{StaticResource LoadoutFlyoutItemTemplate}" />
+                                <Separator x:Name="LoadoutFlyoutSeparator" />
+                                <Button x:Name="CreateNewLoadoutButton"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.Add}" />
+                                        <TextBlock Text="{x:Static resources:Language.CreateNewLoadoutCarViewTexBlock}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.ChevronDown}" Width="12" Height="12" />
+                </Button>
             </Grid>
         </Border>
     </Button>
