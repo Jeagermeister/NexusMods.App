@@ -25,6 +25,15 @@ public class PluginsFile : IIntrinsicFile
 
     private record struct Metadata(RelativePath FileName, ModKey ModKey, Hash Hash, IMod Mod);
 
+    // A deterministic tie-break so plugins with no ordering rule between them (i.e. within the same
+    // dependency tier) are emitted in a stable order across applies. Without it the Sorter falls back
+    // to hash-based dictionary iteration order, which depends on per-process-randomized string hashes,
+    // so an unchanged load-out produced a different plugins.txt on every launch — silently reshuffling
+    // record-conflict winners. This only breaks ties; the ESM/ESL/ESP and master-reference rules still
+    // dominate the ordering.
+    private static readonly IComparer<ModKey> ModKeyTieBreak =
+        Comparer<ModKey>.Create(static (a, b) => string.Compare(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase));
+
     public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, ISorter sorter)
     {
         _game = game;
@@ -47,7 +56,7 @@ public class PluginsFile : IIntrinsicFile
         if (plugins.Count == 0)
             return;
         
-        var sorted = _sorter.Sort(plugins.Values.ToList(), IdSelector, plugin => RuleCreator(plugin, plugins))
+        var sorted = _sorter.Sort(plugins.Values.ToList(), IdSelector, plugin => RuleCreator(plugin, plugins), ModKeyTieBreak)
             .ToList();
         _logger.LogDebug("Sorted {Count} plugin files", sorted.Count);
         
