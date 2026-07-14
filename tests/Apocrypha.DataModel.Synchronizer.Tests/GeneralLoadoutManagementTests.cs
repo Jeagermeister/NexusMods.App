@@ -11,7 +11,9 @@ using Apocrypha.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using NexusMods.Paths;
+using Apocrypha.Sdk.FileStore;
 using Apocrypha.Sdk.Games;
+using Apocrypha.Sdk.IO;
 using Apocrypha.Sdk.Loadouts;
 using OneOf;
 using Xunit.Abstractions;
@@ -338,6 +340,95 @@ public class GeneralLoadoutManagementTests(ITestOutputHelper helper) : ACyberpun
             """, [loadoutA, loadoutB]);
         
         await Verify(sb.ToString(), extension: "md");
+    }
+
+    /// <summary>
+    /// Regression test for diff-based loadout switching: a file identical in both loadouts (same
+    /// path, same content) must not be deleted and re-extracted when switching between them. The
+    /// old implementation reset to vanilla before applying the new loadout, so every file the new
+    /// loadout wanted looked brand new regardless of whether it already matched what was on disk.
+    /// Verified via the file's actual OS-level write time, which only changes on a real rewrite.
+    /// </summary>
+    [Fact]
+    public async Task SwitchingLoadoutsDoesNotRewriteSharedFiles()
+    {
+        var loadoutA = await CreateLoadout();
+        var loadoutB = await CreateLoadout();
+
+        var sharedPath = new GamePath(LocationId.Game, "bin/sharedMod.txt");
+        const string sharedContent = "Shared content, identical in both loadouts";
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var groupA = AddEmptyGroup(tx, loadoutA, "SharedMod");
+            AddFile(tx, loadoutA, groupA, sharedPath, sharedContent, out var hash, out var size);
+            await FileStore.BackupFiles([
+                new ArchivedFileEntry(new MemoryStreamFactory(sharedPath.Path, new MemoryStream(Encoding.UTF8.GetBytes(sharedContent))), hash, size),
+            ]);
+            await tx.Commit();
+        }
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var groupB = AddEmptyGroup(tx, loadoutB, "SharedMod");
+            // Same content -> same deterministic hash as loadout A's file; the file store already
+            // has it backed up from above, so no second BackupFiles call is needed.
+            AddFile(tx, loadoutB, groupB, sharedPath, sharedContent, out _, out _);
+            await tx.Commit();
+        }
+
+        loadoutA = await Synchronizer.Synchronize(loadoutA);
+
+        var resolvedPath = GameInstallation.Locations.ToAbsolutePath(sharedPath);
+        resolvedPath.FileExists.Should().BeTrue();
+        var writeTimeBeforeSwitch = resolvedPath.FileInfo.LastWriteTimeUtc;
+
+        loadoutB = await Synchronizer.Synchronize(loadoutB);
+
+        resolvedPath.FileExists.Should().BeTrue("the file is shared between both loadouts and should remain after switching");
+        resolvedPath.FileInfo.LastWriteTimeUtc.Should().Be(writeTimeBeforeSwitch,
+            "a file identical across both loadouts should not be deleted and re-extracted on switch");
+    }
+
+    /// <summary>
+    /// Companion to <see cref="SwitchingLoadoutsDoesNotRewriteSharedFiles"/>: a file present at the
+    /// same path in both loadouts but with different content must still be correctly overwritten
+    /// on switch, proving the diff-based path doesn't skip real changes along with the identical ones.
+    /// </summary>
+    [Fact]
+    public async Task SwitchingLoadoutsOverwritesFilesThatDiffer()
+    {
+        var loadoutA = await CreateLoadout();
+        var loadoutB = await CreateLoadout();
+
+        var path = new GamePath(LocationId.Game, "bin/differingMod.txt");
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var groupA = AddEmptyGroup(tx, loadoutA, "ModA");
+            AddFile(tx, loadoutA, groupA, path, "Content from A", out var hashA, out var sizeA);
+            await FileStore.BackupFiles([
+                new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(Encoding.UTF8.GetBytes("Content from A"))), hashA, sizeA),
+            ]);
+            await tx.Commit();
+        }
+
+        using (var tx = Connection.BeginTransaction())
+        {
+            var groupB = AddEmptyGroup(tx, loadoutB, "ModB");
+            AddFile(tx, loadoutB, groupB, path, "Content from B", out var hashB, out var sizeB);
+            await FileStore.BackupFiles([
+                new ArchivedFileEntry(new MemoryStreamFactory(path.Path, new MemoryStream(Encoding.UTF8.GetBytes("Content from B"))), hashB, sizeB),
+            ]);
+            await tx.Commit();
+        }
+
+        loadoutA = await Synchronizer.Synchronize(loadoutA);
+        var resolvedPath = GameInstallation.Locations.ToAbsolutePath(path);
+        (await resolvedPath.ReadAllTextAsync()).Should().Be("Content from A");
+
+        loadoutB = await Synchronizer.Synchronize(loadoutB);
+        (await resolvedPath.ReadAllTextAsync()).Should().Be("Content from B");
     }
 
     [Fact]
