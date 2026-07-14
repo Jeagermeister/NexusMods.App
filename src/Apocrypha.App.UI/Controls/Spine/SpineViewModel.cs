@@ -10,12 +10,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Games;
 using Apocrypha.Abstractions.Loadouts;
+using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.App.UI.Controls.LoadoutBadge;
+using Apocrypha.App.UI.Extensions;
 using Apocrypha.App.UI.Controls.Navigation;
 using Apocrypha.App.UI.Controls.Spine.Buttons;
 using Apocrypha.App.UI.Controls.Spine.Buttons.Download;
 using Apocrypha.App.UI.Controls.Spine.Buttons.Icon;
 using Apocrypha.App.UI.Controls.Spine.Buttons.Image;
+using Apocrypha.App.UI.Controls.Spine.Buttons.Image.LoadoutFlyout;
 using Apocrypha.App.UI.LeftMenu;
 using Apocrypha.App.UI.Pages.Downloads;
 using Apocrypha.App.UI.Pages.LoadoutPage;
@@ -25,6 +28,7 @@ using Apocrypha.App.UI.Windows;
 using Apocrypha.App.UI.WorkspaceAttachments;
 using Apocrypha.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.Query;
 using Apocrypha.Sdk.Loadouts;
 using Apocrypha.Sdk.Games;
 using Apocrypha.UI.Sdk;
@@ -42,7 +46,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
     private readonly ISynchronizerService _syncService;
 
     private ReadOnlyObservableCollection<IImageButtonViewModel> _loadoutSpineItems = new([]);
-    private static readonly LoadoutSpineEntriesComparer LoadoutComparerInstance = new();
+    private static readonly GameSpineEntriesComparer GameComparerInstance = new();
     public ReadOnlyObservableCollection<IImageButtonViewModel> LoadoutSpineItems => _loadoutSpineItems;
     public IIconButtonViewModel Home { get; }
     public IIconButtonViewModel AddLoadout { get; }
@@ -54,6 +58,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
     private Dictionary<WorkspaceId, ILeftMenuViewModel> _leftMenus = new([]);
     private readonly IConnection _conn;
     private readonly Apocrypha.Sdk.Games.IGameRegistry _gameRegistryForFilter;
+    private readonly ILoadoutManager _loadoutManager;
     [Reactive] public ILeftMenuViewModel? LeftMenuViewModel { get; private set; }
 
     public SpineViewModel(
@@ -72,6 +77,7 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         _conn = conn;
         _gameRegistryForFilter = serviceProvider.GetRequiredService<Apocrypha.Sdk.Games.IGameRegistry>();
         _syncService = serviceProvider.GetRequiredService<ISynchronizerService>();
+        _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
 
         // Setup the special spine items
         Home = homeButtonViewModel;
@@ -97,40 +103,23 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
             {
                 var loadouts = Loadout.ObserveAll(_conn);
 
-                loadouts
+                var visibleLoadouts = loadouts
                     // Orphaned loadouts (game uninstalled/moved) must not fault the spine pipeline
                     .Filter(loadout => loadout.IsVisible() && _gameRegistryForFilter.TryGetGameInstallation(loadout, out _))
-                    .TransformAsync(async loadout =>
-                        {
-                            await using var iconStream = await loadout.InstallationInstance.Game.IconImage.GetStreamAsync();
+                    // Rebuild a game's spine button whenever one of its loadouts' own attributes
+                    // change (e.g. LastAppliedDateTime on apply) so ordering/click-target stay current.
+                    .AutoRefreshOnObservable(loadout => _conn.ObserveDatoms(loadout.Id).Skip(1));
 
-                            var vm = serviceProvider.GetRequiredService<IImageButtonViewModel>();
-                            vm.Name = loadout.InstallationInstance.Game.DisplayName + " - " + loadout.Name;
-                            vm.Image = LoadImageFromStream(iconStream);
-                            vm.LoadoutBadgeViewModel = new LoadoutBadgeViewModel(_conn, _syncService, hideOnSingleLoadout: true);
-                            vm.LoadoutBadgeViewModel.LoadoutValue = loadout;
-                            vm.WorkspaceContext = new LoadoutContext { LoadoutId = loadout.LoadoutId };
-                            vm.Click = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(loadout.LoadoutId));
-                            vm.IsActive = false;
-
-                            if (workspaceController.ActiveWorkspace.Context is LoadoutContext activeLoadoutContext &&
-                                activeLoadoutContext.LoadoutId == loadout.LoadoutId)
-                            {
-                                SetActiveItem(vm);
-                            }
-                            
-                            return vm;
-                        }
-                    )
+                visibleLoadouts
+                    .Group(loadout => loadout.InstallationId)
+                    .TransformAsync(group => BuildGameSpineButton(group, workspaceController, disposables))
                     .OnUI()
-                    .OnItemRemoved(loadoutSpineItem =>
-                        {
-                            if (loadoutSpineItem.WorkspaceContext is LoadoutContext loadoutContext)
-                                workspaceController.UnregisterWorkspaceByContext<LoadoutContext>(context => loadoutContext == context);
-                        })
-                .SortAndBind(out _loadoutSpineItems, LoadoutComparerInstance)
-                .SubscribeWithErrorLogging()
-                .DisposeWith(disposables);
+                    // ActivityTimestamp is updated in-place (see ApplyLoadoutGroupMembers) rather
+                    // than via a fresh changeset event, so re-sorting needs an explicit nudge.
+                    .AutoRefresh(vm => vm.ActivityTimestamp)
+                    .SortAndBind(out _loadoutSpineItems, GameComparerInstance)
+                    .SubscribeWithErrorLogging()
+                    .DisposeWith(disposables);
 
             // Create Left Menus for each workspace on demand
             workspaceController.AllWorkspaces
@@ -166,11 +155,15 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
                 .SubscribeWithErrorLogging()
                 .DisposeWith(disposables);
 
-            // Navigate away from the Loadout workspace if the Loadout is removed
+            // Unregister a removed loadout's own workspace (independent of whether its game's
+            // spine button survives — the button persists as long as the game has another
+            // loadout) and navigate away if it was the active workspace.
             loadouts
                 .OnUI()
                 .OnItemRemoved(loadout =>
                     {
+                        workspaceController.UnregisterWorkspaceByContext<LoadoutContext>(context => context.LoadoutId == loadout.LoadoutId);
+
                         if (workspaceController.ActiveWorkspace.Context is LoadoutContext activeLoadoutContext &&
                             activeLoadoutContext.LoadoutId == loadout.LoadoutId)
                         {
@@ -223,6 +216,102 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
 
         itemToActivate.IsActive = true;
         _activeSpineItem = itemToActivate;
+    }
+
+    /// <summary>
+    /// Builds one spine button per managed game (layout epic PR L4). All group members share the
+    /// same <see cref="Loadout.Installation"/>, so icon/game identity come from any member; the
+    /// button opens the group's most recently active loadout on click, and — when the game has
+    /// more than one loadout — exposes them all (+ "New loadout") via a flyout. The icon is loaded
+    /// once (it never changes for a given installation), but the rest of the button's state is
+    /// re-applied on every membership/refresh signal from the group's live cache — <c>Group()</c>
+    /// re-emitting the outer group on membership changes can't be relied on to re-trigger this
+    /// method, so the reactivity has to live inside it.
+    /// </summary>
+    private async Task<IImageButtonViewModel> BuildGameSpineButton(
+        IGroup<Loadout.ReadOnly, EntityId, GameInstallMetadataId> group,
+        IWorkspaceController workspaceController,
+        CompositeDisposable disposables)
+    {
+        var anyLoadout = group.Cache.Items.First();
+        var installation = anyLoadout.InstallationInstance;
+
+        await using var iconStream = await installation.Game.IconImage.GetStreamAsync();
+
+        var vm = _serviceProvider.GetRequiredService<IImageButtonViewModel>();
+        vm.Image = LoadImageFromStream(iconStream);
+        vm.IsActive = false;
+
+        group.Cache.Connect()
+            .ToCollection()
+            .OnUI()
+            .SubscribeWithErrorLogging(members => ApplyLoadoutGroupMembers(vm, members.ToArray(), installation, workspaceController))
+            .DisposeWith(disposables);
+
+        return vm;
+    }
+
+    private void ApplyLoadoutGroupMembers(
+        IImageButtonViewModel vm,
+        Loadout.ReadOnly[] members,
+        GameInstallation installation,
+        IWorkspaceController workspaceController)
+    {
+        // Empty means the group is being torn down (game unmanaged) — the outer pipeline's
+        // OnItemRemoved-equivalent (SortAndBind reacting to the group's removal) drops this
+        // button shortly; nothing useful to apply in the meantime.
+        if (members.Length == 0) return;
+
+        var primaryLoadout = members.OrderByDescending(EffectiveActivity).First();
+
+        vm.Name = installation.Game.DisplayName + " - " + primaryLoadout.Name;
+        vm.LoadoutBadgeViewModel ??= new LoadoutBadgeViewModel(_conn, _syncService, hideOnSingleLoadout: true);
+        vm.LoadoutBadgeViewModel.LoadoutValue = primaryLoadout;
+        vm.WorkspaceContext = new LoadoutContext { LoadoutId = primaryLoadout.LoadoutId };
+        vm.Click = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(primaryLoadout.LoadoutId));
+        vm.ActivityTimestamp = EffectiveActivity(primaryLoadout);
+        vm.HasMultipleLoadouts = members.Length > 1;
+
+        if (members.Length > 1)
+        {
+            var flyoutItems = new ObservableCollection<ILoadoutFlyoutItemViewModel>(
+                members
+                    .OrderBy(loadout => loadout.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(BuildFlyoutItem)
+            );
+            vm.Loadouts = new ReadOnlyObservableCollection<ILoadoutFlyoutItemViewModel>(flyoutItems);
+            vm.CreateNewLoadoutCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                await _loadoutManager.CreateLoadout(installation);
+            });
+        }
+        else
+        {
+            vm.Loadouts = null;
+        }
+
+        if (workspaceController.ActiveWorkspace.Context is LoadoutContext activeLoadoutContext &&
+            members.Any(loadout => loadout.LoadoutId == activeLoadoutContext.LoadoutId))
+        {
+            SetActiveItem(vm);
+        }
+    }
+
+    private ILoadoutFlyoutItemViewModel BuildFlyoutItem(Loadout.ReadOnly loadout)
+    {
+        return new LoadoutFlyoutItemViewModel(loadout, _serviceProvider)
+        {
+            VisitLoadoutCommand = ReactiveCommand.Create(() => ChangeToLoadoutWorkspace(loadout.LoadoutId)),
+        };
+    }
+
+    /// <summary>
+    /// A loadout's most recent activity: when it was last applied, falling back to when it was
+    /// created for a loadout that's never been applied.
+    /// </summary>
+    private static DateTimeOffset EffectiveActivity(Loadout.ReadOnly loadout)
+    {
+        return loadout.LastAppliedDateTime.TryGet(out var lastApplied) ? lastApplied : loadout.GetCreatedAt();
     }
 
     private Bitmap LoadImageFromStream(Stream iconStream)
@@ -300,20 +389,15 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
         );
     }
 
-    private class LoadoutSpineEntriesComparer : IComparer<IImageButtonViewModel>
+    private class GameSpineEntriesComparer : IComparer<IImageButtonViewModel>
     {
         public int Compare(IImageButtonViewModel? x, IImageButtonViewModel? y)
         {
-            var xloadout = x?.LoadoutBadgeViewModel?.LoadoutValue;
-            var yloadout = y?.LoadoutBadgeViewModel?.LoadoutValue;
+            if (x == null) return y == null ? 0 : -1;
+            if (y == null) return 1;
 
-            if (xloadout == null) return yloadout == null ? 0 : -1;
-            if (yloadout == null) return 1;
-
-            if (xloadout.Value.Value.Installation.Path != yloadout.Value.Value.Installation.Path)
-                return DateTimeOffset.Compare(xloadout.Value.Value.Installation.GetCreatedAt(), yloadout.Value.Value.Installation.GetCreatedAt());
-
-            return DateTimeOffset.Compare(xloadout.Value.Value.GetCreatedAt(), yloadout.Value.Value.GetCreatedAt());
+            // Most recently active game first ("jump back in" ordering).
+            return DateTimeOffset.Compare(y.ActivityTimestamp, x.ActivityTimestamp);
         }
     }
 }
