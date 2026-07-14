@@ -403,11 +403,11 @@ validation/auto-sort assist over a user-editable order.
 
 Ordered by (impact × reachability) ÷ effort. The first tier is small, high-confidence fixes.
 
-> **✅ Status (2026-07-14): Tier 0 and all of Tier 1 are implemented** on branch
+> **✅ Status (2026-07-14): Tier 0 and all of Tier 1 are implemented and locally verified** on branch
 > `claude/repo-improvements-analysis-ufkkla` — see [`CODE_REVIEW_FIXES.md`](./CODE_REVIEW_FIXES.md)
-> for the per-fix write-up and local verification steps. Not yet compiled/tested (the authoring
-> environment had no .NET SDK). One exception: migration `_0009` (#6) is fixed but deliberately left
-> **unregistered** pending a legacy-DB test. Tier 2+ below is still open.
+> for the per-fix write-up. The full solution now builds with 0 errors and the FOMOD, Synchronizer,
+> and HttpDownloader suites are green on a local .NET 9 SDK. One exception: migration `_0009` (#6) is
+> fixed but deliberately left **unregistered** pending a legacy-DB test. Tier 2+ below is still open.
 
 ### Tier 0 — security (added by the completeness pass; do before the rest) — ✅ implemented
 
