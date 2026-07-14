@@ -25,6 +25,12 @@ namespace Apocrypha.Games.FOMOD;
 public class FomodXmlInstaller : ALibraryArchiveInstaller
 {
     private readonly ICoreDelegates _delegates;
+
+    /// <summary>
+    /// Serializes FOMOD script executions: <see cref="_delegates"/> is a process-wide singleton
+    /// that must be mutated per-install (see the delegate gate note in ExecuteAsync).
+    /// </summary>
+    private static readonly SemaphoreSlim DelegatesGate = new(initialCount: 1, maxCount: 1);
     private readonly XmlScriptType _scriptType = new();
     private readonly ILogger<FomodXmlInstaller> _logger;
     private readonly GamePath _fomodInstallationPath;
@@ -100,32 +106,51 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         // NOTE(erri120): We're loading the script manually, otherwise the FOMOD library will load the script from the file system
         await mod.InitializeWithoutLoadingScript();
 
-        // NOTE(erri120): The FOMOD library calls us, so this is the only way we can pass data along.
-        var installerDelegates = _delegates as InstallerDelegates;
-        if (installerDelegates is not null)
-        {
-            if (options is not null)
-            {
-                // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
-                // something different: we will create a new guided installer that will simply emit the user choices based on the
-                // provided options.
-                var installer = new PresetGuidedInstaller(options);
-                installerDelegates.UiDelegates = new UiDelegates(ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(), installer);
-            }
-
-            installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
-        }
-
         var rawScript = await LoadScript(xmlFile.AsLibraryFile().Hash, cancellationToken);
 
-        var executor = _scriptType.CreateExecutor(mod, _delegates);
-        var installScript = _scriptType.LoadScript(rawScript, true);
-        FixScript(installScript, fomodArchiveFiles, _logger);
+        // DELEGATE GATE (CODE_REVIEW.md §7 #16): _delegates is a process singleton the FOMOD
+        // library calls back into, and collection installs run mods through Parallel.ForEachAsync.
+        // Without serialization, mod A's executor could observe mod B's preset installer or archive
+        // file list. The gate covers mutation through execution, and the original UiDelegates is
+        // RESTORED afterwards so a later interactive install never reuses stale preset state.
+        IList<Instruction> instructions;
+        await DelegatesGate.WaitAsync(cancellationToken);
+        try
+        {
+            var installerDelegates = _delegates as InstallerDelegates;
+            var originalUiDelegates = installerDelegates?.UiDelegates;
+            try
+            {
+                if (installerDelegates is not null)
+                {
+                    if (options is not null)
+                    {
+                        // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
+                        // something different: we will create a new guided installer that will simply emit the user choices based on the
+                        // provided options.
+                        var installer = new PresetGuidedInstaller(options, ServiceProvider.GetRequiredService<ILogger<PresetGuidedInstaller>>());
+                        installerDelegates.UiDelegates = new UiDelegates(ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(), installer);
+                    }
 
-        var instructions = await executor.Execute(installScript, "", null);
+                    installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+                }
 
-        // NOTE(err120): Reset the previously provided data
-        if (installerDelegates is not null) installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+                var executor = _scriptType.CreateExecutor(mod, _delegates);
+                var installScript = _scriptType.LoadScript(rawScript, true);
+                FixScript(installScript, fomodArchiveFiles, _logger);
+
+                instructions = await executor.Execute(installScript, "", null);
+            }
+            finally
+            {
+                if (installerDelegates is not null && originalUiDelegates is not null)
+                    installerDelegates.UiDelegates = originalUiDelegates;
+            }
+        }
+        finally
+        {
+            DelegatesGate.Release();
+        }
 
         var errors = instructions.Where(instruction => instruction.type == "error").ToArray();
         if (errors.Length != 0) throw new Exception(string.Join("; ", errors.Select(err => err.source)));

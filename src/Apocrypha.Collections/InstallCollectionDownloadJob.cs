@@ -143,6 +143,18 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             return (await InstallFomodWithPredefinedChoices(context.CancellationToken), patchedFiles);
         }
 
+        // A FOMOD whose choices were never recorded by the curator must NOT fall through to the
+        // game's installer chain: that pops the INTERACTIVE guided installer mid-unattended
+        // collection install (CODE_REVIEW.md §7 #16). Route it through the preset path with an
+        // empty preset instead — PresetGuidedInstaller degrades to the installer's own defaults
+        // (Required + PreSelected options), keeping the install hands-off.
+        if (libraryFile.TryGetAsLibraryArchive(out var maybeFomodArchive)
+            && maybeFomodArchive.Children.Any(static c => c.Path.EndsWith(FomodConstants.XmlConfigName)))
+        {
+            Logger.LogInformation("Collection mod {Name} is a FOMOD without recorded choices; installing non-interactively with installer defaults", Item.Name);
+            return (await InstallFomodWithPredefinedChoices(context.CancellationToken), patchedFiles);
+        }
+
         var result = await LoadoutManager.InstallItem(
             libraryFile.AsLibraryItem(),
             TargetLoadout,
@@ -264,7 +276,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         var loadout = new Loadout.ReadOnly(Connection.Db, TargetLoadout);
 
-        var options = CollectionMod.Choices!.Options;
+        // Choices may legitimately be null here (the defaults route above): an empty preset makes
+        // PresetGuidedInstaller emit the installer's default selections for every step.
+        var options = CollectionMod.Choices?.Options ?? [];
         await fomodInstaller.ExecuteAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, cancellationToken: cancellationToken);
 
         return loadoutItemGroup;
