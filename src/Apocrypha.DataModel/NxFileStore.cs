@@ -175,7 +175,6 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         // While this is also creating an archive, we don't take the write lock, as the archive new and thus not known yet
         using var _ = _lock.ReadLock();
 
-        var builder = new NxPackerBuilder();
         Dictionary<Hash, (ArchivedFileEntry, Stream)> filesToBackup;
 
         enumerable = enumerable.DistinctBy(x => x.Hash);
@@ -193,39 +192,53 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
 
         if (filesToBackup.Count == 0) return;
 
-        foreach (var kv in filesToBackup)
+        // NxPackerBuilder keeps every source stream open until Build() reads it, so packing all
+        // files into a single archive would open one file descriptor per file simultaneously — a
+        // many-file mod or an unknown-version game (100k+ files) blows past the Linux 1024-fd limit
+        // and crashes mid-manage. Pack in bounded batches instead (each its own .nx archive; the
+        // store already maps each hash to its containing archive, so multiple archives are fine), and
+        // dispose each batch's streams in a finally so a partial failure can't leak descriptors. A
+        // partial failure is also safe to retry: the dedup check above skips already-backed-up files.
+        const int maxFilesPerArchive = 512;
+
+        foreach (var batch in filesToBackup.Values.Select(static v => v.Item1).Chunk(maxFilesPerArchive))
         {
-            var (hash, (fileToBackup, _)) = kv;
-
-            var stream = await fileToBackup.StreamFactory.GetStreamAsync();
-            filesToBackup[hash] = (fileToBackup, stream);
-
-            builder.AddFile(stream, new AddFileParams
+            var builder = new NxPackerBuilder();
+            var backedUp = new Dictionary<Hash, (ArchivedFileEntry, Stream)>(batch.Length);
+            try
             {
-                RelativePath = fileToBackup.Hash.ToHex(),
-            });
+                foreach (var fileToBackup in batch)
+                {
+                    var stream = await fileToBackup.StreamFactory.GetStreamAsync();
+                    backedUp[fileToBackup.Hash] = (fileToBackup, stream);
+
+                    builder.AddFile(stream, new AddFileParams
+                    {
+                        RelativePath = fileToBackup.Hash.ToHex(),
+                    });
+                }
+
+                _logger.LogDebug("Backing up {Count} files of {Size} in size", backedUp.Count, backedUp.Sum(kv => kv.Value.Item1.Size));
+                var id = Guid.NewGuid().ToString();
+                var outputPath = _archiveLocations.First().Combine(id).AppendExtension(KnownExtensions.Tmp);
+
+                await using (var outputStream = outputPath.Create())
+                {
+                    builder.WithOutput(outputStream);
+                    builder.Build();
+                }
+
+                var finalPath = outputPath.ReplaceExtension(KnownExtensions.Nx);
+                await outputPath.MoveToAsync(finalPath, token: token);
+
+                AddArchiveToCache(finalPath, backedUp);
+            }
+            finally
+            {
+                foreach (var (_, stream) in backedUp.Values)
+                    await stream.DisposeAsync();
+            }
         }
-
-        _logger.LogDebug("Backing up {Count} files of {Size} in size", filesToBackup.Count, filesToBackup.Sum(kv => kv.Value.Item1.Size));
-        var guid = Guid.NewGuid();
-        var id = guid.ToString();
-        var outputPath = _archiveLocations.First().Combine(id).AppendExtension(KnownExtensions.Tmp);
-
-        await using (var outputStream = outputPath.Create())
-        {
-            builder.WithOutput(outputStream);
-            builder.Build();
-        }
-
-        foreach (var kv in filesToBackup)
-        {
-            await kv.Value.Item2.DisposeAsync();
-        }
-
-        var finalPath = outputPath.ReplaceExtension(KnownExtensions.Nx);
-        await outputPath.MoveToAsync(finalPath, token: token);
-
-        AddArchiveToCache(finalPath, filesToBackup);
     }
 
     /// <inheritdoc />
