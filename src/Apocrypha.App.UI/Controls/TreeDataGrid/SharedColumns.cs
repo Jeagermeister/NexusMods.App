@@ -21,6 +21,12 @@ public static class SharedColumns
         public static readonly ComponentKey NameComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(NameComponent));
         public static readonly ComponentKey ImageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(ImageComponent));
 
+        /// <summary>
+        /// Small badge overlaid on the thumbnail showing which mod source (Nexus, Thunderstore,
+        /// mod.io, ...) the row came from.
+        /// </summary>
+        public static readonly ComponentKey SourceIconComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_Source_" + nameof(UnifiedIconComponent));
+
         public static string GetColumnHeader() => "Name";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }

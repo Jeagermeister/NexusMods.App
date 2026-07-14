@@ -1,19 +1,24 @@
 using System.Reactive.Linq;
+using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Aggregation;
+using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Abstractions.Thunderstore.Models;
 using Apocrypha.App.UI.Controls;
+using Apocrypha.App.UI.Extensions;
 using Apocrypha.App.UI.Pages.LibraryPage;
+using Apocrypha.Sdk.Resources;
+using Apocrypha.UI.Sdk.Icons;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Query;
+using NexusMods.Paths;
 using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Library;
 using Apocrypha.Sdk.Loadouts;
-using UIObservableExtensions = Apocrypha.App.UI.Extensions.ObservableExtensions;
 
 namespace Apocrypha.App.UI.Pages;
 
@@ -27,11 +32,13 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
+    private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _iconLoader;
 
     public ThunderstoreDataProvider(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        _iconLoader = new Lazy<IResourceLoader<EntityId, Bitmap>>(() => ImagePipelines.GetThunderstoreIconPipeline(serviceProvider));
     }
 
     /// <summary>
@@ -61,15 +68,23 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
         return files.ToArray();
     }
 
+    /// <summary>
+    /// One row per package, rolled up across downloaded versions (layout epic PR L3) — grouping
+    /// the already-scoped/filtered item stream by package identity, rather than re-deriving the
+    /// community filter top-down, keeps <see cref="ObserveGameLibraryItems"/>'s scoping/backfill
+    /// logic untouched.
+    /// </summary>
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveGameLibraryItems(libraryFilter)
-            .Transform(item => ToLibraryItemModel(libraryFilter, item));
+            .Group(item => item.Version.PackageId.Value)
+            .Transform(group => ToPackageLibraryItemModel(group, libraryFilter));
     }
 
     public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveGameLibraryItems(libraryFilter)
+            .Group(item => item.Version.PackageId.Value)
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }
@@ -99,39 +114,96 @@ internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProv
             });
     }
 
-    private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, ThunderstoreLibraryItem.ReadOnly item)
+    private CompositeItemModel<EntityId> ToPackageLibraryItemModel(IGroup<ThunderstoreLibraryItem.ReadOnly, EntityId, EntityId> group, LibraryFilter libraryFilter)
     {
-        var linkedLoadoutItemsObservable = LibraryDataProviderHelper
-            .GetLinkedLoadoutItems(_connection, libraryFilter, item.Id)
-            .RefCount();
+        var package = ThunderstorePackageMetadata.Load(_connection.Db, group.Key);
+        var libraryItems = group.Cache.Connect().RefCount();
 
-        var childrenObservable = UIObservableExtensions.ReturnFactory(() =>
-        {
-            var itemModel = new CompositeItemModel<EntityId>(item.Id);
-            SetupLibraryItemModel(itemModel, item, linkedLoadoutItemsObservable);
+        var linkedLoadoutItemsObservable = libraryItems.MergeManyChangeSets(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id));
 
-            return new ChangeSet<CompositeItemModel<EntityId>, EntityId>([
-                new Change<CompositeItemModel<EntityId>, EntityId>(
-                    reason: ChangeReason.Add,
-                    key: item.Id,
-                    current: itemModel
-                )]
-            );
-        });
+        var hasChildrenObservable = libraryItems.IsNotEmpty();
+        var childrenObservable = libraryItems.Transform(item => ToVersionLibraryItemModel(libraryFilter, item));
 
-        var hasChildrenObservable = childrenObservable.IsNotEmpty();
-
-        var parentItemModel = new CompositeItemModel<EntityId>(item.Id)
+        var parentItemModel = new CompositeItemModel<EntityId>(group.Key)
         {
             HasChildrenObservable = hasChildrenObservable,
             ChildrenObservable = childrenObservable,
         };
 
-        SetupLibraryItemModel(parentItemModel, item, linkedLoadoutItemsObservable);
+        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: package.FullName));
+        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_iconLoader.Value, group.Key, initialValue: ImagePipelines.ModPageThumbnailFallback));
+        parentItemModel.Add(SharedColumns.Name.SourceIconComponentKey, new UnifiedIconComponent(IconValues.Thunderstore));
 
-        // TODO: load the real package icon (ThunderstorePackageMetadata.IconUri) via a resource pipeline
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
+        // Size: sum of downloaded versions
+        var sizeObservable = libraryItems
+            .TransformImmutable(static item => LibraryFile.Size.GetOptional(item).ValueOr(() => Size.Zero))
+            .ForAggregation()
+            .Sum(static size => (long)size.Value)
+            .Select(static size => Size.FromLong(size));
+
+        parentItemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(
+            initialValue: Size.Zero,
+            valueObservable: sizeObservable
+        ));
+
+        // Downloaded date: most recent downloaded version's date
+        var downloadedDateObservable = libraryItems
+            .TransformImmutable(static item => item.GetCreatedAt())
+            .QueryWhenChanged(query => query.Items.OptionalMaxBy(item => item).ValueOr(DateTimeOffset.MinValue));
+
+        parentItemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(
+            initialValue: package.GetCreatedAt(),
+            valueObservable: downloadedDateObservable
+        ));
+
+        // Version: the most recently published downloaded version (UploadedAt, not download date)
+        var currentVersionObservable = libraryItems
+            .TransformImmutable(static item => (item.Version.UploadedAt, item.Version.VersionNumber))
+            .QueryWhenChanged(static query => query.Items
+                .OptionalMaxBy(static tuple => tuple.UploadedAt)
+                .Convert(static tuple => tuple.VersionNumber)
+                .ValueOr(string.Empty));
+
+        parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(
+            initialValue: string.Empty,
+            valueObservable: currentVersionObservable
+        ));
+
+        LibraryDataProviderHelper.AddInstalledDateComponent(parentItemModel, linkedLoadoutItemsObservable);
+        LibraryDataProviderHelper.AddViewChangelogActionComponent(parentItemModel, isEnabled: false);
+        LibraryDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
+        LibraryDataProviderHelper.AddHideUpdatesActionComponent(parentItemModel, isEnabled: false, isVisible: false);
+        LibraryDataProviderHelper.AddRelatedCollectionsComponent(parentItemModel, linkedLoadoutItemsObservable);
+
+        parentItemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(libraryItems.TransformImmutable(static x => x.AsLibraryItem().LibraryItemId)));
+
+        var matchesObservable = libraryItems
+            .TransformOnObservable(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id).IsNotEmpty())
+            .QueryWhenChanged(query =>
+            {
+                var (numInstalled, numTotal) = (0, 0);
+                foreach (var isInstalled in query.Items)
+                {
+                    numInstalled += isInstalled ? 1 : 0;
+                    numTotal++;
+                }
+
+                return new MatchesData(numInstalled, numTotal);
+            });
+        LibraryDataProviderHelper.AddInstallActionComponent(parentItemModel, matchesObservable);
+
         return parentItemModel;
+    }
+
+    private CompositeItemModel<EntityId> ToVersionLibraryItemModel(LibraryFilter libraryFilter, ThunderstoreLibraryItem.ReadOnly item)
+    {
+        var linkedLoadoutItemsObservable = LibraryDataProviderHelper
+            .GetLinkedLoadoutItems(_connection, libraryFilter, item.Id)
+            .RefCount();
+
+        var itemModel = new CompositeItemModel<EntityId>(item.Id);
+        SetupLibraryItemModel(itemModel, item, linkedLoadoutItemsObservable);
+        return itemModel;
     }
 
     private static void SetupLibraryItemModel(

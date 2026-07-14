@@ -2,8 +2,10 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
+using Apocrypha.Abstractions.ModIo.Models;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusModsLibrary.Models;
+using Apocrypha.Abstractions.Thunderstore.Models;
 using Apocrypha.Sdk.Resources;
 using NexusMods.Hashing.xxHash3;
 using Apocrypha.UI.Sdk.Resources;
@@ -21,6 +23,8 @@ public static class ImagePipelines
     private const string CollectionBackgroundImagePipelineKey = nameof(CollectionBackgroundImagePipelineKey);
     private const string UserAvatarPipelineKey = nameof(UserAvatarPipelineKey);
     private const string ModPageThumbnailPipelineKey = nameof(ModPageThumbnailPipelineKey);
+    private const string ThunderstoreIconPipelineKey = nameof(ThunderstoreIconPipelineKey);
+    private const string ModIoIconPipelineKey = nameof(ModIoIconPipelineKey);
     private const string GuidedInstallerRemoteImagePipelineKey = nameof(GuidedInstallerRemoteImagePipelineKey);
     private const string GuidedInstallerFileImagePipelineKey = nameof(GuidedInstallerFileImagePipelineKey);
     private const string MarkdownRendererRemoteImagePipelineKey = nameof(MarkdownRendererRemoteImagePipelineKey);
@@ -70,6 +74,18 @@ public static class ImagePipelines
                     connection: serviceProvider.GetRequiredService<IConnection>()
                 )
             )
+            .AddKeyedSingleton<IResourceLoader<EntityId, Bitmap>>(
+                serviceKey: ThunderstoreIconPipelineKey,
+                implementationFactory: static (serviceProvider, _) => CreateThunderstoreIconPipeline(
+                    connection: serviceProvider.GetRequiredService<IConnection>()
+                )
+            )
+            .AddKeyedSingleton<IResourceLoader<EntityId, Bitmap>>(
+                serviceKey: ModIoIconPipelineKey,
+                implementationFactory: static (serviceProvider, _) => CreateModIoIconPipeline(
+                    connection: serviceProvider.GetRequiredService<IConnection>()
+                )
+            )
             .AddKeyedSingleton<IResourceLoader<Uri, Bitmap>>(
                 serviceKey: GuidedInstallerRemoteImagePipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateGuidedInstallerRemoteImagePipeline(
@@ -112,6 +128,24 @@ public static class ImagePipelines
     public static IResourceLoader<EntityId, Bitmap> GetModPageThumbnailPipeline(IServiceProvider serviceProvider)
     {
         return serviceProvider.GetRequiredKeyedService<IResourceLoader<EntityId, Bitmap>>(serviceKey: ModPageThumbnailPipelineKey);
+    }
+
+    /// <summary>
+    /// Input: ThunderstorePackageMetadataId
+    /// Output: Image (cached)
+    /// </summary>
+    public static IResourceLoader<EntityId, Bitmap> GetThunderstoreIconPipeline(IServiceProvider serviceProvider)
+    {
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<EntityId, Bitmap>>(serviceKey: ThunderstoreIconPipelineKey);
+    }
+
+    /// <summary>
+    /// Input: ModIoModMetadataId
+    /// Output: Image (cached)
+    /// </summary>
+    public static IResourceLoader<EntityId, Bitmap> GetModIoIconPipeline(IServiceProvider serviceProvider)
+    {
+        return serviceProvider.GetRequiredKeyedService<IResourceLoader<EntityId, Bitmap>>(serviceKey: ModIoIconPipelineKey);
     }
 
     public static IResourceLoader<Uri, Bitmap> GetGuidedInstallerRemoteImagePipeline(IServiceProvider serviceProvider)
@@ -227,6 +261,68 @@ public static class ImagePipelines
                 connection: connection,
                 fallbackValue: ModPageThumbnailFallback,
                 attribute: NexusModsModPageMetadata.ThumbnailUri
+            );
+
+        return pipeline;
+    }
+
+    /// <summary>
+    /// Input: ThunderstorePackageMetadataId
+    /// Output: Image (cached)
+    /// </summary>
+    private static IResourceLoader<EntityId, Bitmap> CreateThunderstoreIconPipeline(
+        IConnection connection)
+    {
+        var pipeline = new HttpLoader(new HttpClient())
+            .ChangeIdentifier<ValueTuple<EntityId, Uri>, Uri, byte[]>(static tuple => tuple.Item2)
+            .Decode(decoderType: DecoderType.Skia)
+            .Resize(newSize: new SKSizeI(90, 56))
+            .Encode(encoderType: EncoderType.Qoi)
+            .PersistInDb(
+                connection: connection,
+                referenceAttribute: ThunderstorePackageMetadata.IconResource,
+                identifierToHash: static uri => uri.ToString().xxHash3AsUtf8(),
+                partitionId: PartitionId.User(ImagePartitionId),
+                expiresAfter: TimeSpan.FromDays(14)
+            )
+            .Decode(decoderType: DecoderType.Qoi)
+            .ToAvaloniaBitmap()
+            .UseFallbackValue(ModPageThumbnailFallback)
+            .EntityIdToOptionalIdentifier(
+                connection: connection,
+                fallbackValue: ModPageThumbnailFallback,
+                attribute: ThunderstorePackageMetadata.IconUri
+            );
+
+        return pipeline;
+    }
+
+    /// <summary>
+    /// Input: ModIoModMetadataId
+    /// Output: Image (cached)
+    /// </summary>
+    private static IResourceLoader<EntityId, Bitmap> CreateModIoIconPipeline(
+        IConnection connection)
+    {
+        var pipeline = new HttpLoader(new HttpClient())
+            .ChangeIdentifier<ValueTuple<EntityId, Uri>, Uri, byte[]>(static tuple => tuple.Item2)
+            .Decode(decoderType: DecoderType.Skia)
+            .Resize(newSize: new SKSizeI(90, 56))
+            .Encode(encoderType: EncoderType.Qoi)
+            .PersistInDb(
+                connection: connection,
+                referenceAttribute: ModIoModMetadata.LogoResource,
+                identifierToHash: static uri => uri.ToString().xxHash3AsUtf8(),
+                partitionId: PartitionId.User(ImagePartitionId),
+                expiresAfter: TimeSpan.FromDays(14)
+            )
+            .Decode(decoderType: DecoderType.Qoi)
+            .ToAvaloniaBitmap()
+            .UseFallbackValue(ModPageThumbnailFallback)
+            .EntityIdToOptionalIdentifier(
+                connection: connection,
+                fallbackValue: ModPageThumbnailFallback,
+                attribute: ModIoModMetadata.LogoUri
             );
 
         return pipeline;
