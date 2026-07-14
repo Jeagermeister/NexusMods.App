@@ -34,7 +34,14 @@ public static class Services
 
         HttpMessageHandler handler = new ResilienceHandler(pipeline)
         {
-            InnerHandler = new SocketsHttpHandler(),
+            // Negotiate gzip/deflate/brotli so responses served compressed (e.g. the multi-MB
+            // Thunderstore v1 community index, and all Nexus/GraphQL JSON) are transferred
+            // compressed instead of identity-encoded — a large bandwidth/latency win on the
+            // modpack-resolution path. The handler transparently decompresses the body.
+            InnerHandler = new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.All,
+            },
         };
 
         var client = new HttpClient(handler)
