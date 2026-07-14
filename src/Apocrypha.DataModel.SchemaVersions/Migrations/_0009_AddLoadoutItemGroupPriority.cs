@@ -13,14 +13,21 @@ public class _0009_AddLoadoutItemGroupPriority : ITransactionalMigration
 
     private static EntityId[] Query(IDb db, LoadoutId loadoutId)
     {
+        // All LoadoutItemGroups in this loadout that don't yet have a conflict priority, so we can
+        // backfill one for each. The original referenced a nonexistent `loadouts.ItemGroupEnabledState`
+        // macro; this uses only the generated MDB_* table macros, which are always available at
+        // migration time. A LoadoutItemGroup shares its entity id with its LoadoutItem base, so we
+        // join on Id to read the Loadout reference (a group's own macro doesn't carry it).
         return db.Connection.Query<EntityId>($"""
                                                 SELECT
                                                   item_group.Id
                                                 FROM
-                                                  loadouts.ItemGroupEnabledState ({db}, {loadoutId}) item_group
-                                                  LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY (Db=>{db}) group_priority ON item_group.Id = group_priority.Target
+                                                  MDB_LOADOUTITEMGROUP (Db => {db}) item_group
+                                                  JOIN MDB_LOADOUTITEM (Db => {db}) item ON item.Id = item_group.Id
+                                                  LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY (Db => {db}) group_priority ON item_group.Id = group_priority.Target
                                                 WHERE
                                                   group_priority.Target IS NULL
+                                                  AND item.Loadout = {loadoutId.Value}
                                                 ORDER BY item_group.Id;
                                                 """
         ).ToArray();
