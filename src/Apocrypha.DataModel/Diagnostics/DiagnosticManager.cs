@@ -22,7 +22,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
     private readonly ILogger<DiagnosticManager> _logger;
 
     private static readonly object Lock = new();
-    private readonly SourceCache<ConnectableObservable<Diagnostic[]>, LoadoutId> _observableCache = new(_ => throw new NotSupportedException());
+    private readonly SourceCache<Observable<Diagnostic[]>, LoadoutId> _observableCache = new(_ => throw new NotSupportedException());
 
     private bool _isDisposed;
     private readonly CompositeDisposable _compositeDisposable = new();
@@ -43,7 +43,7 @@ internal sealed class DiagnosticManager : IDiagnosticManager
             var existingObservable = _observableCache.Lookup(loadoutId);
             if (existingObservable.HasValue) return existingObservable.Value.AsSystemObservable();
 
-            var connectableObservable = LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId)
+            var sharedObservable = LoadoutQueries2.RevisionsWithChildUpdates(_connection, loadoutId)
                 .ToObservable()
                 .Debounce(TimeSpan.FromMilliseconds(250))
                 .SelectAwait(async (_, cancellationToken) =>
@@ -68,18 +68,30 @@ internal sealed class DiagnosticManager : IDiagnosticManager
                     },
                     AwaitOperation.Switch
                 )
-                .Replay(bufferSize: 1);
-            
-            _compositeDisposable.Add(connectableObservable.Connect());
-            _observableCache.Edit(updater => updater.AddOrUpdate(connectableObservable, loadoutId));
-            return connectableObservable.AsSystemObservable();
+                .Replay(bufferSize: 1)
+                // EVICTION (CODE_REVIEW.md §7 #18): RefCount instead of a permanent Connect().
+                // The old code connected the pipeline immediately and forever, so every loadout
+                // whose diagnostics were EVER viewed kept a hot pipeline — including emitters that
+                // make web-API calls — re-running the full pass on every DB change for the rest of
+                // the session, with zero subscribers. RefCount connects on first subscriber and
+                // tears the pipeline down when the last one leaves; the cached observable itself
+                // is inert while unused and is reused on the next view.
+                .RefCount();
+
+            _observableCache.Edit(updater => updater.AddOrUpdate(sharedObservable, loadoutId));
+            return sharedObservable.AsSystemObservable();
         }
     }
 
     private async Task<Diagnostic[]> GetLoadoutDiagnostics(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
     {
         var diagnosticEmitters = loadout.InstallationInstance.GetGame().DiagnosticEmitters;
-        
+
+        // Most games register no loadout emitters at all — don't pay for two disk-state reads and
+        // a full sync-tree build just to hand them to nobody (CODE_REVIEW.md §7 #18).
+        if (!diagnosticEmitters.OfType<ILoadoutDiagnosticEmitter>().Any())
+            return [];
+
         var db = _connection.Db;
         var synchronizer = loadout.InstallationInstance.GetGame().Synchronizer;
         var metaData = loadout.Installation;

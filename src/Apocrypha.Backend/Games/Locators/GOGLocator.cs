@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using GameFinder.StoreHandlers.GOG;
@@ -69,6 +70,10 @@ internal class GOGLocator : IGameLocator
                 Game = game,
                 Path = path,
                 LocatorIds = locatorIds,
+                // The GOG handler parses Windows-format install data, so everything it finds is a
+                // Windows build — on Linux that means Wine, and defaulting to the host platform
+                // resolved the wrong (native) executable/version (CODE_REVIEW.md §7 #17).
+                Platform = OSPlatform.Windows,
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,

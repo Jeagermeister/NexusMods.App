@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using GameFinder.StoreHandlers.EGS;
@@ -49,6 +50,9 @@ internal class EGSLocator : IGameLocator
                 Game = game,
                 Path = path,
                 LocatorIds = locatorIds,
+                // The EGS handler parses the Windows launcher's manifests, so every find is a
+                // Windows build (Wine when on Linux); see the GOGLocator note (CODE_REVIEW.md §7 #17).
+                Platform = OSPlatform.Windows,
                 StoreIdentifier = storeIdentifier,
                 Store = Store,
                 Locator = this,

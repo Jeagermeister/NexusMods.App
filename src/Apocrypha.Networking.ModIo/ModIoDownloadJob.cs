@@ -7,6 +7,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using Apocrypha.Networking.HttpDownloader;
 using NexusMods.Paths;
 using Apocrypha.Sdk.Games;
+using Apocrypha.Sdk.Hashes;
 using Apocrypha.Sdk.Jobs;
 using Apocrypha.Sdk.Library;
 
@@ -21,6 +22,14 @@ public record ModIoDownloadJob : HttpDownloadJob, IModIoDownloadJob
 {
     /// <inheritdoc/>
     public required ModIoFileMetadata.ReadOnly FileMetadata { get; init; }
+
+    /// <summary>
+    /// The MD5 mod.io publishes for the modfile, when it ships one. The downloaded bytes are
+    /// verified against it before entering the library (CODE_REVIEW.md §7 #15) — HTTPS protects
+    /// the transport, this protects against CDN corruption/compromise. Mirrors
+    /// <c>ExternalDownloadJob.ExpectedMd5</c>.
+    /// </summary>
+    public Md5Value? ExpectedMd5 { get; init; }
 
     /// <inheritdoc/>
     public string DisplayName => FileMetadata.Mod.Name;
@@ -61,7 +70,8 @@ public record ModIoDownloadJob : HttpDownloadJob, IModIoDownloadJob
     public static IJobTask<ModIoDownloadJob, AbsolutePath> Create(
         IServiceProvider provider,
         ModIoFileMetadata.ReadOnly fileMetadata,
-        Uri binaryUri)
+        Uri binaryUri,
+        Md5Value? expectedMd5 = null)
     {
         var monitor = provider.GetRequiredService<IJobMonitor>();
         var tempFileManager = provider.GetRequiredService<TemporaryFileManager>();
@@ -74,14 +84,24 @@ public record ModIoDownloadJob : HttpDownloadJob, IModIoDownloadJob
             DownloadPageUri = fileMetadata.Mod.ProfileUri,
             Destination = tempFileManager.CreateFile(),
             Client = provider.GetRequiredService<HttpClient>(),
+            ExpectedMd5 = expectedMd5,
         };
 
         return monitor.Begin<ModIoDownloadJob, AbsolutePath>(job);
     }
 
     /// <inheritdoc/>
-    public override ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile)
+    public override async ValueTask AddMetadata(ITransaction tx, LibraryFile.New libraryFile)
     {
+        if (ExpectedMd5 is { } expected)
+        {
+            await using var fileStream = Destination.Read();
+            using var algo = System.Security.Cryptography.MD5.Create();
+            var actual = Md5Value.From(await algo.ComputeHashAsync(fileStream));
+            if (actual != expected)
+                throw new InvalidOperationException($"mod.io download failed integrity check for `{FileMetadata.Mod.Name}`: expected MD5 {expected}, got {actual}");
+        }
+
         libraryFile.GetLibraryItem(tx).Name = FileMetadata.Mod.Name;
         libraryFile.FileName = RelativePath.FromUnsanitizedInput(FileMetadata.FileName);
 
@@ -93,7 +113,5 @@ public record ModIoDownloadJob : HttpDownloadJob, IModIoDownloadJob
             DownloadPageUri = DownloadPageUri,
             LibraryFile = libraryFile,
         };
-
-        return ValueTask.CompletedTask;
     }
 }

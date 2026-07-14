@@ -1,3 +1,4 @@
+using Apocrypha.Sdk.Hashes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.ModIo;
@@ -70,8 +71,15 @@ public class ModIoLibrary : IModIoLibrary
         if (!Uri.TryCreate(mod.Modfile.Download.BinaryUrl, UriKind.Absolute, out var binaryUri))
             throw new InvalidOperationException($"mod.io returned an invalid download URL for `{mod.Name}`");
 
+        Md5Value? expectedMd5 = null;
+        if (mod.Modfile.Filehash?.Md5 is { Length: 32 } md5Hex)
+        {
+            try { expectedMd5 = Md5Value.FromHex(md5Hex); }
+            catch (Exception) { _logger.LogWarning("mod.io returned an unparsable md5 `{Md5}` for `{Mod}`; skipping integrity verification", md5Hex, mod.Name); }
+        }
+
         _logger.LogInformation("Starting mod.io download of `{Mod}` (file {FileId})", mod.Name, mod.Modfile.Id);
-        return ModIoDownloadJob.Create(_serviceProvider, file, binaryUri);
+        return ModIoDownloadJob.Create(_serviceProvider, file, binaryUri, expectedMd5);
     }
 
     private async Task<ModIoFileMetadata.ReadOnly> GetOrAddFile(GameDto? game, ModDto mod, ModfileDto modfile, CancellationToken cancellationToken)
