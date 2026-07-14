@@ -33,14 +33,24 @@ public static class RunGarbageCollector
         {
             var gc = new ArchiveGarbageCollector<NxParsedHeaderState, FileEntryWrapper>();
             DataStoreNxArchiveFinder.FindAllArchives(archiveLocations, gc);
-            DataStoreReferenceMarker.MarkUsedFiles(connection, gc);
+            DataStoreReferenceMarker.MarkUsedFiles(connection, gc, logger);
             gc.CollectGarbage(new Progress<double>(), (progress, toArchive, toRemove, archive) =>
             {
                 logger.LogInformation("Repacking archive {From} files to {To}", toRemove.Count, toArchive.Count);
                 NxRepacker.RepackArchive(progress, toArchive, toRemove, archive, false, out var newArchivePath);
                 toUpdateInDataStore.Add(new ToUpdateInDataStoreEntry(toRemove, archive.FilePath, newArchivePath));
             });
-            
+
+            // TOCTOU re-check (CODE_REVIEW.md §7 #21): the reference walk above ran against a DB
+            // snapshot taken before the (potentially long) repack. A transaction committed since --
+            // e.g. a content-hash dedup that skipped archiving because the store already had the
+            // bytes -- can reference a hash we just classified as garbage. Re-walk a FRESH snapshot
+            // now, immediately before deletion, and keep any old archive whose removed hashes have
+            // gained a reference: duplicate copies of a hash are explicitly tolerated by the store
+            // (see the SAFETY note below), whereas deleting a newly-referenced hash is unrecoverable.
+            var lateReferences = new HashSet<Hash>();
+            DataStoreReferenceMarker.MarkUsedFiles(connection, hash => lateReferences.Add(hash), logger);
+
             // Note(sewer):
             // SAFETY: There is a small risk here that we experience a power outage, or crash when deleting these
             // store paths. In such a case, there may be multiple copies of a file in the store with a given hash.
@@ -48,11 +58,17 @@ public static class RunGarbageCollector
             // This is accounted for in `ReloadCaches`.
             foreach (var entry in toUpdateInDataStore)
             {
+                if (entry.ToRemove.Any(lateReferences.Contains))
+                {
+                    logger.LogWarning("GC: archive {Path} contains a hash referenced by a transaction committed during collection; keeping the archive (its live contents were also repacked -- duplicates are tolerated)", entry.OldFilePath);
+                    continue;
+                }
+
                 // Delete original archive. At this point, all hashes in here have been repacked
                 // and are no longer in use.
                 entry.OldFilePath.Delete();
             }
-        
+
             store.ReloadCaches();
         }
     }

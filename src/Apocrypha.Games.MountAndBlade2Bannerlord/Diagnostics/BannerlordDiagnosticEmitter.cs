@@ -42,7 +42,7 @@ internal partial class BannerlordDiagnosticEmitter : ILoadoutDiagnosticEmitter
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var modulesAndMods = await Helpers.GetAllManifestsAsync(_logger, loadout, _manifestPipeline, cancellationToken).ToArrayAsync(cancellationToken);
+        var modulesAndMods = await Helpers.GetAllManifestsAsync(_logger, loadout, _manifestPipeline, onlyEnabled: false, cancellationToken).ToArrayAsync(cancellationToken);
         var modulesOnly = modulesAndMods.Select(x => x.Item2).ToArray();
         var isEnabledDict = new Dictionary<ModuleInfoExtended, bool>(modulesOnly.Length);
 
