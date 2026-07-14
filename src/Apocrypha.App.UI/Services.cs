@@ -47,6 +47,8 @@ using Apocrypha.App.UI.Pages.Diff.ApplyDiff;
 using Apocrypha.App.UI.Pages.Downloads;
 using Apocrypha.App.UI.Pages.LibraryPage;
 using Apocrypha.App.UI.Pages.LibraryPage.Collections;
+using Apocrypha.App.UI.Pages.LibraryPage.ModSources;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.App.UI.Pages.LoadoutGroupFilesPage;
 using Apocrypha.App.UI.Pages.LoadoutPage;
 using Apocrypha.App.UI.Pages.LoadoutPage.Dialogs;
@@ -311,6 +313,12 @@ public static class Services
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILibraryDataProvider, ModIoDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ModIoDataProvider>()
+            // Mod sources as enumerable capabilities (CODE_REVIEW.md §5): source-agnostic consumers
+            // resolve GetServices<IModSource>() instead of hardcoding a per-source property, so a new
+            // source is one registration here rather than an edit to every consumer.
+            .AddSingleton<IModSource, NexusModSource>()
+            .AddSingleton<IModSource, ThunderstoreModSource>()
+            .AddSingleton<IModSource, ModIoModSource>()
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()

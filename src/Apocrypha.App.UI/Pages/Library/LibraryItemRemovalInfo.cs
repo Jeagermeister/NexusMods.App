@@ -10,14 +10,14 @@ namespace Apocrypha.App.UI.Pages.Library;
 /// <summary>
 ///     Represents the properties needed for deletion of a library item.
 /// </summary>
-/// <param name="IsNexus">Whether the library item came from a redownloadable mod source (Nexus Mods or Thunderstore).</param>
+/// <param name="IsRedownloadable">Whether the library item came from a redownloadable mod source (Nexus Mods, Thunderstore, or mod.io).</param>
 /// <param name="IsNonPermanent">
 ///     Whether the library item is a download that is not guaranteed to be redownloadable.
 ///     (As of time of writing it means 'not from a known mod source')
 /// </param>
 /// <param name="IsManuallyAdded">Whether this library item was manually added from FileSystem to library.</param>
 /// <param name="Loadouts">The loadouts that this library item is used within.</param>
-public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts)
+public record struct LibraryItemRemovalInfo(bool IsRedownloadable, bool IsNonPermanent, bool IsManuallyAdded, Loadout.ReadOnly[] Loadouts)
 {
     public static LibraryItemRemovalInfo Determine(LibraryItem.ReadOnly toRemove, Loadout.ReadOnly[] loadouts)
     {
@@ -26,8 +26,8 @@ public record struct LibraryItemRemovalInfo(bool IsNexus, bool IsNonPermanent, b
         // Check if it's a file which was downloaded from a redownloadable mod source.
         if (toRemove.TryGetAsNexusModsLibraryItem(out _) || toRemove.TryGetAsThunderstoreLibraryItem(out _) || toRemove.TryGetAsModIoLibraryItem(out _))
         {
-            info.IsNexus = true;
-            info.IsNonPermanent = !info.IsNexus;
+            info.IsRedownloadable = true;
+            info.IsNonPermanent = !info.IsRedownloadable;
         }
         else if (toRemove.TryGetAsLocalFile(out _))
         {
