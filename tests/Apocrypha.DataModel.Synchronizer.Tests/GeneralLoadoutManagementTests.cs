@@ -5,6 +5,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 
 using Apocrypha.Abstractions.Loadouts;
+using Apocrypha.Abstractions.Loadouts.Synchronizers.Conflicts;
+using NexusMods.MnemonicDB.Abstractions;
 using Apocrypha.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
@@ -171,6 +173,81 @@ public class GeneralLoadoutManagementTests(ITestOutputHelper helper) : ACyberpun
         var clonedSortOrders = SortOrder.FindByLoadout(Connection.Db, loadoutC).ToArray();
         clonedSortOrders.Should().ContainSingle("CopyLoadout must copy the SortOrder onto the clone (previously it was silently dropped)");
         clonedSortOrders[0].Loadout.Id.Should().Be(loadoutC.Id, "the copied SortOrder must reference the clone, not the original");
+    }
+
+    [Fact]
+    [Trait("RequiresNetworking", "False")]
+    public async Task PriorityTxFuncs_ResolveAndWinAll_KeepPrioritiesDenseAndOrdered()
+    {
+        // CODE_REVIEW.md §7 #12: the file-conflict priority TxFuncs feed winning-file resolution
+        // and were untested. Exercises ResolveFileConflicts + WinAllFileConflicts end-to-end and
+        // asserts the dense 1..N invariant the SQL conflict resolution depends on.
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await CreateLoadout();
+        LoadoutId loadoutId = loadout;
+
+        // Four groups with priorities 1..4 (A, B, C, D).
+        var groupIds = new EntityId[4];
+        var priorityIds = new LoadoutItemGroupPriorityId[4];
+        using (var tx = Connection.BeginTransaction())
+        {
+            var tempPriorityIds = new EntityId[4];
+            for (var i = 0; i < 4; i++)
+            {
+                var group = new LoadoutItemGroup.New(tx, out var gid)
+                {
+                    IsGroup = true,
+                    LoadoutItem = new LoadoutItem.New(tx, gid)
+                    {
+                        Name = $"group-{(char)('A' + i)}",
+                        LoadoutId = loadoutId,
+                    },
+                };
+                var priority = new LoadoutItemGroupPriority.New(tx)
+                {
+                    LoadoutId = loadoutId,
+                    TargetId = group.LoadoutItemGroupId,
+                    Priority = ConflictPriority.From((ulong)(i + 1)),
+                };
+                groupIds[i] = gid;
+                tempPriorityIds[i] = priority.Id;
+            }
+
+            var result = await tx.Commit();
+            for (var i = 0; i < 4; i++)
+            {
+                groupIds[i] = result[groupIds[i]];
+                priorityIds[i] = LoadoutItemGroupPriorityId.From(result[tempPriorityIds[i]]);
+            }
+        }
+
+        LoadoutItemGroupPriority.ReadOnly[] Current() => LoadoutItemGroupPriority
+            .FindByLoadout(Connection.Db, loadoutId)
+            .OrderBy(static p => p.Priority)
+            .ToArray();
+
+        // Move D (winner) to just after B (loser): expected order A, B, D, C.
+        await LoadoutManager.ResolveFileConflicts(winnerIds: [priorityIds[3]], loserId: priorityIds[1]);
+
+        var after = Current();
+        after.Select(p => p.TargetId.Value).Should().Equal(groupIds[0], groupIds[1], groupIds[3], groupIds[2]);
+        after.Select(p => p.Priority.Value).Should().Equal(1UL, 2UL, 3UL, 4UL);
+
+        // Priority semantics: HIGHER number wins. WinAllFileConflicts moves A after the current
+        // highest (last position): expected order B, D, C, A.
+        await LoadoutManager.WinAllFileConflicts(winnerIds: [priorityIds[0]]);
+
+        after = Current();
+        after.Select(p => p.TargetId.Value).Should().Equal(groupIds[1], groupIds[3], groupIds[2], groupIds[0]);
+        after.Select(p => p.Priority.Value).Should().Equal(1UL, 2UL, 3UL, 4UL);
+
+        // LoseAllFileConflicts moves C to the front (lowest priority, loses everything):
+        // expected order C, B, D, A.
+        await LoadoutManager.LoseAllFileConflicts(loserIds: [priorityIds[2]]);
+
+        after = Current();
+        after.Select(p => p.TargetId.Value).Should().Equal(groupIds[2], groupIds[1], groupIds[3], groupIds[0]);
+        after.Select(p => p.Priority.Value).Should().Equal(1UL, 2UL, 3UL, 4UL);
     }
 
     /// <summary>
