@@ -170,6 +170,23 @@
     <data name="HomeWorkspace_Title" xml:space="preserve">
         <value>Home</value>
     </data>
+    <data name="HomeDashboard_ActivityFeed_Installed" xml:space="preserve">
+        <value>Installed {0}</value>
+        <comment>Where {0} is the installed mod's name</comment>
+    </data>
+    <data name="HomeDashboard_ActivityFeed_Applied" xml:space="preserve">
+        <value>Applied {0} — {1}</value>
+        <comment>Where {0} is the game name and {1} is the loadout name</comment>
+    </data>
+    <data name="HomeDashboard_JumpBackIn" xml:space="preserve">
+        <value>Jump back in</value>
+    </data>
+    <data name="HomeDashboard_RecentActivity" xml:space="preserve">
+        <value>Recent activity</value>
+    </data>
+    <data name="HomeDashboard_NoActivity" xml:space="preserve">
+        <value>No recent activity yet — download and install some mods to see them here.</value>
+    </data>
     <data name="LoadoutGridView__View_Files" xml:space="preserve">
         <value>View Mod files</value>
     </data>

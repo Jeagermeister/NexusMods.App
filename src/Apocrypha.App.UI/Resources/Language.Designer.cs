@@ -987,6 +987,51 @@ namespace Apocrypha.App.UI.Resources {
                 return ResourceManager.GetString("HomeWorkspace_Title", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed {0}.
+        /// </summary>
+        public static string HomeDashboard_ActivityFeed_Installed {
+            get {
+                return ResourceManager.GetString("HomeDashboard_ActivityFeed_Installed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Applied {0} — {1}.
+        /// </summary>
+        public static string HomeDashboard_ActivityFeed_Applied {
+            get {
+                return ResourceManager.GetString("HomeDashboard_ActivityFeed_Applied", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Jump back in.
+        /// </summary>
+        public static string HomeDashboard_JumpBackIn {
+            get {
+                return ResourceManager.GetString("HomeDashboard_JumpBackIn", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Recent activity.
+        /// </summary>
+        public static string HomeDashboard_RecentActivity {
+            get {
+                return ResourceManager.GetString("HomeDashboard_RecentActivity", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No recent activity yet — download and install some mods to see them here..
+        /// </summary>
+        public static string HomeDashboard_NoActivity {
+            get {
+                return ResourceManager.GetString("HomeDashboard_NoActivity", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Never.
