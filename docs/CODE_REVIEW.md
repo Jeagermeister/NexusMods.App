@@ -403,7 +403,13 @@ validation/auto-sort assist over a user-editable order.
 
 Ordered by (impact × reachability) ÷ effort. The first tier is small, high-confidence fixes.
 
-### Tier 0 — security (added by the completeness pass; do before the rest)
+> **✅ Status (2026-07-14): Tier 0 and all of Tier 1 are implemented** on branch
+> `claude/repo-improvements-analysis-ufkkla` — see [`CODE_REVIEW_FIXES.md`](./CODE_REVIEW_FIXES.md)
+> for the per-fix write-up and local verification steps. Not yet compiled/tested (the authoring
+> environment had no .NET SDK). One exception: migration `_0009` (#6) is fixed but deliberately left
+> **unregistered** pending a legacy-DB test. Tier 2+ below is still open.
+
+### Tier 0 — security (added by the completeness pass; do before the rest) — ✅ implemented
 
 0. 🔴 **Sanitize FOMOD destination paths** (`FomodXmlInstaller.cs:173/236/254`, +`RemoveRoot:178`).
    Reject or normalize-and-contain `..` (route destinations through `PathsHelper.FixPath` the same
@@ -412,7 +418,7 @@ Ordered by (impact × reachability) ÷ effort. The first tier is small, high-con
    `ModuleConfig.xml` can write attacker bytes outside the game directory on apply. Add a directed
    test that a `..`-laden destination is rejected. *This is the highest-priority item in the review.*
 
-### Tier 1 — do first (small, verified, user-visible or data-correctness)
+### Tier 1 — do first (small, verified, user-visible or data-correctness) — ✅ implemented (#6 registration gated)
 
 1. **Fix the `SortOrderManager` singleton clobber** (`SortOrderManager.cs:87`). Key varieties
    by `GameId`. Restores REDmod load order that silently breaks in any multi-game session.
