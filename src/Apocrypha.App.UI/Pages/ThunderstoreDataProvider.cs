@@ -25,15 +25,41 @@ namespace Apocrypha.App.UI.Pages;
 [UsedImplicitly]
 internal class ThunderstoreDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
 
     public ThunderstoreDataProvider(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
-    // TODO: return files once Thunderstore items gain a game association (design doc §9.4 / PR D)
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
+    /// <summary>
+    /// The library files this game owns on Thunderstore — used by "Remove game &amp; delete
+    /// downloads" to clean up archives. A Thunderstore package is global and multi-community, so
+    /// ownership is the package's <see cref="ThunderstorePackageMetadata.Communities"/> slug set.
+    /// Unlike the Library view (which shows unknown-community packages everywhere), deletion is
+    /// destructive, so this returns only packages *known* to list this game's community — never a
+    /// package that might belong to another game. A truly game-only package with an unknown
+    /// community is left behind (a recoverable orphan) rather than risk deleting shared data.
+    /// </summary>
+    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
+    {
+        var game = _serviceProvider.GetServices<IGameData>().FirstOrDefault(x => x.GameId == gameId);
+        if (game is not IThunderstoreCommunityGame thunderstoreGame) return [];
+
+        var communitySlug = thunderstoreGame.ThunderstoreCommunitySlug;
+        db ??= _connection.Db;
+
+        var files = new List<LibraryFile.ReadOnly>();
+        foreach (var item in ThunderstoreLibraryItem.All(db))
+        {
+            if (!item.Version.Package.Communities.Contains(communitySlug)) continue;
+            if (item.AsLibraryItem().TryGetAsLibraryFile(out var file)) files.Add(file);
+        }
+
+        return files.ToArray();
+    }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {

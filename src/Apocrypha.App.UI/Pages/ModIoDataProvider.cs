@@ -26,15 +26,37 @@ namespace Apocrypha.App.UI.Pages;
 [UsedImplicitly]
 internal class ModIoDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
 
     public ModIoDataProvider(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
     }
 
-    // TODO: return files once mod.io items gain an app-side game association (DESIGN-modio.md §5)
-    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null) => [];
+    /// <summary>
+    /// The library files this game owns on mod.io — used by "Remove game &amp; delete downloads" to
+    /// clean up archives. A mod.io mod belongs to exactly one game, so ownership is an exact
+    /// <see cref="ModIoModMetadata.GameNameId"/> match (the same scoping the Library view uses).
+    /// </summary>
+    public LibraryFile.ReadOnly[] GetAllFiles(GameId gameId, IDb? db = null)
+    {
+        var game = _serviceProvider.GetServices<IGameData>().FirstOrDefault(x => x.GameId == gameId);
+        if (game is not IModIoGame modIoGame) return [];
+
+        var gameNameId = modIoGame.ModIoGameNameId;
+        db ??= _connection.Db;
+
+        var files = new List<LibraryFile.ReadOnly>();
+        foreach (var item in ModIoLibraryItem.All(db))
+        {
+            if (!string.Equals(item.File.Mod.GameNameId, gameNameId, StringComparison.OrdinalIgnoreCase)) continue;
+            if (item.AsLibraryItem().TryGetAsLibraryFile(out var file)) files.Add(file);
+        }
+
+        return files.ToArray();
+    }
 
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
