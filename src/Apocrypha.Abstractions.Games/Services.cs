@@ -14,7 +14,12 @@ public static class Services
     public static IServiceCollection AddGames(this IServiceCollection services)
     {
         return services
-            .AddSingleton<SortOrderManager>()
+            // Transient, NOT singleton: each game resolves its own manager (once, cached by the
+            // game's Lazy<ISortOrderManager>) and registers ITS varieties into it. A shared
+            // singleton was clobbered on every RegisterSortOrderVarieties call — opening a second
+            // game's page replaced the first game's varieties (and leaked its change subscription),
+            // silently breaking e.g. Cyberpunk's REDmod load order for the rest of the session.
+            .AddTransient<SortOrderManager>()
             .AddSortOrderItemModel()
             .AddSortOrderQueriesSql()
             .AddLoadoutItemGroupPriorityModel();
