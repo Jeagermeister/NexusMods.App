@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
+using Apocrypha.Sdk.Resources;
 
 namespace Apocrypha.Abstractions.Thunderstore.Models;
 
@@ -39,6 +40,11 @@ public partial class ThunderstorePackageMetadata : IModelDefinition
     /// The package icon (256×256 PNG on the Thunderstore CDN).
     /// </summary>
     public static readonly UriAttribute IconUri = new(Namespace, nameof(IconUri)) { IsOptional = true };
+
+    /// <summary>
+    /// The cached, decoded icon resource downloaded from <see cref="IconUri"/>.
+    /// </summary>
+    public static readonly ReferenceAttribute<PersistedDbResource> IconResource = new(Namespace, nameof(IconResource)) { IsOptional = true };
 
     /// <summary>
     /// The community slugs (games) this package is listed under on thunderstore.io, from the

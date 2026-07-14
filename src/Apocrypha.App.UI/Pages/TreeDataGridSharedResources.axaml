@@ -37,22 +37,46 @@
         </DataTemplate.DataType>
 
         <StackPanel Orientation="Horizontal">
-            <!-- Thumbnail -->
-            <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
-                <controls:ComponentControl.ComponentTemplate>
-                    <controls:ComponentTemplate x:TypeArguments="controls:ImageComponent"
-                                                ComponentKey="{x:Static controls:SharedColumns+Name.ImageComponentKey}">
-                        <controls:ComponentTemplate.DataTemplate>
-                            <StaticResource ResourceKey="SharedImageTemplate" />
-                        </controls:ComponentTemplate.DataTemplate>
-                    </controls:ComponentTemplate>
-                </controls:ComponentControl.ComponentTemplate>
+            <!-- Thumbnail, with the source badge overlaid in the bottom-right corner -->
+            <Panel>
+                <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+                    <controls:ComponentControl.ComponentTemplate>
+                        <controls:ComponentTemplate x:TypeArguments="controls:ImageComponent"
+                                                    ComponentKey="{x:Static controls:SharedColumns+Name.ImageComponentKey}">
+                            <controls:ComponentTemplate.DataTemplate>
+                                <StaticResource ResourceKey="SharedImageTemplate" />
+                            </controls:ComponentTemplate.DataTemplate>
+                        </controls:ComponentTemplate>
+                    </controls:ComponentControl.ComponentTemplate>
 
-                <controls:ComponentControl.Fallback >
-                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" x:Name="FallbackIcon" />
-                </controls:ComponentControl.Fallback>
-            </controls:ComponentControl>
-            
+                    <controls:ComponentControl.Fallback >
+                        <icons:UnifiedIcon Value="{x:Static icons:IconValues.ModsOutline}" x:Name="FallbackIcon" />
+                    </controls:ComponentControl.Fallback>
+                </controls:ComponentControl>
+
+                <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}"
+                                            HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                    <controls:ComponentControl.ComponentTemplate>
+                        <controls:ComponentTemplate x:TypeArguments="controls:UnifiedIconComponent"
+                                                    ComponentKey="{x:Static controls:SharedColumns+Name.SourceIconComponentKey}">
+                            <controls:ComponentTemplate.DataTemplate>
+                                <DataTemplate DataType="{x:Type controls:UnifiedIconComponent}">
+                                    <Border Width="16" Height="16" CornerRadius="8"
+                                            Background="{StaticResource SurfaceMidBrush}"
+                                            Margin="0,0,-2,-2">
+                                        <icons:UnifiedIcon Value="{CompiledBinding Value.Value}" Width="12" Height="12" />
+                                    </Border>
+                                </DataTemplate>
+                            </controls:ComponentTemplate.DataTemplate>
+                        </controls:ComponentTemplate>
+                    </controls:ComponentControl.ComponentTemplate>
+
+                    <controls:ComponentControl.Fallback>
+                        <Panel />
+                    </controls:ComponentControl.Fallback>
+                </controls:ComponentControl>
+            </Panel>
+
             <!-- Name -->
             <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
                 <controls:ComponentControl.ComponentTemplate>

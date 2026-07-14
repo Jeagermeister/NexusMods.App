@@ -8,6 +8,7 @@ using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusModsLibrary.Models;
 using Apocrypha.Sdk.Resources;
+using Apocrypha.UI.Sdk.Icons;
 using Apocrypha.App.UI.Controls;
 using Apocrypha.App.UI.Extensions;
 using Apocrypha.App.UI.Pages.LibraryPage;
@@ -111,6 +112,7 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         
         parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: modPage.Name));
         parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_thumbnailLoader.Value, modPage.Id, initialValue: ImagePipelines.ModPageThumbnailFallback));
+        parentItemModel.Add(SharedColumns.Name.SourceIconComponentKey, new UnifiedIconComponent(IconValues.NexusColor));
 
         // Size: sum of library files
         var sizeObservable = libraryItems

@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x875DB52FC420AC43
-   - Total attributes: 257
+   - Fingerprint: 0x0AB38C81D9DAC0C3
+   - Total attributes: 259
    - Total namespaces: 82
    
 ## Attributes
@@ -19,6 +19,7 @@ models in the app, then validate the tests to update this file.
 | Apocrypha.ModIo.ModIoLibraryItem/File                                              | Reference               | False   | False | False     | 
 | Apocrypha.ModIo.ModIoModMetadata/GameId                                            | UInt64                  | False   | False | False     | 
 | Apocrypha.ModIo.ModIoModMetadata/GameNameId                                        | Utf8                    | True    | False | False     | 
+| Apocrypha.ModIo.ModIoModMetadata/LogoResource                                      | Reference               | False   | False | False     | 
 | Apocrypha.ModIo.ModIoModMetadata/LogoUri                                           | Utf8                    | False   | False | False     | 
 | Apocrypha.ModIo.ModIoModMetadata/ModId                                             | UInt64                  | True    | False | False     | 
 | Apocrypha.ModIo.ModIoModMetadata/Name                                              | Utf8                    | False   | False | False     | 
@@ -258,6 +259,7 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Thunderstore.ThunderstoreLibraryItem/Version                             | Reference               | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/Communities                     | Utf8                    | False   | True  | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/FullName                        | Utf8                    | True    | False | False     | 
+| NexusMods.Thunderstore.ThunderstorePackageMetadata/IconResource                    | Reference               | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/IconUri                         | Utf8                    | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/Name                            | Utf8                    | False   | False | False     | 
 | NexusMods.Thunderstore.ThunderstorePackageMetadata/PackageNamespace                | Utf8                    | False   | False | False     | 

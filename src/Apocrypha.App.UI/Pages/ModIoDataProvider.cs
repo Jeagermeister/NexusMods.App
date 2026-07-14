@@ -1,19 +1,24 @@
 using System.Reactive.Linq;
+using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Aggregation;
+using DynamicData.Kernel;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.ModIo;
 using Apocrypha.Abstractions.ModIo.Models;
 using Apocrypha.App.UI.Controls;
+using Apocrypha.App.UI.Extensions;
 using Apocrypha.App.UI.Pages.LibraryPage;
+using Apocrypha.Sdk.Resources;
+using Apocrypha.UI.Sdk.Icons;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Query;
+using NexusMods.Paths;
 using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Library;
 using Apocrypha.Sdk.Loadouts;
-using UIObservableExtensions = Apocrypha.App.UI.Extensions.ObservableExtensions;
 
 namespace Apocrypha.App.UI.Pages;
 
@@ -28,11 +33,13 @@ internal class ModIoDataProvider : ILibraryDataProvider, ILoadoutDataProvider
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
+    private readonly Lazy<IResourceLoader<EntityId, Bitmap>> _iconLoader;
 
     public ModIoDataProvider(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
+        _iconLoader = new Lazy<IResourceLoader<EntityId, Bitmap>>(() => ImagePipelines.GetModIoIconPipeline(serviceProvider));
     }
 
     /// <summary>
@@ -58,15 +65,22 @@ internal class ModIoDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         return files.ToArray();
     }
 
+    /// <summary>
+    /// One row per mod, rolled up across downloaded files (layout epic PR L3) — grouping the
+    /// already-scoped item stream by mod identity, rather than re-deriving the game-slug filter
+    /// top-down, keeps <see cref="ObserveGameLibraryItems"/>'s scoping logic untouched.
+    /// </summary>
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveGameLibraryItems(libraryFilter)
-            .Transform(item => ToLibraryItemModel(libraryFilter, item));
+            .Group(item => item.File.ModId.Value)
+            .Transform(group => ToModLibraryItemModel(group, libraryFilter));
     }
 
     public IObservable<int> CountLibraryItems(LibraryFilter libraryFilter)
     {
         return ObserveGameLibraryItems(libraryFilter)
+            .Group(item => item.File.ModId.Value)
             .QueryWhenChanged(query => query.Count)
             .Prepend(0);
     }
@@ -82,39 +96,103 @@ internal class ModIoDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         return allItems.Filter(item => string.Equals(item.File.Mod.GameNameId, gameNameId, StringComparison.OrdinalIgnoreCase));
     }
 
-    private CompositeItemModel<EntityId> ToLibraryItemModel(LibraryFilter libraryFilter, ModIoLibraryItem.ReadOnly item)
+    private CompositeItemModel<EntityId> ToModLibraryItemModel(IGroup<ModIoLibraryItem.ReadOnly, EntityId, EntityId> group, LibraryFilter libraryFilter)
     {
-        var linkedLoadoutItemsObservable = LibraryDataProviderHelper
-            .GetLinkedLoadoutItems(_connection, libraryFilter, item.Id)
-            .RefCount();
+        var mod = ModIoModMetadata.Load(_connection.Db, group.Key);
+        var libraryItems = group.Cache.Connect().RefCount();
 
-        var childrenObservable = UIObservableExtensions.ReturnFactory(() =>
-        {
-            var itemModel = new CompositeItemModel<EntityId>(item.Id);
-            SetupLibraryItemModel(itemModel, item, linkedLoadoutItemsObservable);
+        var linkedLoadoutItemsObservable = libraryItems.MergeManyChangeSets(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id));
 
-            return new ChangeSet<CompositeItemModel<EntityId>, EntityId>([
-                new Change<CompositeItemModel<EntityId>, EntityId>(
-                    reason: ChangeReason.Add,
-                    key: item.Id,
-                    current: itemModel
-                )]
-            );
-        });
+        var hasChildrenObservable = libraryItems.IsNotEmpty();
+        var childrenObservable = libraryItems.Transform(item => ToFileLibraryItemModel(libraryFilter, item));
 
-        var hasChildrenObservable = childrenObservable.IsNotEmpty();
-
-        var parentItemModel = new CompositeItemModel<EntityId>(item.Id)
+        var parentItemModel = new CompositeItemModel<EntityId>(group.Key)
         {
             HasChildrenObservable = hasChildrenObservable,
             ChildrenObservable = childrenObservable,
         };
 
-        SetupLibraryItemModel(parentItemModel, item, linkedLoadoutItemsObservable);
+        parentItemModel.Add(SharedColumns.Name.NameComponentKey, new NameComponent(value: mod.Name));
+        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, ImageComponent.FromPipeline(_iconLoader.Value, group.Key, initialValue: ImagePipelines.ModPageThumbnailFallback));
+        parentItemModel.Add(SharedColumns.Name.SourceIconComponentKey, new UnifiedIconComponent(IconValues.ModIo));
 
-        // TODO: load the real mod logo (ModIoModMetadata.LogoUri) via a resource pipeline
-        parentItemModel.Add(SharedColumns.Name.ImageComponentKey, new ImageComponent(value: ImagePipelines.ModPageThumbnailFallback));
+        // Size: sum of downloaded files
+        var sizeObservable = libraryItems
+            .TransformImmutable(static item => LibraryFile.Size.GetOptional(item).ValueOr(() => Size.Zero))
+            .ForAggregation()
+            .Sum(static size => (long)size.Value)
+            .Select(static size => Size.FromLong(size));
+
+        parentItemModel.Add(SharedColumns.ItemSize.ComponentKey, new SizeComponent(
+            initialValue: Size.Zero,
+            valueObservable: sizeObservable
+        ));
+
+        // Downloaded date: most recent downloaded file's date
+        var downloadedDateObservable = libraryItems
+            .TransformImmutable(static item => item.GetCreatedAt())
+            .QueryWhenChanged(query => query.Items.OptionalMaxBy(item => item).ValueOr(DateTimeOffset.MinValue));
+
+        parentItemModel.Add(LibraryColumns.DownloadedDate.ComponentKey, new DateComponent(
+            initialValue: mod.GetCreatedAt(),
+            valueObservable: downloadedDateObservable
+        ));
+
+        // Version: from the most recently published downloaded file. mod.io file versions are
+        // free-form and not always present, and UploadedAt is optional too — fall back to
+        // download recency for ordering so a version-less file still contributes correctly.
+        var currentVersionObservable = libraryItems
+            .TransformImmutable(static item =>
+            {
+                ModIoFileMetadata.Version.TryGetValue(item.File, out var version);
+                var sortKey = ModIoFileMetadata.UploadedAt.GetOptional(item.File).ValueOr(() => item.GetCreatedAt());
+                return (sortKey, version: version ?? string.Empty);
+            })
+            .QueryWhenChanged(static query => query.Items
+                .OptionalMaxBy(static tuple => tuple.sortKey)
+                .Convert(static tuple => tuple.version)
+                .ValueOr(string.Empty));
+
+        parentItemModel.Add(LibraryColumns.ItemVersion.CurrentVersionComponentKey, new VersionComponent(
+            initialValue: string.Empty,
+            valueObservable: currentVersionObservable
+        ));
+
+        LibraryDataProviderHelper.AddInstalledDateComponent(parentItemModel, linkedLoadoutItemsObservable);
+        LibraryDataProviderHelper.AddViewChangelogActionComponent(parentItemModel, isEnabled: false);
+        LibraryDataProviderHelper.AddViewModPageActionComponent(parentItemModel, isEnabled: false);
+        LibraryDataProviderHelper.AddHideUpdatesActionComponent(parentItemModel, isEnabled: false, isVisible: false);
+        LibraryDataProviderHelper.AddRelatedCollectionsComponent(parentItemModel, linkedLoadoutItemsObservable);
+
+        parentItemModel.Add(LibraryColumns.Actions.LibraryItemIdsComponentKey, new LibraryComponents.LibraryItemIds(libraryItems.TransformImmutable(static x => x.AsLibraryItem().LibraryItemId)));
+
+        var matchesObservable = libraryItems
+            .TransformOnObservable(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id).IsNotEmpty())
+            .QueryWhenChanged(query =>
+            {
+                var (numInstalled, numTotal) = (0, 0);
+                foreach (var isInstalled in query.Items)
+                {
+                    numInstalled += isInstalled ? 1 : 0;
+                    numTotal++;
+                }
+
+                return new MatchesData(numInstalled, numTotal);
+            });
+        LibraryDataProviderHelper.AddInstallActionComponent(parentItemModel, matchesObservable);
+
         return parentItemModel;
+    }
+
+    private CompositeItemModel<EntityId> ToFileLibraryItemModel(LibraryFilter libraryFilter, ModIoLibraryItem.ReadOnly item)
+    {
+        var linkedLoadoutItemsObservable = LibraryDataProviderHelper
+            .GetLinkedLoadoutItems(_connection, libraryFilter, item.Id)
+            .RefCount();
+
+        var itemModel = new CompositeItemModel<EntityId>(item.Id);
+        SetupLibraryItemModel(itemModel, item, linkedLoadoutItemsObservable);
+        return itemModel;
     }
 
     private static void SetupLibraryItemModel(

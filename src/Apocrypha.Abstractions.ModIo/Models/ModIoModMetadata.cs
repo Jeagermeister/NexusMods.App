@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using NexusMods.MnemonicDB.Abstractions.Attributes;
 using NexusMods.MnemonicDB.Abstractions.Models;
+using Apocrypha.Sdk.Resources;
 
 namespace Apocrypha.Abstractions.ModIo.Models;
 
@@ -49,6 +50,11 @@ public partial class ModIoModMetadata : IModelDefinition
     /// The mod's logo thumbnail on the mod.io CDN.
     /// </summary>
     public static readonly UriAttribute LogoUri = new(Namespace, nameof(LogoUri)) { IsOptional = true };
+
+    /// <summary>
+    /// The cached, decoded logo resource downloaded from <see cref="LogoUri"/>.
+    /// </summary>
+    public static readonly ReferenceAttribute<PersistedDbResource> LogoResource = new(Namespace, nameof(LogoResource)) { IsOptional = true };
 
     /// <summary>
     /// Back-reference to all known files of this mod.
