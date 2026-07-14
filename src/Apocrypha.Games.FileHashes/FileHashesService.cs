@@ -335,7 +335,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         try
         {
             await using var fileStream = storagePath.Create();
-            await using (var httpStream = await _httpClient.GetStreamAsync(_settings.GithubManifestUrl, cancellationToken: cts.Token))
+            await using (var httpStream = await _httpClient.GetStreamAsync(FileHashesServiceSettings.GithubManifestUrl, cancellationToken: cts.Token))
             {
                 await httpStream.CopyToAsync(fileStream, cancellationToken: cts.Token);
             }
@@ -345,7 +345,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to fetch latest release manifest from `{Url}`", _settings.GithubManifestUrl);
+            _logger.LogError(e, "Failed to fetch latest release manifest from `{Url}`", FileHashesServiceSettings.GithubManifestUrl);
             return null;
         }
     }
@@ -372,13 +372,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         try
         {
-            await using var httpStream = await _httpClient.GetStreamAsync(_settings.GameHashesDbUrl, cancellationToken: cancellationToken);
+            await using var httpStream = await _httpClient.GetStreamAsync(FileHashesServiceSettings.GameHashesDbUrl, cancellationToken: cancellationToken);
             var path = await AddDatabase(httpStream, releaseManifest.CreatedAt, cancellationToken: cancellationToken);
             return new DatabaseInfo(path, releaseManifest.CreatedAt);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to add release database from {Url}", _settings.GameHashesDbUrl);
+            _logger.LogError(e, "Failed to add release database from {Url}", FileHashesServiceSettings.GameHashesDbUrl);
             return Optional<DatabaseInfo>.None;
         }
     }
