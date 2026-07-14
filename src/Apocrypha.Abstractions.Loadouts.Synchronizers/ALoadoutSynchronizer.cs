@@ -1028,13 +1028,20 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         loadout = await UpdateLocatorIds(loadout);
         
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
-        // any changes, then we can apply the new loadout.
+        // any changes (so they're attributed to the outgoing loadout, not the incoming one), then diff
+        // the new loadout directly against the current disk state. This intentionally does NOT go
+        // through DeactivateCurrentLoadout/ResetToOriginalGameState: that resets to vanilla first, which
+        // makes every file the new loadout wants look brand new and forces a full delete-then-re-extract
+        // pass even for files identical between the two loadouts. BuildProcessRun (via ActivateLoadout)
+        // already diffs generically against whatever disk state it's handed, so handing it the real
+        // current disk (still reflecting the outgoing loadout) turns this into a true A->B diff using the
+        // exact same sync engine, just without the unnecessary vanilla round-trip in between.
         if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out var lastAppliedId) && lastAppliedId != loadout.Id)
         {
             var prevLoadout = Loadout.Load(loadout.Db, lastAppliedId);
             if (prevLoadout.IsValid())
             {
-                await _loadoutManager.DeactivateCurrentLoadout(loadout.InstallationInstance);
+                await Synchronize(prevLoadout);
                 await _loadoutManager.ActivateLoadout(loadout);
                 return loadout.Rebase();
             }
