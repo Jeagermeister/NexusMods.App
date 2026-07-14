@@ -191,6 +191,23 @@ internal partial class LoadoutManager : ILoadoutManager
             entityIdList[item.Id] = tx.TempId();
         }
 
+        // Also copy the load order (SortOrder + SortOrderItem) and the file-conflict priorities
+        // (LoadoutItemGroupPriority). These are keyed to the loadout, not to LoadoutItems, so the
+        // item loop above misses them. Without this a cloned loadout loses its hand-tuned load order
+        // and — having zero priority rows — resolves every file conflict by nondeterministic
+        // tie-break, so the clone can deploy different winning files than the original. Adding them
+        // to the id map lets the generic datom-copy loop below remap their references (Loadout,
+        // ParentEntity, ParentSortOrder, Target) onto the cloned entities. Mirrors CloneCollection.
+        foreach (var sortOrder in SortOrder.FindByLoadout(baseDb, loadout))
+        {
+            entityIdList[sortOrder.Id] = tx.TempId();
+            foreach (var sortOrderItem in SortOrderItem.FindByParentSortOrder(baseDb, sortOrder))
+                entityIdList[sortOrderItem.Id] = tx.TempId();
+        }
+
+        foreach (var priority in LoadoutItemGroupPriority.FindByLoadout(baseDb, loadout))
+            entityIdList[priority.Id] = tx.TempId();
+
         foreach (var (oldId, newId) in entityIdList)
         {
             // Get the original entity

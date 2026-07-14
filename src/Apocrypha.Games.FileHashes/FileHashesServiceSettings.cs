@@ -19,29 +19,38 @@ public record FileHashesServiceSettings : ISettings
     /// <see cref="GameHashesDbUrl"/>) for an updated hashes database at runtime.
     /// </summary>
     /// <remarks>
-    /// Linux fork: disabled by default. The upstream feed (github.com/Nexus-Mods/game-hashes) is
-    /// frozen and unmaintained, so polling it only produces error-log noise and never yields
-    /// updates. With this off, the app relies solely on the local database or the embedded
-    /// snapshot shipped with the build, and makes zero calls to Nexus infrastructure at runtime.
-    /// TODO(linux-fork): re-enable and repoint <see cref="GithubManifestUrl"/> /
-    /// <see cref="GameHashesDbUrl"/> at the fork's own hash pipeline once it is live.
+    /// Linux fork: points at the fork-owned feed (github.com/Jeagermeister/game-hashes — a fork of
+    /// the upstream Nexus-Mods/game-hashes, which froze 2025-09-30), refreshed manually via
+    /// <c>steam app index</c> → <c>game-hashes-db build</c> → a GitHub release (see
+    /// HASHES-RUNBOOK.md in the notes repo). Polling makes zero calls to Nexus infrastructure —
+    /// only to the fork's GitHub releases. On any fetch failure the service falls back to the
+    /// newest local database or the embedded snapshot, so an outage never breaks the app.
     /// </remarks>
-    public bool EnableRemoteUpdates { get; init; } = false;
+    public bool EnableRemoteUpdates { get; init; } = true;
 
     /// <summary>
     /// Only checks GitHub for updates this often, in order to avoid API rate limits.
     /// </summary>
     public TimeSpan HashDatabaseUpdateInterval { get; init; } = TimeSpan.FromMinutes(30);
-    
+
     /// <summary>
-    /// The URL to the Github API to get the latest release.
+    /// The URL of the latest release's manifest on the fork-owned feed.
     /// </summary>
-    public Uri GithubManifestUrl { get; init; } = new("https://github.com/Nexus-Mods/game-hashes/releases/latest/download/manifest.json");
-    
+    /// <remarks>
+    /// Deliberately <c>static</c> (not a serialized setting): these URLs are infrastructure, not
+    /// user preferences — no UI exposes them. They used to be instance properties, which meant any
+    /// install with a persisted <c>FileHashesServiceSettings.json</c> (written before the fork
+    /// repointed the feed) kept polling the frozen upstream URLs forever, silently overriding the
+    /// new defaults. Static members are ignored by the JSON settings backend, so old persisted
+    /// values can no longer pin the feed.
+    /// </remarks>
+    public static Uri GithubManifestUrl => new("https://github.com/Jeagermeister/game-hashes/releases/latest/download/manifest.json");
+
     /// <summary>
-    /// The URL to the GitHub release to download the latest hashes database.
+    /// The URL of the latest release's hashes database on the fork-owned feed.
     /// </summary>
-    public Uri GameHashesDbUrl { get; init; } = new("https://github.com/Nexus-Mods/game-hashes/releases/latest/download/game_hashes_db.zip");
+    /// <remarks><inheritdoc cref="GithubManifestUrl"/></remarks>
+    public static Uri GameHashesDbUrl => new("https://github.com/Jeagermeister/game-hashes/releases/latest/download/game_hashes_db.zip");
     
     public RelativePath ReleaseFilePath { get; init; } = "game-hashes-release.json";
     

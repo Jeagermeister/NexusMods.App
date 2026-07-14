@@ -64,7 +64,18 @@ public class ModfileDto
     [JsonPropertyName("filename")] public required string Filename { get; init; }
     [JsonPropertyName("filesize")] public ulong Filesize { get; init; }
     [JsonPropertyName("date_added")] public long DateAdded { get; init; }
+    [JsonPropertyName("filehash")] public FilehashDto? Filehash { get; init; }
     [JsonPropertyName("download")] public required DownloadDto Download { get; init; }
+}
+
+/// <summary>
+/// A modfile's published content hashes. mod.io ships an MD5 of the file; the download job
+/// verifies the received bytes against it (CODE_REVIEW.md §7 #15).
+/// </summary>
+[PublicAPI]
+public class FilehashDto
+{
+    [JsonPropertyName("md5")] public string? Md5 { get; init; }
 }
 
 /// <summary>

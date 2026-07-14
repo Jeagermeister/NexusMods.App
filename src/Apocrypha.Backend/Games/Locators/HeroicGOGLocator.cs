@@ -58,6 +58,10 @@ internal class HeroicGOGLocator : IGameLocator
                 Game = game,
                 Path = path,
                 LocatorIds = locatorIds,
+                // Heroic records each install's actual platform (it can install native Linux OR
+                // Windows-via-Wine GOG builds); trust it instead of defaulting to the host
+                // platform, which mislabeled Wine installs as native (CODE_REVIEW.md §7 #17).
+                Platform = gameFinderGame.Platform,
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,

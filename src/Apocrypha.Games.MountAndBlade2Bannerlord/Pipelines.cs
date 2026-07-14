@@ -35,8 +35,7 @@ internal static class Pipelines
         var pipeline = new FileStoreStreamLoader(fileStore)
             .ThenDo(Unit.Default, static (_, _, resource, _) =>
             {
-                var doc = new XmlDocument();
-                doc.Load(resource.Data);
+                var doc = SecureXml.LoadUntrusted(resource.Data);
                 var data = ModuleInfoExtended.FromXml(doc);
                 return ValueTask.FromResult(resource.WithData(data));
             })

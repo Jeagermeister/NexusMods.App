@@ -21,6 +21,16 @@ public static class Services
             .AddMigration<_0006_DirectDownload>()
             .AddMigration<_0007_AddSortOrderParentEntity>()
             .AddMigration<_0008_AddCollectionId>();
+
+        // NOTE(review Tier 1 #6): _0009_AddLoadoutItemGroupPriority backfills file-conflict
+        // priorities for loadouts created before that feature. Without it, legacy loadouts tie every
+        // conflict at priority 0 and are invisible to the conflicts UI. Its query has been fixed — it
+        // previously referenced a nonexistent `loadouts.ItemGroupEnabledState` macro — but a migration
+        // runs against real user databases at startup, and this change has NOT been executed against a
+        // legacy database. Before registering it, add a legacy-DB test alongside the other
+        // MigrationSpecificTests: migrate a pre-priority (Migration-8) snapshot and assert every
+        // LoadoutItemGroup receives a sequential priority. Then append to the chain above:
+        //     .AddMigration<_0009_AddLoadoutItemGroupPriority>()
     }
 
     /// <summary>

@@ -78,7 +78,7 @@ public class BannerlordRunGameTool : RunGameTool<Bannerlord>
         // Set the (automatic) load order.
         // Copied from Bannerlord.LauncherManager
         var manifestPipeline = Pipelines.GetManifestPipeline(_serviceProvider);
-        var modules = (await Helpers.GetAllManifestsAsync(_logger, loadout, manifestPipeline, cancellationToken).ToArrayAsync(cancellationToken))
+        var modules = (await Helpers.GetAllManifestsAsync(_logger, loadout, manifestPipeline, onlyEnabled: true, cancellationToken).ToArrayAsync(cancellationToken))
             .Select(x => x.Item2);
         var sortedModules = SortHelper.AutoSort(Hack.GetDummyBaseGameModules()
             .Concat(modules)).Select(x => x.Id).ToArray();

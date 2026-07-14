@@ -17,6 +17,7 @@ using Apocrypha.Abstractions.NexusModsLibrary.Models;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
 using Apocrypha.Abstractions.ModIo;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.CLI.Types;
 using Apocrypha.Sdk.Settings;
@@ -247,35 +248,29 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             configureAwait: false
         );
 
-        // Per-source "get mods" entries (DESIGN-app-layout.md §5): the view shows a row per
-        // source the game actually has, so each command can assume its source exists.
-        HasNexusModsSource = game.NexusModsGameId.HasValue;
-        HasThunderstoreSource = game is IThunderstoreCommunityGame;
-        // gated on the experimental setting: the paste-a-link entry is mod.io's only
-        // in-app surface, so hiding it is what "disabled" means (unlike Thunderstore,
-        // whose gate lives on the protocol handler)
-        HasModIoSource = game is IModIoGame && serviceProvider.GetRequiredService<ISettingsManager>().Get<ModIoSettings>().EnableModIo;
+        // Per-source "get mods" entries (CODE_REVIEW.md §5, DESIGN-app-layout.md §5): capabilities
+        // come from the registered IModSource set, not hardcoded per-source checks, so the browse
+        // commands and the Has* flags share one source of truth and a new source needs no edit here.
+        var modSources = serviceProvider.GetServices<IModSource>().ToDictionary(static source => source.Id);
+        bool GameHasSource(ModSourceId id) => modSources.TryGetValue(id, out var source) && source.IsEnabled && source.SupportsGame(game);
+
+        HasNexusModsSource = GameHasSource(ModSourceId.NexusMods);
+        HasThunderstoreSource = GameHasSource(ModSourceId.Thunderstore);
+        // mod.io's gate (IsEnabled) is the experimental setting: the paste-a-link entry is its only
+        // in-app surface, so hiding it is what "disabled" means (unlike Thunderstore, whose gate
+        // lives on the protocol handler).
+        HasModIoSource = GameHasSource(ModSourceId.ModIo);
 
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
-        OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ =>
+        void BrowseSource(ModSourceId id)
         {
-            if (!game.NexusModsGameId.HasValue) return;
-            var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
-            var gameUri = NexusModsUrlBuilder.GetGameUri(gameDomain);
-            osInterop.OpenUri(gameUri);
-        });
+            if (modSources.TryGetValue(id, out var source) && source.GetBrowseUri(game) is { HasValue: true } uri)
+                osInterop.OpenUri(uri.Value);
+        }
 
-        OpenThunderstoreCommand = new ReactiveCommand<Unit>(execute: _ =>
-        {
-            if (game is not IThunderstoreCommunityGame thunderstoreGame) return;
-            osInterop.OpenUri(ThunderstoreUrls.GetCommunityUri(thunderstoreGame.ThunderstoreCommunitySlug));
-        });
-
-        OpenModIoCommand = new ReactiveCommand<Unit>(execute: _ =>
-        {
-            if (game is not IModIoGame modIoGame) return;
-            osInterop.OpenUri(ModIoUrls.GetGamePageUri(modIoGame.ModIoGameNameId));
-        });
+        OpenNexusModsCommand = new ReactiveCommand<Unit>(execute: _ => BrowseSource(ModSourceId.NexusMods));
+        OpenThunderstoreCommand = new ReactiveCommand<Unit>(execute: _ => BrowseSource(ModSourceId.Thunderstore));
+        OpenModIoCommand = new ReactiveCommand<Unit>(execute: _ => BrowseSource(ModSourceId.ModIo));
 
         AddModIoModFromLinkCommand = new ReactiveCommand<Unit>(async (_, cancellationToken) =>
         {

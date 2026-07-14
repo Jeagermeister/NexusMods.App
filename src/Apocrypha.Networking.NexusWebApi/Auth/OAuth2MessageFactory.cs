@@ -54,6 +54,14 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
         return null;
     }
 
+    /// <summary>
+    /// Serializes token refreshes: OAuth refresh tokens rotate server-side (single use), so N
+    /// parallel requests that all observe an expired access token must not all attempt a refresh —
+    /// the first success invalidates the token the others are holding, they fail with
+    /// session-expired, and the user gets force-logged-out mid-download (CODE_REVIEW.md §7 #14).
+    /// </summary>
+    private readonly SemaphoreSlim _refreshLock = new(initialCount: 1, maxCount: 1);
+
     private async ValueTask<string?> GetOrRefreshToken(CancellationToken cancellationToken)
     {
         if (!JWTToken.TryFind(_conn.Db, out var token)) return null;
@@ -64,32 +72,55 @@ public class OAuth2MessageFactory : BaseHttpMessageFactory, IAuthenticatingMessa
             return token.AccessToken;
         }
 
-        _logger.LogDebug("Refreshing expired OAuth token");
-
-        JwtTokenReply? newToken;
+        await _refreshLock.WaitAsync(cancellationToken);
         try
         {
-            newToken = await _auth.RefreshToken(token.RefreshToken, cancellationToken);
+            // Double-check on a fresh snapshot: another request may have completed the refresh
+            // while we waited on the semaphore — use its token instead of refreshing again.
+            if (!JWTToken.TryFind(_conn.Db, out token)) return null;
+            if (!token.HasExpired)
+            {
+                Interlocked.Exchange(ref _sessionExpiredNotified, 0);
+                return token.AccessToken;
+            }
+
+            _logger.LogDebug("Refreshing expired OAuth token");
+
+            JwtTokenReply? newToken;
+            try
+            {
+                newToken = await _auth.RefreshToken(token.RefreshToken, cancellationToken);
+            }
+            catch (OAuthSessionExpiredException)
+            {
+                await HandleSessionExpired();
+                return null;
+            }
+            if (newToken is null)
+            {
+                _logger.LogError("OAuth token refresh returned no token");
+                return null;
+            }
+
+            var db = _conn.Db;
+            using var tx = _conn.BeginTransaction();
+
+            var newTokenEntity = JWTToken.Create(db, tx, newToken);
+            if (!newTokenEntity.HasValue)
+            {
+                _logger.LogError("Invalid new token in OAuth2MessageFactory");
+                return null;
+            }
+
+            var result = await tx.Commit();
+
+            token = JWTToken.Load(result.Db, result[newTokenEntity.Value]);
+            return token.AccessToken;
         }
-        catch (OAuthSessionExpiredException)
+        finally
         {
-            await HandleSessionExpired();
-            return null;
+            _refreshLock.Release();
         }
-        var db = _conn.Db;
-        using var tx = _conn.BeginTransaction();
-
-        var newTokenEntity = JWTToken.Create(db, tx, newToken!);
-        if (!newTokenEntity.HasValue)
-        {
-            _logger.LogError("Invalid new token in OAuth2MessageFactory");
-            return null;
-        }
-
-        var result = await tx.Commit();
-
-        token = JWTToken.Load(result.Db, result[newTokenEntity.Value]);
-        return token.AccessToken;
     }
 
     /// <summary>

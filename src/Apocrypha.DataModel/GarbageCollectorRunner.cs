@@ -16,6 +16,9 @@ public class GarbageCollectorRunner(ISettingsManager settings, NxFileStore store
     private readonly IConnection _connection = connection;
     private readonly ILogger<GarbageCollectorRunner> _logger = logger;
 
+    private readonly object _coalesceLock = new();
+    private DateTime _lastRunUtc = DateTime.MinValue;
+
     /// <inheritdoc />
     public void Run()
     {
@@ -26,6 +29,22 @@ public class GarbageCollectorRunner(ISettingsManager settings, NxFileStore store
     public Task RunAsync()
     {
         return Task.Run(Run);
+    }
+
+    /// <inheritdoc />
+    public Task RunCoalescedAsync(TimeSpan minInterval)
+    {
+        lock (_coalesceLock)
+        {
+            if (DateTime.UtcNow - _lastRunUtc < minInterval)
+                return Task.CompletedTask;
+
+            // Claim the slot before running so concurrent applies (for other games) skip rather
+            // than kick off a second archive repack over the same store at the same time.
+            _lastRunUtc = DateTime.UtcNow;
+        }
+
+        return RunAsync();
     }
     
     /// <inheritdoc />

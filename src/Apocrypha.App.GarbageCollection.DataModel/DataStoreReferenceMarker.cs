@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.App.GarbageCollection.Interfaces;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
 using Apocrypha.Sdk.Library;
@@ -19,9 +21,20 @@ public static class DataStoreReferenceMarker
     /// </summary>
     /// <param name="connection">The connection to the MnemonicDB Database.</param>
     /// <param name="archiveGc">The garbage collector from which to reference count all files.</param>
-    public static void MarkUsedFiles<TParsedHeaderState, TFileEntryWrapper>(IConnection connection, ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc)
+    public static void MarkUsedFiles<TParsedHeaderState, TFileEntryWrapper>(IConnection connection, ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, ILogger? logger = null)
         where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper>
         where TFileEntryWrapper : IHaveFileHash
+    {
+        MarkUsedFiles(connection, hash => archiveGc.AddReferencedFile(hash), logger);
+    }
+
+    /// <summary>
+    /// Same walk as <see cref="MarkUsedFiles{TParsedHeaderState,TFileEntryWrapper}(IConnection,ArchiveGarbageCollector{TParsedHeaderState,TFileEntryWrapper},ILogger?)"/>,
+    /// reporting each referenced hash to <paramref name="addReferencedFile"/>. Reads a FRESH
+    /// <see cref="IConnection.Db"/> snapshot at call time — used by the pre-delete re-check in
+    /// <see cref="RunGarbageCollector"/> to close the mark→delete TOCTOU window.
+    /// </summary>
+    public static void MarkUsedFiles(IConnection connection, Action<Hash> addReferencedFile, ILogger? logger = null)
     {
         var db = connection.Db;
         var loadoutFiles = LoadoutFile.All(db);
@@ -29,24 +42,24 @@ public static class DataStoreReferenceMarker
         
         // Loadouts will have items like 'Game Files', these do not have a corresponding
         // library item.
-        MarkItemsUsedInLoadouts(archiveGc, loadoutFiles, db, isLoadoutValidDict);
+        MarkItemsUsedInLoadouts(addReferencedFile, loadoutFiles, db, isLoadoutValidDict, logger);
 
         // Library will have all of our mods and other things installed from the outside.
-        MarkItemsUsedInLibrary(archiveGc, db);
+        MarkItemsUsedInLibrary(addReferencedFile, db);
         
         // Mark non Loadout/Library items that are backups (e.g. Backups of original game files)
-        MarkItemsMarkedAsBackups(archiveGc, db);
+        MarkItemsMarkedAsBackups(addReferencedFile, db);
     }
 
-    private static void MarkItemsMarkedAsBackups<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db) where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
+    private static void MarkItemsMarkedAsBackups(Action<Hash> addReferencedFile, IDb db)
     {
         // All files explicitly marked as roots should be preserved.
         var gameBackedUpFile = GameBackedUpFile.All(db);
         foreach (var file in gameBackedUpFile)
-            archiveGc.AddReferencedFile(file.Hash);
+            addReferencedFile(file.Hash);
     }
 
-    private static void MarkItemsUsedInLibrary<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, IDb db) where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
+    private static void MarkItemsUsedInLibrary(Action<Hash> addReferencedFile, IDb db)
     {
         /*
             Note(sewer)
@@ -67,7 +80,7 @@ public static class DataStoreReferenceMarker
 
         var libraryFiles = LibraryArchiveFileEntry.All(db);
         foreach (var file in libraryFiles)
-            archiveGc.AddReferencedFile(file.AsLibraryFile().Hash);
+            addReferencedFile(file.AsLibraryFile().Hash);
 
         /*
             There is however a caveat that has to be considered here.
@@ -80,8 +93,7 @@ public static class DataStoreReferenceMarker
         */
     }
 
-    private static void MarkItemsUsedInLoadouts<TParsedHeaderState, TFileEntryWrapper>(ArchiveGarbageCollector<TParsedHeaderState, TFileEntryWrapper> archiveGc, Entities<LoadoutFile.ReadOnly> loadoutFiles, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict)
-        where TParsedHeaderState : ICanProvideFileHashes<TFileEntryWrapper> where TFileEntryWrapper : IHaveFileHash
+    private static void MarkItemsUsedInLoadouts(Action<Hash> addReferencedFile, Entities<LoadoutFile.ReadOnly> loadoutFiles, IDb db, Dictionary<LoadoutId, bool> isLoadoutValidDict, ILogger? logger)
     {
         foreach (var loadoutFile in loadoutFiles)
         {
@@ -93,13 +105,17 @@ public static class DataStoreReferenceMarker
                 var loadout = loadoutItem.Loadout;
                 isLoadoutValid = loadout.IsValid();
                 isLoadoutValidDict[loadoutItem.LoadoutId] = isLoadoutValid;
+
+                // FAIL-SAFE (CODE_REVIEW.md §7 #21): a live file whose loadout row is invalid is a
+                // data inconsistency (e.g. a crash-orphaned loadout), not proof the file is garbage.
+                // Deleting on inconsistency is fail-open and permanent; keep the file and let
+                // `loadouts delete-orphaned` retract the items properly, after which the next GC
+                // collects them.
+                if (!isLoadoutValid)
+                    logger?.LogWarning("GC: loadout {LoadoutId} is invalid but still has live files; keeping its files (run `loadouts delete-orphaned` to clean up)", loadoutItem.LoadoutId);
             }
-            
-            if (!isLoadoutValid)
-                continue;
-            
-            // If the loadout is valid, mark the file as used.
-            archiveGc.AddReferencedFile(loadoutFile.Hash);
+
+            addReferencedFile(loadoutFile.Hash);
         }
     }
 }

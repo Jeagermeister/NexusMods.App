@@ -28,7 +28,7 @@ public class BannerlordLoadoutSynchronizer : ALoadoutSynchronizer
     private static GamePath ModuleSandbox => new(LocationId.Game, "Modules/SandBox");
     private static GamePath ModuleStoryMode => new(LocationId.Game, "Modules/StoryMode");
     private static GamePath ModuleBirthAndAgingOptions => new(LocationId.Game, "Modules/BirthAndDeath");
-    private static GamePath ModuleMultiplayer => new(LocationId.Game, "Modules/BirthAndDeath");
+    private static GamePath ModuleMultiplayer => new(LocationId.Game, "Modules/Multiplayer");
 
     // Base game folders that are never modified
     private static GamePath BaseGameXmlSchemas => new(LocationId.Game, "XmlSchemas");

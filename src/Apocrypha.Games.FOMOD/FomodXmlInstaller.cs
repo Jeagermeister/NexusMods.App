@@ -25,6 +25,12 @@ namespace Apocrypha.Games.FOMOD;
 public class FomodXmlInstaller : ALibraryArchiveInstaller
 {
     private readonly ICoreDelegates _delegates;
+
+    /// <summary>
+    /// Serializes FOMOD script executions: <see cref="_delegates"/> is a process-wide singleton
+    /// that must be mutated per-install (see the delegate gate note in ExecuteAsync).
+    /// </summary>
+    private static readonly SemaphoreSlim DelegatesGate = new(initialCount: 1, maxCount: 1);
     private readonly XmlScriptType _scriptType = new();
     private readonly ILogger<FomodXmlInstaller> _logger;
     private readonly GamePath _fomodInstallationPath;
@@ -100,32 +106,51 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         // NOTE(erri120): We're loading the script manually, otherwise the FOMOD library will load the script from the file system
         await mod.InitializeWithoutLoadingScript();
 
-        // NOTE(erri120): The FOMOD library calls us, so this is the only way we can pass data along.
-        var installerDelegates = _delegates as InstallerDelegates;
-        if (installerDelegates is not null)
-        {
-            if (options is not null)
-            {
-                // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
-                // something different: we will create a new guided installer that will simply emit the user choices based on the
-                // provided options.
-                var installer = new PresetGuidedInstaller(options);
-                installerDelegates.UiDelegates = new UiDelegates(ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(), installer);
-            }
-
-            installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
-        }
-
         var rawScript = await LoadScript(xmlFile.AsLibraryFile().Hash, cancellationToken);
 
-        var executor = _scriptType.CreateExecutor(mod, _delegates);
-        var installScript = _scriptType.LoadScript(rawScript, true);
-        FixScript(installScript, fomodArchiveFiles, _logger);
+        // DELEGATE GATE (CODE_REVIEW.md §7 #16): _delegates is a process singleton the FOMOD
+        // library calls back into, and collection installs run mods through Parallel.ForEachAsync.
+        // Without serialization, mod A's executor could observe mod B's preset installer or archive
+        // file list. The gate covers mutation through execution, and the original UiDelegates is
+        // RESTORED afterwards so a later interactive install never reuses stale preset state.
+        IList<Instruction> instructions;
+        await DelegatesGate.WaitAsync(cancellationToken);
+        try
+        {
+            var installerDelegates = _delegates as InstallerDelegates;
+            var originalUiDelegates = installerDelegates?.UiDelegates;
+            try
+            {
+                if (installerDelegates is not null)
+                {
+                    if (options is not null)
+                    {
+                        // NOTE(halgari) The support for passing in presets to the installer is utterly broken. So we're going to
+                        // something different: we will create a new guided installer that will simply emit the user choices based on the
+                        // provided options.
+                        var installer = new PresetGuidedInstaller(options, ServiceProvider.GetRequiredService<ILogger<PresetGuidedInstaller>>());
+                        installerDelegates.UiDelegates = new UiDelegates(ServiceProvider.GetRequiredService<ILogger<UiDelegates>>(), installer);
+                    }
 
-        var instructions = await executor.Execute(installScript, "", null);
+                    installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+                }
 
-        // NOTE(err120): Reset the previously provided data
-        if (installerDelegates is not null) installerDelegates.UiDelegates.CurrentFomodArchiveFiles = fomodArchiveFiles;
+                var executor = _scriptType.CreateExecutor(mod, _delegates);
+                var installScript = _scriptType.LoadScript(rawScript, true);
+                FixScript(installScript, fomodArchiveFiles, _logger);
+
+                instructions = await executor.Execute(installScript, "", null);
+            }
+            finally
+            {
+                if (installerDelegates is not null && originalUiDelegates is not null)
+                    installerDelegates.UiDelegates = originalUiDelegates;
+            }
+        }
+        finally
+        {
+            DelegatesGate.Release();
+        }
 
         var errors = instructions.Where(instruction => instruction.type == "error").ToArray();
         if (errors.Length != 0) throw new Exception(string.Join("; ", errors.Select(err => err.source)));
@@ -170,16 +195,46 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         foreach (var installableFile in installableFiles)
         {
             installableFile.Source = FixPath(installableFile.Source, fomodArchiveFiles, isDirectory: installableFile.IsFolder, logger: logger);
-            installableFile.Destination = RelativePath.FromUnsanitizedInput(RemoveRoot(installableFile.Destination));
+            installableFile.Destination = SanitizeDestination(installableFile.Destination);
         }
     }
 
     private static readonly char[] TrimChars = ['\\', '/'];
+    private static readonly char[] SegmentTrimChars = [' ', '.'];
+
     internal static ReadOnlySpan<char> RemoveRoot(string? input)
     {
         if (string.IsNullOrWhiteSpace(input)) return ReadOnlySpan<char>.Empty;
         ReadOnlySpan<char> span = input;
         return span.TrimStart(TrimChars);
+    }
+
+    /// <summary>
+    /// Sanitizes an <b>untrusted</b> FOMOD destination path so it cannot escape the target
+    /// directory. A FOMOD's <c>ModuleConfig.xml</c> is attacker-controlled, and
+    /// <see cref="RelativePath.FromUnsanitizedInput"/> neither resolves nor rejects <c>..</c>
+    /// segments — so a destination such as <c>..\..\..\evil.dll</c> would otherwise be joined onto
+    /// the game path verbatim and written outside the game folder when the loadout is applied.
+    /// We drop every root, empty, and dot/space-only (<c>.</c> / <c>..</c>) segment, guaranteeing the
+    /// result stays contained. Mirrors how the archive extractor guards untrusted entry names.
+    /// </summary>
+    internal static RelativePath SanitizeDestination(string? input)
+    {
+        var withoutRoot = RemoveRoot(input);
+        if (withoutRoot.IsEmpty) return RelativePath.Empty;
+
+        var segments = withoutRoot.ToString().Split(TrimChars, StringSplitOptions.RemoveEmptyEntries);
+        var kept = new List<string>(segments.Length);
+        foreach (var segment in segments)
+        {
+            // Trailing dots/spaces are collapsed by the filesystem, so "..", "... ", "." and " "
+            // are traversal or no-op references; drop them (and anything they trim down to empty).
+            var normalized = segment.TrimEnd(SegmentTrimChars);
+            if (normalized.Length == 0) continue;
+            kept.Add(normalized);
+        }
+
+        return kept.Count == 0 ? RelativePath.Empty : RelativePath.FromUnsanitizedInput(string.Join('/', kept));
     }
 
     internal static string FixPath(
@@ -233,13 +288,18 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         GamePath gamePath)
     {
         var src = RelativePath.FromUnsanitizedInput(instruction.source);
-        var dest = RelativePath.FromUnsanitizedInput(instruction.destination);
+        var dest = SanitizeDestination(instruction.destination);
 
         if (!fomodArchiveFiles.TryGetValue(src, out var libraryArchiveFile))
         {
             _logger.LogError("Didn't find source file `{Path}` in FOMOD archive", src);
             return;
         }
+
+        // A hostile ModuleConfig.xml can specify a traversal-only destination (e.g. "..\..") that
+        // sanitizes away to nothing; fall back to the file's own name so it stays inside the target.
+        if (dest.Equals(RelativePath.Empty))
+            dest = libraryArchiveFile.Path.FileName;
 
         _ = new LoadoutFile.New(transaction, out var id)
         {

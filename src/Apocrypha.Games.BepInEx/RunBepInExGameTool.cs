@@ -17,9 +17,6 @@ namespace Apocrypha.Games.BepInEx;
 public abstract class ABepInExRunGameTool<T> : RunGameTool<T>
     where T : IGame
 {
-    private const string OverrideLine = "\"winhttp\"=\"native,builtin\"";
-    private const string SectionHeader = @"[Software\\Wine\\DllOverrides]";
-
     private readonly ILogger _logger;
     private readonly string _displayName;
 
@@ -65,26 +62,29 @@ public abstract class ABepInExRunGameTool<T> : RunGameTool<T>
         }
 
         var content = await userReg.ReadAllTextAsync(cancellationToken);
-        if (content.Contains(OverrideLine, StringComparison.OrdinalIgnoreCase)) return;
+        var patched = WinhttpRegPatcher.Patch(content, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        if (patched is null) return; // Override already present and correct.
 
         // Backup once, then patch (mirrors r2modman's user.reg handling).
         var backup = userReg.AppendExtension(new NexusMods.Paths.Extension(".bak"));
         if (!backup.FileExists) File.Copy(userReg.ToString(), backup.ToString());
 
-        var headerIndex = content.IndexOf(SectionHeader, StringComparison.OrdinalIgnoreCase);
-        if (headerIndex >= 0)
+        // Atomic write (CODE_REVIEW.md §7 #14): user.reg is Wine's registry — a crash or power
+        // loss mid-write leaves a truncated registry and a broken prefix. Write a sibling temp
+        // file and rename over the target (same pattern as CachedHttpStreamFactory); rename on
+        // the same filesystem is atomic.
+        var temp = userReg.Parent.Combine($"{userReg.FileName}.{Guid.NewGuid():N}.tmp");
+        try
         {
-            // Insert the override at the start of the existing section (right after its header line).
-            var lineEnd = content.IndexOf('\n', headerIndex);
-            if (lineEnd < 0) lineEnd = content.Length - 1;
-            content = content.Insert(lineEnd + 1, OverrideLine + "\n");
+            await temp.WriteAllTextAsync(patched, cancellationToken);
+            File.Move(temp.ToString(), userReg.ToString(), overwrite: true);
         }
-        else
+        catch
         {
-            content = $"{content.TrimEnd('\n')}\n\n{SectionHeader} 1751932800\n{OverrideLine}\n";
+            if (temp.FileExists) temp.Delete();
+            throw;
         }
 
-        await userReg.WriteAllTextAsync(content, cancellationToken);
         _logger.LogInformation("Added winhttp DLL override to `{Path}` so BepInEx loads under Proton", userReg);
     }
 }
