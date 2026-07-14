@@ -50,6 +50,43 @@ public class Sorter : ISorter
         var partitioner = Partitioner.Create(0, items.Count);
         var indexed = new ConcurrentDictionary<TId, (TId[] After, TItem Item)>(Environment.ProcessorCount, items.Count);
 
+        // Evaluate each item's rules exactly once, up front. Previously RefineRules called ruleFn
+        // for every *other* item on every pass, so ruleFn ran O(N^2) times overall; for the
+        // Creation-Engine plugins writer (and REDmod) each of those calls also allocated an After
+        // record per master, which is where the ~O(N^3) allocation storm came from. Memoizing here
+        // makes it O(N) calls / O(N) allocations and is behaviour-identical: ruleFn is a pure
+        // function of the item, which the whole sort already assumes.
+        var allRules = new IReadOnlyList<ISortRule<TItem, TId>>[items.Count];
+        Parallel.ForEach(partitioner, tuple =>
+        {
+            for (var x = tuple.Item1; x < tuple.Item2; x++)
+                allRules[x] = ruleFn(items[x]);
+        });
+
+        // The RefineRules inner scan only consumes First/Before rules (from other items) and Last
+        // (from this item). If no item declares First or Before anywhere, the only reason to scan
+        // all other items is a Last rule on the current item — so when neither is present the whole
+        // O(N^2) pair scan is provably dead work and can be skipped per-item. plugins.txt emits only
+        // After rules, so this collapses that case to O(N).
+        var anyFirst = false;
+        var anyBefore = false;
+        for (var x = 0; x < allRules.Length && !(anyFirst && anyBefore); x++)
+        {
+            var rules = allRules[x];
+            for (var y = 0; y < rules.Count; y++)
+            {
+                switch (rules[y])
+                {
+                    case First<TItem, TId>:
+                        anyFirst = true;
+                        break;
+                    case Before<TItem, TId>:
+                        anyBefore = true;
+                        break;
+                }
+            }
+        }
+
         Parallel.ForEach(partitioner, tuple =>
         {
             var idBuffer = new HashSet<TId>(tuple.Item2 - tuple.Item1);
@@ -58,7 +95,7 @@ public class Sorter : ISorter
             for (var x = tuple.Item1; x < tuple.Item2; x++)
             {
                 var item = items[x];
-                var rules = RefineRules(item, idSelector, ruleFn, items, idBuffer);
+                var rules = RefineRules(item, idSelector, allRules[x], allRules, items, idBuffer, anyFirst, anyBefore);
                 indexed[idSelector(item)] = (rules, item);
             }
         });
@@ -149,15 +186,17 @@ public class Sorter : ISorter
 
     private static TId[] RefineRules<TItem, TId>(TItem thisItem,
         Func<TItem, TId> idSelector,
-        Func<TItem, IReadOnlyList<ISortRule<TItem, TId>>> ruleFn,
+        IReadOnlyList<ISortRule<TItem, TId>> rulesForThisItem,
+        IReadOnlyList<ISortRule<TItem, TId>>[] allRules,
         IReadOnlyList<TItem> items,
-        HashSet<TId> idsBuffer)
+        HashSet<TId> idsBuffer,
+        bool anyFirst,
+        bool anyBefore)
     where TId : IEquatable<TId>
     {
         idsBuffer.Clear();
         var haveFirst = false;
         var isLast = false;
-        var rulesForThisItem = ruleFn(thisItem);
 
         /*
              Please do not refactor 'for' as foreach in this method.
@@ -184,6 +223,11 @@ public class Sorter : ISorter
             }
         }
 
+        // Nothing in the pair scan below can fire unless this item is Last, or some item declares a
+        // First or Before rule. In the common case (only After rules, e.g. plugins.txt) skip it.
+        if (!isLast && !anyFirst && !anyBefore)
+            return idsBuffer.ToArray();
+
         var idForThisItem = idSelector(thisItem);
         for (var x = 0; x < items.Count; x++)
         {
@@ -194,7 +238,7 @@ public class Sorter : ISorter
 
             if (isLast) idsBuffer.Add(otherId);
 
-            var rulesForOtherItem = ruleFn(itm);
+            var rulesForOtherItem = allRules[x];
             for (var y = 0; y < rulesForOtherItem.Count; y++)
             {
                 var rule = rulesForOtherItem[y];

@@ -104,6 +104,25 @@ public class SortTests
     }
 
     [Fact]
+    public void PureAfterChainSortsCorrectly()
+    {
+        // Only After rules — no First/Before/Last anywhere. This is the plugins.txt shape and
+        // exercises the fast path in Sorter that skips the O(N^2) pair scan; the result must still
+        // honour every After relationship. Shuffled input so a stable order can't pass by accident.
+        var data = new List<Item>
+        {
+            new() { Id = "C", Rules = [new After<Item, string> { Other = "B" }] },
+            new() { Id = "A", Rules = [] },
+            new() { Id = "D", Rules = [new After<Item, string> { Other = "C" }] },
+            new() { Id = "B", Rules = [new After<Item, string> { Other = "A" }] },
+        };
+
+        new Sorter().Sort<Item, string>(data, x => x.Id, x => x.Rules)
+            .Select(i => i.Id)
+            .Should().Equal("A", "B", "C", "D");
+    }
+
+    [Fact]
     public void LargeComplexCollectionsCanBeSorted()
     {
         var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".Select(e => e.ToString()).ToArray();
