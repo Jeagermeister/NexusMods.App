@@ -21,6 +21,7 @@ using Apocrypha.App.UI.Controls.Spine.Buttons.Image;
 using Apocrypha.App.UI.Controls.Spine.Buttons.Image.LoadoutFlyout;
 using Apocrypha.App.UI.LeftMenu;
 using Apocrypha.App.UI.Pages.Downloads;
+using Apocrypha.App.UI.Pages.HomeDashboard;
 using Apocrypha.App.UI.Pages.LoadoutPage;
 using Apocrypha.App.UI.Pages.MyGames;
 using Apocrypha.App.UI.Resources;
@@ -332,12 +333,19 @@ public class SpineViewModel : AViewModel<ISpineViewModel>, ISpineViewModel
     {
         var workspaceController = _windowManager.ActiveWorkspaceController;
 
-        workspaceController.ChangeOrCreateWorkspaceByContext<HomeContext>(() => new PageData
-            {
-                FactoryId = MyGamesPageFactory.StaticId,
-                Context = new MyGamesPageContext()
-            }
-        );
+        var pageData = new PageData
+        {
+            FactoryId = HomeDashboardPageFactory.StaticId,
+            Context = new HomeDashboardPageContext(),
+        };
+
+        // ChangeOrCreateWorkspaceByContext only opens pageData when it creates a brand new
+        // HomeContext workspace — an existing one (e.g. from before this page existed, still
+        // showing My Games) is just brought to focus as-is. Force the dashboard open explicitly,
+        // same as NavigateToMyGames does for the exact same reason.
+        var ws = workspaceController.ChangeOrCreateWorkspaceByContext<HomeContext>(() => pageData);
+        var behavior = workspaceController.GetOpenPageBehavior(pageData, NavigationInformation.From(NavigationInput.Default));
+        workspaceController.OpenPage(ws.Id, pageData, behavior);
     }
 
     private void ChangeToLoadoutWorkspace(LoadoutId loadoutId)

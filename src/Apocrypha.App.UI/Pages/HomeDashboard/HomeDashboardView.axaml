@@ -1,0 +1,95 @@
+<reactiveUi:ReactiveUserControl
+    x:Class="Apocrypha.App.UI.Pages.HomeDashboard.HomeDashboardView"
+    x:TypeArguments="local:IHomeDashboardViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:local="clr-namespace:Apocrypha.App.UI.Pages.HomeDashboard"
+    xmlns:icons="clr-namespace:Apocrypha.UI.Sdk.Icons;assembly=Apocrypha.UI.Sdk"
+    xmlns:resources="clr-namespace:Apocrypha.App.UI.Resources"
+    xmlns:progressRing="clr-namespace:Apocrypha.App.UI.Controls.ProgressRing"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700">
+
+    <Design.DataContext>
+        <local:HomeDashboardDesignViewModel />
+    </Design.DataContext>
+
+    <ScrollViewer>
+        <StackPanel x:Name="RootStack" Margin="24" Spacing="24">
+
+            <StackPanel x:Name="JumpBackInSection" Spacing="12">
+                <TextBlock x:Name="JumpBackInHeader" Text="{x:Static resources:Language.HomeDashboard_JumpBackIn}" Theme="{StaticResource HeadingXSSemiTheme}" />
+
+                <ItemsControl x:Name="GameTilesItemsControl">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:IDashboardGameTileViewModel}">
+                            <Button Command="{CompiledBinding GameWidget.ViewGameCommand}"
+                                    Width="140" Margin="0 0 12 12">
+                                <StackPanel Spacing="8">
+                                    <Panel>
+                                        <Image Source="{CompiledBinding GameWidget.Image}" Height="80" Stretch="UniformToFill" />
+
+                                        <Border IsVisible="{CompiledBinding IsSynced}"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="{StaticResource SurfaceMidBrush}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 -2 -2">
+                                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.CheckBold}" Width="12" Height="12" />
+                                        </Border>
+                                        <Border IsVisible="{CompiledBinding NeedsSync}"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="{StaticResource SurfaceMidBrush}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 -2 -2">
+                                            <icons:UnifiedIcon Value="{x:Static icons:IconValues.Alert}" Width="12" Height="12" />
+                                        </Border>
+                                        <Border IsVisible="{CompiledBinding IsBusy}"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="{StaticResource SurfaceMidBrush}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 -2 -2">
+                                            <progressRing:ProgressRing Width="12" Height="12" />
+                                        </Border>
+                                    </Panel>
+
+                                    <TextBlock Text="{CompiledBinding GameWidget.Name}"
+                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <StackPanel x:Name="ActivitySection" Spacing="12">
+                <TextBlock x:Name="ActivityHeader" Text="{x:Static resources:Language.HomeDashboard_RecentActivity}" Theme="{StaticResource HeadingXSSemiTheme}" />
+
+                <ItemsControl x:Name="ActivityFeedItemsControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:IActivityFeedItemViewModel}">
+                            <Button Command="{CompiledBinding NavigateCommand}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Margin="0 0 0 4">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <icons:UnifiedIcon Grid.Column="0" Value="{CompiledBinding Icon}" Margin="0 0 8 0" />
+                                    <TextBlock Grid.Column="1" Text="{CompiledBinding Text}"
+                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    <TextBlock Grid.Column="2" Text="{CompiledBinding TimestampText}" Margin="12 0 0 0" Opacity="0.6" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock x:Name="NoActivityTextBlock"
+                           Text="{x:Static resources:Language.HomeDashboard_NoActivity}"
+                           IsVisible="False" Opacity="0.6" />
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</reactiveUi:ReactiveUserControl>

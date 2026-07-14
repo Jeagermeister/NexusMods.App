@@ -90,7 +90,20 @@ internal class GameRegistry : IGameRegistry
 
     public bool TryGetGameInstallation(Loadout.ReadOnly loadout, [NotNullWhen(true)] out GameInstallation? gameInstallation)
     {
-        var metadata = loadout.Installation;
+        Sdk.Games.GameInstallMetadata.ReadOnly metadata;
+        try
+        {
+            // A loadout whose Installation reference points at a deleted/nonexistent entity
+            // throws here rather than returning an empty/default value — treat that the same
+            // as "not resolvable" instead of letting it fault every caller's pipeline.
+            metadata = loadout.Installation;
+        }
+        catch (KeyNotFoundException)
+        {
+            gameInstallation = null;
+            return false;
+        }
+
         foreach (var installation in LocateGameInstallations())
         {
             if (installation.Game.NexusModsGameId.HasValue)

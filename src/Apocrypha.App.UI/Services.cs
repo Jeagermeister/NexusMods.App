@@ -52,6 +52,7 @@ using Apocrypha.Abstractions.ModSources;
 using Apocrypha.App.UI.Pages.LoadoutGroupFilesPage;
 using Apocrypha.App.UI.Pages.LoadoutPage;
 using Apocrypha.App.UI.Pages.LoadoutPage.Dialogs;
+using Apocrypha.App.UI.Pages.HomeDashboard;
 using Apocrypha.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
 using Apocrypha.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
 using Apocrypha.App.UI.Pages.MyGames;
@@ -114,6 +115,7 @@ public static class Services
             .AddViewModel<LaunchButtonViewModel, ILaunchButtonViewModel>()
             .AddViewModel<ApplyControlViewModel, IApplyControlViewModel>()
             .AddViewModel<MyGamesViewModel, IMyGamesViewModel>()
+            .AddViewModel<HomeDashboardViewModel, IHomeDashboardViewModel>()
             .AddViewModel<NexusLoginOverlayViewModel, INexusLoginOverlayViewModel>()
             .AddViewModel<SpineViewModel, ISpineViewModel>()
             .AddViewModel<TopBarViewModel, ITopBarViewModel>()
@@ -138,6 +140,7 @@ public static class Services
             .AddView<ImageButton, IImageButtonViewModel>()
             .AddView<LaunchButtonView, ILaunchButtonViewModel>()
             .AddView<MyGamesView, IMyGamesViewModel>()
+            .AddView<HomeDashboardView, IHomeDashboardViewModel>()
             .AddView<NexusLoginOverlayView, INexusLoginOverlayViewModel>()
             .AddView<Spine, ISpineViewModel>()
             .AddView<TopBarView, ITopBarViewModel>()
@@ -260,6 +263,7 @@ public static class Services
             .AddSingleton<PageFactoryController>()
             .AddSingleton<IPageFactory, NewTabPageFactory>()
             .AddSingleton<IPageFactory, MyGamesPageFactory>()
+            .AddSingleton<IPageFactory, HomeDashboardPageFactory>()
             .AddSingleton<IPageFactory, DiagnosticListPageFactory>()
             .AddSingleton<IPageFactory, DiagnosticDetailsPageFactory>()
             .AddSingleton<IPageFactory, ApplyDiffPageFactory>()
