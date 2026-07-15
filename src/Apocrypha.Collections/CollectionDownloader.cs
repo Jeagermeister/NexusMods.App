@@ -464,9 +464,11 @@ public class CollectionDownloader
                     .Select(group =>
                     {
                         if (!group.HasValue) return false;
+                        // A standalone (non-collection) install of the same library item has no
+                        // Parent at all — it just isn't a match for this group, not an error.
+                        if (!LoadoutItem.ParentId.TryGetValue(item, out var parentId)) return false;
                         var itemLoadoutId = LoadoutItem.LoadoutId.Get(item);
                         var groupLoadoutId = LoadoutItem.LoadoutId.Get(group.Value);
-                        var parentId = LoadoutItem.ParentId.Get(item);
                         var id = group.Value.Id;
 
                         return itemLoadoutId == groupLoadoutId && parentId == id;

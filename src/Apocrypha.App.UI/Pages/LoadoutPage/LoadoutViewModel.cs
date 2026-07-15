@@ -744,7 +744,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             // Exclude collection required items
             .Where(item => !IsRequired(item.Id, connection))
             // Exclude items that are part of a collection that is disabled
-            .Where(item => !(item.Parent.TryGetAsCollectionGroup(out var collectionGroup)
+            .Where(item => !(item.HasParent() && item.Parent.TryGetAsCollectionGroup(out var collectionGroup)
                              && collectionGroup.AsLoadoutItemGroup().AsLoadoutItem().IsDisabled)
             )
             .ToArray();
@@ -803,8 +803,8 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         // Open the collection page for the first item
         var firstItemId = ids.First();
 
-        var parentGroup = LoadoutItem.Load(connection.Db, firstItemId).Parent;
-        if (!parentGroup.TryGetAsCollectionGroup(out var collectionGroup)) return;
+        var firstItem = LoadoutItem.Load(connection.Db, firstItemId);
+        if (!firstItem.HasParent() || !firstItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
         if (collectionGroup.TryGetAsNexusCollectionLoadoutGroup(out var nexusCollectionGroup))
         {
