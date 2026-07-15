@@ -592,7 +592,13 @@ internal partial class LoadoutManager : ILoadoutManager
 
         var loadoutId = CollectionGroup.Load(basisDb, collectionId).AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
         var nextPriority = GetNextPriority(loadoutId, _connection.Db);
-        var oldPriorities = LoadoutItemGroupPriority.All(basisDb).Where(priority => priority.Target.AsLoadoutItem().ParentId.Value == collectionId.Value).OrderBy(x => x.Priority).ToArray();
+        // Scans every LoadoutItemGroupPriority in the database, not just this collection's, so a
+        // top-level (non-nested) group's priority — which has no Parent at all, Parent being
+        // optional — must be skipped before reading ParentId, not assumed present.
+        var oldPriorities = LoadoutItemGroupPriority.All(basisDb)
+            .Where(priority => priority.Target.AsLoadoutItem().HasParent() && priority.Target.AsLoadoutItem().ParentId.Value == collectionId.Value)
+            .OrderBy(x => x.Priority)
+            .ToArray();
 
         for (uint i = 0; i < oldPriorities.Length; i++)
         {
