@@ -29,7 +29,7 @@ public class ModOverwritesGameFilesEmitter : ILoadoutDiagnosticEmitter
             .Where(file =>
             {
                 var loadoutItem = file.AsLoadoutItemWithTargetPath().AsLoadoutItem();
-                if (loadoutItem.ParentId == default(LoadoutItemGroupId)) return false;
+                if (!loadoutItem.HasParent()) return false;
                 return !loadoutItem.Parent.TryGetAsLoadoutGameFilesGroup(out _);
             })
             .Where(file => ((GamePath)file.AsLoadoutItemWithTargetPath().TargetPath).StartsWith(ContentDirectoryPath))

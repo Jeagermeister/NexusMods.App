@@ -110,6 +110,9 @@ public static class LibraryDataProviderHelper
             .StartWithEmpty();
         
         var installedCollectionsObservable = linkedLoadoutItemsObservable
+            // A standalone (non-collection) install has no Parent at all — it's simply not
+            // related to any collection, not an error.
+            .Filter(item => item.HasParent())
             .Transform(item => item.Parent.AsLoadoutItem())
             .ChangeKey(coll => coll.Id)
             .Distinct()

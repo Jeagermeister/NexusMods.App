@@ -106,11 +106,11 @@ public static class LoadoutDataProviderHelper
 
     public static void AddCollection(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
+        if (!loadoutItem.HasParent() || !loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
         // Observe the item so the column follows "Move to collection" reparents
         var nameObservable = LoadoutItem.Observe(connection, loadoutItem.Id)
-            .Select(static item => item.Parent.TryGetAsCollectionGroup(out var group)
+            .Select(static item => item.HasParent() && item.Parent.TryGetAsCollectionGroup(out var group)
                 ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
                 : string.Empty
             );
@@ -123,7 +123,7 @@ public static class LoadoutDataProviderHelper
 
     public static void AddParentCollectionDisabled(IConnection connection, CompositeItemModel<EntityId> itemModel, LoadoutItem.ReadOnly loadoutItem)
     {
-        if (!loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
+        if (!loadoutItem.HasParent() || !loadoutItem.Parent.TryGetAsCollectionGroup(out var collectionGroup)) return;
 
         var isParentCollectionDisabledObservable = LoadoutItem.Observe(connection, collectionGroup.Id).Select(static item => item.IsDisabled).ToObservable();
 
@@ -143,7 +143,7 @@ public static class LoadoutDataProviderHelper
         var isParentCollectionDisabledObservable = linkedItemsObservable
             .TransformOnObservable(item =>
                 {
-                    if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup)) 
+                    if (!item.HasParent() || !item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
                         return System.Reactive.Linq.Observable.Return(false);
                     return LoadoutItem.Observe(connection, collectionGroup)
                         .Select(static parentItem => parentItem.IsDisabled);
@@ -313,7 +313,7 @@ public static class LoadoutDataProviderHelper
         // Observe each item so the column follows "Move to collection" reparents
         var collectionsObservable = linkedItemsObservable
             .TransformOnObservable(item => LoadoutItem.Observe(connection, item.Id)
-                .Select(static live => live.Parent.TryGetAsCollectionGroup(out var group)
+                .Select(static live => live.HasParent() && live.Parent.TryGetAsCollectionGroup(out var group)
                     ? group.AsLoadoutItemGroup().AsLoadoutItem().Name
                     : string.Empty
                 )
@@ -356,7 +356,7 @@ public static class LoadoutDataProviderHelper
             .TransformOnObservable(item =>
                 {
                     var isLocked = IsLocked(item);
-                    if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
+                    if (!item.HasParent() || !item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
                         return System.Reactive.Linq.Observable.Return((IsLocked: isLocked, IsParentDisabled: false));
                     
                     return LoadoutItem.Observe(connection, collectionGroup)
@@ -401,7 +401,7 @@ public static class LoadoutDataProviderHelper
                 var isLocked = IsLocked(item);
                 var isEnabledObservable = item.IsEnabledObservable(connection);
 
-                if (!item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
+                if (!item.HasParent() || !item.Parent.TryGetAsCollectionGroup(out var collectionGroup))
                     return isEnabledObservable.Select(isEnabled => (IsToggleable: !isLocked, IsEnabled: isEnabled));
 
                 return LoadoutItem.Observe(connection, collectionGroup)

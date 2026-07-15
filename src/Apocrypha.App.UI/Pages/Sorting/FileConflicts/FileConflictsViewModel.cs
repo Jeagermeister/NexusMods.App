@@ -337,7 +337,8 @@ public class FileConflictsTreeDataGridAdapter : TreeDataGridAdapter<CompositeIte
             numLosers: new ValueComponent<long>(value: numLosingFiles)
         ));
 
-        if (loadoutGroup.AsLoadoutItem().Parent.TryGetAsCollectionGroup(out var collection))
+        var loadoutGroupItem = loadoutGroup.AsLoadoutItem();
+        if (loadoutGroupItem.HasParent() && loadoutGroupItem.Parent.TryGetAsCollectionGroup(out var collection))
         {
             itemModel.Add(LoadoutColumns.Collections.ComponentKey, new StringComponent(value: collection.AsLoadoutItemGroup().AsLoadoutItem().Name));
         }
