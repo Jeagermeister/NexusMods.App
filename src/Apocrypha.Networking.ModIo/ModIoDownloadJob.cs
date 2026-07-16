@@ -96,10 +96,8 @@ public record ModIoDownloadJob : HttpDownloadJob, IModIoDownloadJob
         if (ExpectedMd5 is { } expected)
         {
             await using var fileStream = Destination.Read();
-            using var algo = System.Security.Cryptography.MD5.Create();
-            var actual = Md5Value.From(await algo.ComputeHashAsync(fileStream));
-            if (actual != expected)
-                throw new InvalidOperationException($"mod.io download failed integrity check for `{FileMetadata.Mod.Name}`: expected MD5 {expected}, got {actual}");
+            await Md5Hasher.VerifyAsync(fileStream, expected,
+                (exp, act) => $"mod.io download failed integrity check for `{FileMetadata.Mod.Name}`: expected MD5 {exp}, got {act}");
         }
 
         libraryFile.GetLibraryItem(tx).Name = FileMetadata.Mod.Name;
