@@ -151,4 +151,21 @@ public class Md5Hasher : IStreamingHasher<Md5Value, MD5, Md5Hasher>
     {
         return StreamingHasher<Md5Value, MD5, Md5Hasher>.HashAsync(stream, bufferSize, cancellationToken);
     }
+
+    /// <summary>
+    /// Hashes <paramref name="stream"/> and throws <see cref="InvalidOperationException"/> (built
+    /// from <paramref name="messageFactory"/>, given the expected and actual hashes) if it doesn't
+    /// match <paramref name="expected"/>. Shared by every download job that verifies a source-supplied
+    /// MD5 against the downloaded bytes.
+    /// </summary>
+    public static async Task VerifyAsync(
+        Stream stream,
+        Md5Value expected,
+        Func<Md5Value, Md5Value, string> messageFactory,
+        CancellationToken cancellationToken = default)
+    {
+        var actual = await HashAsync(stream, cancellationToken: cancellationToken);
+        if (actual != expected)
+            throw new InvalidOperationException(messageFactory(expected, actual));
+    }
 }
