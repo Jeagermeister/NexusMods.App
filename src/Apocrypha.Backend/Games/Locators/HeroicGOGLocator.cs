@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using GameFinder.Launcher.Heroic;
 using Microsoft.Extensions.Logging;
 using NexusMods.Paths;
+using Apocrypha.Sdk;
 using Apocrypha.Sdk.Games;
 
 namespace Apocrypha.Backend.Games.Locators;
@@ -53,6 +54,11 @@ internal class HeroicGOGLocator : IGameLocator
                 ..dlcIds,
             ];
 
+            var winePrefix = gameFinderGame.GetWinePrefix();
+            var linuxCompatibilityDataProvider = winePrefix is not null
+                ? new LinuxCompatibilityDataProvider(gameFinderGame, winePrefix.ConfigurationDirectory)
+                : null;
+
             yield return new GameLocatorResult
             {
                 Game = game,
@@ -65,7 +71,40 @@ internal class HeroicGOGLocator : IGameLocator
                 StoreIdentifier = storeIdentifier.ToString(),
                 Store = Store,
                 Locator = this,
+                LinuxCompatabilityDataProvider = linuxCompatibilityDataProvider,
             };
+        }
+    }
+
+    private class LinuxCompatibilityDataProvider : ILinuxCompatabilityDataProvider
+    {
+        private readonly HeroicGOGGame _game;
+
+        public AbsolutePath WinePrefixDirectoryPath { get; }
+
+        public LinuxCompatibilityDataProvider(HeroicGOGGame game, AbsolutePath winePrefixDirectoryPath)
+        {
+            _game = game;
+            WinePrefixDirectoryPath = winePrefixDirectoryPath;
+        }
+
+        public ValueTask<ImmutableHashSet<string>> GetInstalledWinetricksComponents(CancellationToken cancellationToken)
+        {
+            var filePath = WineParser.GetWinetricksLogFilePath(WinePrefixDirectoryPath);
+            var result = WineParser.ParseWinetricksLogFile(filePath);
+            return new ValueTask<ImmutableHashSet<string>>(result);
+        }
+
+        public ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverrides(CancellationToken cancellationToken)
+        {
+            // Heroic stores per-game Wine env vars (incl. WINEDLLOVERRIDES, if the user set one
+            // via its Settings > Advanced tab) directly on the game record — no launch-options
+            // string to parse like Steam's localconfig.vdf.
+            if (_game.WineData is null || !_game.WineData.EnvironmentVariables.TryGetValue(WineParser.WineDllOverridesEnvironmentVariableName, out var value))
+                return new ValueTask<ImmutableArray<WineDllOverride>>(ImmutableArray<WineDllOverride>.Empty);
+
+            var result = WineParser.ParseEnvironmentVariable(value);
+            return new ValueTask<ImmutableArray<WineDllOverride>>(result);
         }
     }
 }
