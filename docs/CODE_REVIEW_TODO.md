@@ -38,9 +38,29 @@ to be item 7 below.*
    stores" finding.
 5. **Relocate the `IModSource` adapters out of App.UI** into their source layers — also the
    moment to fix the `Apocrypha.Library` → `App.UI` layering inversion the review flagged (§5).
-6. **Nexus/Thunderstore download integrity** — mod.io downloads are now MD5-verified; the other
-   sources still install unverified bytes (review `se2`). Thunderstore has no published hash in
-   the per-package API; Nexus V2 exposes MD5 on files — wire it like the mod.io path.
+6. **Nexus/Thunderstore download integrity — premise checked, not currently wireable as written**
+   (review `se2`). This item assumed Nexus V2 exposes MD5 on files the way mod.io/collection
+   externals do; checked against the vendored GraphQL schema, the official REST v1 client's
+   TypeScript types, and Vortex's own source (2026-07-16): neither the GraphQL `ModFile` type nor
+   the REST v1 `files.json` response carries a hash for a *known* file — Nexus's only hash surface
+   is the reverse `fileHash(md5:)`/`fileHashes(md5s:)` lookup (supply a hash you already have, get
+   matching files back), which is why the mod.io and Nexus-collection-external paths work (they
+   get an md5 from a different source — the modfile/manifest metadata — not from `ModFile`
+   itself) but regular Nexus mod downloads have nothing to verify against. Confirmed Vortex
+   doesn't get one either — it hashes post-download client-side. Thunderstore is worse: no
+   endpoint (v1, experimental) exposes a hash, and the backend doesn't even compute one for
+   regular package zips (its SHA256 code paths belong to unrelated subsystems — schema-server
+   blobs, r2modman profile sync). Real options if this is still wanted: (a) drop it — HTTPS
+   already protects the transport and there's no additional integrity claim to check without an
+   upstream-supplied hash; (b) hash post-download and cache it for `LibraryDuplicateFinder`/
+   reverse-lookup purposes (matches what Vortex does for Nexus), which is a dedup feature, not
+   integrity verification; (c) file a feature request upstream (a Nexus forum thread already
+   exists asking to expose the hash on `ModFile`) and revisit once/if it ships. Not scoping further
+   until Brian picks one.
+
+   The one safe piece of this item — deduping the MD5-create/compute/compare/throw block that
+   `ModIoDownloadJob` and `ExternalDownloadJob` both hand-rolled into a shared
+   `Md5Hasher.VerifyAsync` helper — is done (PR #77).
 7. **`IModSource` axaml enumeration** (review #9, increment 2) — the "get mods" flyout still
    declares one MenuItem per source. Parked deliberately: Avalonia templating of a mixed
    static/dynamic flyout costs more than the ~6 lines per future source it saves.
