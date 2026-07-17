@@ -4,6 +4,30 @@ Apocrypha's own release history. Entries are added when a release is published �
 [GitHub Releases](https://github.com/Jeagermeister/Apocrypha/releases) for the full text
 (including download links and checksums) of every version below.
 
+# v0.4.0 2026-07-17
+
+**A real Home, a smarter Library.** A rebuilt browsing experience from top to bottom, plus a big correctness and security hardening pass underneath.
+
+### A real Home page, a smarter Library
+
+- **Home** is now an actual dashboard — jump-back-in tiles for your recent games/loadouts and an activity feed, instead of just aliasing to My Games.
+- **The spine** now groups by game install instead of one icon per loadout, with a chevron flyout to switch or create loadouts, ordered by last activity.
+- **The Library** got a package rollup with source badges and real Thunderstore/mod.io icons.
+
+### Diff-based loadout switching
+
+Switching loadouts now diffs against whatever's actually on disk instead of resetting to vanilla first — shared files between loadouts are never needlessly rewritten.
+
+### Hardening pass
+
+A wide correctness/security review landed across this release: a path-traversal fix in FOMOD installs, download-resume corruption, a conflict-priority migration bug (plus the crash it exposed in 6 places once fixed), OAuth refresh races, Steam session handling, and more.
+
+### Also in this release
+
+- GOG/Heroic game installs now surface real Wine-prefix diagnostics (DLL overrides, winetricks packages) instead of silently skipping them.
+- This page now shows Apocrypha's own release history instead of an 8-month-stale copy of the upstream project's.
+- MD5 download-integrity verification deduplicated into one shared helper.
+
 # v0.3.0 2026-07-13
 
 **mod.io arrives, in royal purple.** A new mod source, a finished collections workflow, and a new look.
