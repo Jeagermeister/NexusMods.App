@@ -58,6 +58,14 @@ public partial class NexusModsModPageMetadata : IModelDefinition
     public static readonly UriAttribute ThumbnailUri = new(Namespace, nameof(ThumbnailUri)) { IsOptional = true };
 
     /// <summary>
+    /// The last time this page's Nexus "required mods" were fetched and persisted as
+    /// <see cref="NexusModsModRequirement"/> entities. Unset on pages downloaded before the
+    /// dependency feature existed; used to drive a one-time backfill without re-querying pages
+    /// that have already been checked.
+    /// </summary>
+    public static readonly TimestampAttribute RequirementsCheckedAt = new(Namespace, nameof(RequirementsCheckedAt)) { IsOptional = true };
+
+    /// <summary>
     /// Back-reference to all files from this page.
     /// </summary>
     public static readonly BackReferenceAttribute<NexusModsFileMetadata> Files = new(NexusModsFileMetadata.ModPage);

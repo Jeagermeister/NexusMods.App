@@ -82,6 +82,7 @@ public static class FragmentExtensions
             nexusModResolver.Add(NexusModsModPageMetadata.DataUpdatedAt, DateTimeOffset.UtcNow);
 
         ResolveRequirements(modFragment, db, tx, ModUid.FromV2Api(modFragment.Uid));
+        nexusModResolver.Add(NexusModsModPageMetadata.RequirementsCheckedAt, DateTimeOffset.UtcNow);
 
         return nexusModResolver.Id;
     }
