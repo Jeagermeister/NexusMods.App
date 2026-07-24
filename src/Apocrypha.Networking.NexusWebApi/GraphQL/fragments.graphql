@@ -32,6 +32,16 @@ fragment Mod on Mod {
     updatedAt
     uid
     author
+    modRequirements {
+        nexusRequirements(count: 50) {
+            nodes {
+                modId
+                gameId
+                modName
+                externalRequirement
+            }
+        }
+    }
 }
 
 fragment ModFile on ModFile {

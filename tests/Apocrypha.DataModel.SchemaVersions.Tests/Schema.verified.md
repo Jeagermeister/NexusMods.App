@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x0AB38C81D9DAC0C3
-   - Total attributes: 259
-   - Total namespaces: 82
+   - Fingerprint: 0x7D45BCDF66A7DDE4
+   - Total attributes: 262
+   - Total namespaces: 83
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
@@ -229,6 +229,9 @@ models in the app, then validate the tests to update this file.
 | NexusMods.NexusModsLibrary.NexusModsModPageMetadata/ThumbnailUri                   | Utf8                    | False   | False | False     | 
 | NexusMods.NexusModsLibrary.NexusModsModPageMetadata/Uid                            | UInt64                  | True    | False | False     | 
 | NexusMods.NexusModsLibrary.NexusModsModPageMetadata/UpdatedAt                      | Int64                   | False   | False | False     | 
+| NexusMods.NexusModsLibrary.NexusModsModRequirement/OwnerUid                        | UInt64                  | True    | False | False     | 
+| NexusMods.NexusModsLibrary.NexusModsModRequirement/RequiredModName                 | Utf8                    | False   | False | False     | 
+| NexusMods.NexusModsLibrary.NexusModsModRequirement/RequiredUid                     | UInt64                  | True    | False | False     | 
 | NexusMods.NexusModsLibrary.User/AvatarResource                                     | Reference               | False   | False | False     | 
 | NexusMods.NexusModsLibrary.User/AvatarUri                                          | Utf8                    | False   | False | False     | 
 | NexusMods.NexusModsLibrary.User/Name                                               | Utf8                    | True    | False | False     | 
