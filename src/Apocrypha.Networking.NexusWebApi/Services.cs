@@ -75,6 +75,7 @@ public static class Services
             .AddAllSingleton<INexusApiClient, NexusApiClient>()
             .AddSingleton<IModUpdateFilterService, ModUpdateFilterService>()
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
+            .AddHostedService<NexusModRequirementsBackfill>()
             .AddNexusApiVerbs();
 
         collection
