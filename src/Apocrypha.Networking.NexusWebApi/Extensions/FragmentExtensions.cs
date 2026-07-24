@@ -81,7 +81,42 @@ public static class FragmentExtensions
         if (setFilesTimestamp)
             nexusModResolver.Add(NexusModsModPageMetadata.DataUpdatedAt, DateTimeOffset.UtcNow);
 
+        ResolveRequirements(modFragment, db, tx, ModUid.FromV2Api(modFragment.Uid));
+
         return nexusModResolver.Id;
+    }
+
+    /// <summary>
+    /// Persists the mod's "required mods" (from <c>modRequirements.nexusRequirements</c>) as
+    /// <see cref="NexusModsModRequirement"/> entities keyed by (owner, required) so they can be
+    /// resolved later to auto-enable an installed-but-disabled dependency.
+    /// </summary>
+    private static void ResolveRequirements(IMod modFragment, IDb db, ITransaction tx, ModUid ownerUid)
+    {
+        var requirements = modFragment.ModRequirements?.NexusRequirements?.Nodes;
+        if (requirements is null) return;
+
+        foreach (var requirement in requirements)
+        {
+            // Skip requirements that live outside Nexus (script extenders, external tools, …);
+            // they are never present as loadout mods, so there is nothing to auto-enable.
+            if (requirement.ExternalRequirement) continue;
+
+            if (!uint.TryParse(requirement.ModId, out var modId)) continue;
+            if (!uint.TryParse(requirement.GameId, out var gameId)) continue;
+
+            var requiredUid = new ModUid(ModId.From(modId), NexusModsGameId.From(gameId));
+
+            // Guard against a mod page listing itself as a requirement.
+            if (requiredUid == ownerUid) continue;
+
+            var requirementResolver = GraphQLResolver.Create(db, tx,
+                (NexusModsModRequirement.OwnerUid, ownerUid),
+                (NexusModsModRequirement.RequiredUid, requiredUid));
+
+            if (!string.IsNullOrEmpty(requirement.ModName))
+                requirementResolver.Add(NexusModsModRequirement.RequiredModName, requirement.ModName);
+        }
     }
 
     private static async Task<byte[]> DownloadImage(HttpClient client, string? uri, CancellationToken token)

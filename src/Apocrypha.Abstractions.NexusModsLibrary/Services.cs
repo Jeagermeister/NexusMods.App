@@ -18,6 +18,7 @@ public static class Services
         return serviceCollection
             .AddNexusModsFileMetadataModel()
             .AddNexusModsModPageMetadataModel()
+            .AddNexusModsModRequirementModel()
             .AddNexusModsLibraryItemModel()
             .AddCollectionMetadataModel()
             .AddCollectionRevisionMetadataModel()

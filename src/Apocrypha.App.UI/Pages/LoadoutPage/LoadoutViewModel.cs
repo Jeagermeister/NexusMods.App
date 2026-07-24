@@ -774,6 +774,11 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         // We only enable if all items are disabled, otherwise we disable
         var shouldEnable = toggleableItems.All(loadoutItem => loadoutItem.IsDisabled);
 
+        // When enabling, also turn on any required mods that are already installed but disabled.
+        var dependenciesToEnable = shouldEnable
+            ? RequiredDependencyEnabler.GetDependenciesToEnable(connection.Db, toggleableItems)
+            : [];
+
         using var tx = connection.BeginTransaction();
 
         foreach (var id in toggleableItems)
@@ -788,7 +793,22 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             }
         }
 
+        foreach (var dependencyId in dependenciesToEnable)
+        {
+            tx.Retract(dependencyId, LoadoutItem.Disabled, Null.Instance);
+        }
+
         await tx.Commit();
+
+        if (dependenciesToEnable.Count > 0)
+        {
+            var count = dependenciesToEnable.Count;
+            notificationService?.ShowToast(
+                count == 1
+                    ? "Also enabled 1 required mod this mod depends on."
+                    : $"Also enabled {count} required mods this mod depends on.",
+                ToastNotificationVariant.Neutral);
+        }
     }
 
     internal static void HandleOpenItemCollectionPage(
