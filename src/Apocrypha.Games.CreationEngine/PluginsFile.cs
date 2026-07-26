@@ -25,14 +25,33 @@ public class PluginsFile : IIntrinsicFile
 
     private record struct Metadata(RelativePath FileName, ModKey ModKey, Hash Hash, IMod Mod);
 
-    // A deterministic tie-break so plugins with no ordering rule between them (i.e. within the same
-    // dependency tier) are emitted in a stable order across applies. Without it the Sorter falls back
-    // to hash-based dictionary iteration order, which depends on per-process-randomized string hashes,
-    // so an unchanged load-out produced a different plugins.txt on every launch — silently reshuffling
-    // record-conflict winners. This only breaks ties; the ESM/ESL/ESP and master-reference rules still
-    // dominate the ordering.
+    // The engine loads the master block (.esm/.esl) ahead of regular plugins, but that is a grouping,
+    // not a dependency. It used to be expressed as pairwise "after" rules against every other plugin,
+    // which had two problems: it allocated O(n^2) rules (~10^5+ on a large load-out), and it collided
+    // with real master references — a master-flagged plugin that masters an .esl/.esp closes a loop,
+    // and the topological sort then throws "Cyclic dependency detected", aborting the entire apply.
+    // Encoding it as sort priority instead leaves master references as the only hard ordering rules;
+    // those form a DAG, so a cycle can no longer be manufactured.
+    private static int LoadOrderClass(ModKey modKey) => modKey.Type switch
+    {
+        ModType.Master => 0,
+        ModType.Light => 1,
+        _ => 2,
+    };
+
+    // Within a class, a deterministic tie-break so plugins with no ordering rule between them are
+    // emitted in a stable order across applies. Without it the Sorter falls back to hash-based
+    // dictionary iteration order, which depends on per-process-randomized string hashes, so an
+    // unchanged load-out produced a different plugins.txt on every launch — silently reshuffling
+    // record-conflict winners. Master references still dominate the ordering.
     private static readonly IComparer<ModKey> ModKeyTieBreak =
-        Comparer<ModKey>.Create(static (a, b) => string.Compare(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase));
+        Comparer<ModKey>.Create(static (a, b) =>
+        {
+            var byClass = LoadOrderClass(a).CompareTo(LoadOrderClass(b));
+            return byClass != 0
+                ? byClass
+                : string.Compare(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase);
+        });
 
     public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, ISorter sorter)
     {
@@ -86,32 +105,9 @@ public class PluginsFile : IIntrinsicFile
             });
         }
 
-        // ESLs should come after ESMs
-        if (metadata.FileName.Extension == KnownCEExtensions.ESL)
-        {
-            foreach (var other in allPlugins.Values)
-            {
-                if (other.FileName.Extension == KnownCEExtensions.ESM)
-                    resultList.Add(new After<Metadata, ModKey>()
-                    {
-                        Other = other.ModKey,
-                    });
-            }
-        }
-        
-        // ESPs should come after ESMs and ESLs
-        if (metadata.FileName.Extension == KnownCEExtensions.ESP)
-        {
-            foreach (var other in allPlugins.Values)
-            {
-                if (other.FileName.Extension == KnownCEExtensions.ESM || other.FileName.Extension == KnownCEExtensions.ESL)
-                    resultList.Add(new After<Metadata, ModKey>()
-                    {
-                        Other = other.ModKey,
-                    });
-            }
-        }
-        
+        // NOTE: .esm/.esl/.esp ordering is deliberately NOT emitted as rules here — see
+        // LoadOrderClass above. Master references are the only hard constraints, which keeps the
+        // rule graph a DAG and the rule count linear in the number of masters.
         return resultList;
     }
 

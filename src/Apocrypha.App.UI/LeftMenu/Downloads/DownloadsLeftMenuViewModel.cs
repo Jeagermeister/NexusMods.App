@@ -39,6 +39,7 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
         WorkspaceId = workspaceId;
         var logger = serviceProvider.GetRequiredService<ILogger<DownloadsLeftMenuViewModel>>();
         var connection = serviceProvider.GetRequiredService<IConnection>();
+        var gameRegistry = serviceProvider.GetRequiredService<IGameRegistry>();
 
         // All Downloads menu item
         LeftMenuItemAllDownloads = new LeftMenuItemViewModel(
@@ -59,7 +60,12 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
         this.WhenActivated(disposable =>
         {
             Sdk.Loadouts.Loadout.ObserveAll(connection)
-                .Filter(loadout => loadout.IsVisible())
+                // An orphaned loadout (its game was uninstalled or moved, or it was created
+                // against an install that no longer resolves) has no locatable installation.
+                // InstallationInstance below calls ForceGetInstallation, which throws, and the
+                // exception escapes the DynamicData pipeline and takes down the whole app --
+                // so skip those loadouts here instead of crashing on them.
+                .Filter(loadout => loadout.IsVisible() && gameRegistry.TryGetGameInstallation(loadout, out _))
                 .Group(loadout => loadout.InstallationId)
                 .Transform(group => group.Cache.Items.First().InstallationInstance)
                 .Transform(gameInstallation => CreatePerGameDownloadItem(gameInstallation, workspaceController, workspaceId, logger))
