@@ -16,6 +16,7 @@ using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusModsLibrary.Models;
 using Apocrypha.Games.FOMOD;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using Apocrypha.Networking.NexusWebApi;
 using NexusMods.Paths;
@@ -127,20 +128,31 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         PatchedFile[] patchedFiles = [];
 
         var libraryFile = GetLibraryFile(Item, Connection.Db);
-        if (CollectionMod.Patches.Count > 0)
-        {
-            if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive)) throw new NotSupportedException("Expected library file to be an archive");
-            patchedFiles = await PatchFiles(libraryArchive, cancellationToken: context.CancellationToken);
-        }
+        var hasPatches = CollectionMod.Patches.Count > 0;
 
         if (CollectionMod.Hashes.Length > 0)
         {
+            // A replicated mod builds its file list out of the patched output itself, so it has to
+            // be patched up front. Its paths come straight from the collection's hash list rather
+            // than an installer, so matching against the raw archive is correct here.
+            if (hasPatches)
+            {
+                if (!libraryFile.TryGetAsLibraryArchive(out var replicatedArchive)) throw new NotSupportedException("Expected library file to be an archive");
+                patchedFiles = await PatchFilesFromArchive(replicatedArchive, cancellationToken: context.CancellationToken);
+            }
+
             return (await InstallReplicatedMod(patchedFiles), []);
         }
 
+        // Everything below installs first and patches afterwards. Patch keys in the collection
+        // manifest are relative to the mod's *installed* root, whereas the raw archive still
+        // carries whatever wrapper the author shipped -- a "ModName/" folder, a "Data/" prefix,
+        // or FOMOD option directories like "00 Required/". Resolving patches against the archive
+        // therefore misses every mod that isn't packaged flat, which aborts the whole mod install.
         if (CollectionMod.Choices is { Type: ChoicesType.fomod })
         {
-            return (await InstallFomodWithPredefinedChoices(context.CancellationToken), patchedFiles);
+            var fomodGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
+            return (fomodGroup, await PatchInstalledGroup(fomodGroup, hasPatches, context.CancellationToken));
         }
 
         // A FOMOD whose choices were never recorded by the curator must NOT fall through to the
@@ -152,7 +164,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             && maybeFomodArchive.Children.Any(static c => c.Path.EndsWith(FomodConstants.XmlConfigName)))
         {
             Logger.LogInformation("Collection mod {Name} is a FOMOD without recorded choices; installing non-interactively with installer defaults", Item.Name);
-            return (await InstallFomodWithPredefinedChoices(context.CancellationToken), patchedFiles);
+            var defaultsGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
+            return (defaultsGroup, await PatchInstalledGroup(defaultsGroup, hasPatches, context.CancellationToken));
         }
 
         var result = await LoadoutManager.InstallItem(
@@ -167,7 +180,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         );
 
         Debug.Assert(result.LoadoutItemGroup.HasValue);
-        return (result.LoadoutItemGroup!.Value, patchedFiles);
+        var installedGroup = result.LoadoutItemGroup!.Value;
+        return (installedGroup, await PatchInstalledGroup(installedGroup, hasPatches, context.CancellationToken));
     }
 
     private Task<LoadoutItemGroup.ReadOnly> InstallBundledMod(CollectionDownloadBundled.ReadOnly download) => LoadoutManager.InstallItemWrapper(TargetLoadout, tx =>
@@ -384,9 +398,48 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         return group.Id;
     });
 
-    private async ValueTask<PatchedFile[]> PatchFiles(LibraryArchive.ReadOnly srcArchive, CancellationToken cancellationToken)
+    /// <summary>
+    /// Patches a mod that has already been installed, resolving patch keys against the installed
+    /// file layout rather than the raw archive.
+    /// </summary>
+    private async ValueTask<PatchedFile[]> PatchInstalledGroup(LoadoutItemGroup.ReadOnly group, bool hasPatches, CancellationToken cancellationToken)
     {
-        var srcFiles = srcArchive.Children.ToFrozenDictionary(static x => x.Path, static x => x.AsLibraryFile());
+        if (!hasPatches) return [];
+
+        var srcFiles = new Dictionary<RelativePath, (Hash Hash, Size Size)>();
+        foreach (var child in group.Children)
+        {
+            if (!LoadoutItemWithTargetPath.TargetPath.TryGetValue(child, out var rawTargetPath)) continue;
+            if (!LoadoutFile.Hash.TryGetValue(child, out var hash)) continue;
+            if (!LoadoutFile.Size.TryGetValue(child, out var size)) continue;
+
+            GamePath targetPath = rawTargetPath;
+            var path = targetPath.Path;
+            srcFiles.TryAdd(path, (hash, size));
+
+            // Patch keys are relative to the root the installer deployed into (for Creation Engine
+            // games that is "Data/"), so index the path with its first segment removed as well.
+            var withoutRoot = path.DropFirst();
+            if (withoutRoot != default) srcFiles.TryAdd(withoutRoot, (hash, size));
+        }
+
+        return await PatchFilesCore(srcFiles, cancellationToken);
+    }
+
+    private async ValueTask<PatchedFile[]> PatchFilesFromArchive(LibraryArchive.ReadOnly srcArchive, CancellationToken cancellationToken)
+    {
+        var srcFiles = new Dictionary<RelativePath, (Hash Hash, Size Size)>();
+        foreach (var child in srcArchive.Children)
+        {
+            var file = child.AsLibraryFile();
+            srcFiles.TryAdd(child.Path, (file.Hash, file.Size));
+        }
+
+        return await PatchFilesCore(srcFiles, cancellationToken);
+    }
+
+    private async ValueTask<PatchedFile[]> PatchFilesCore(Dictionary<RelativePath, (Hash Hash, Size Size)> srcFiles, CancellationToken cancellationToken)
+    {
         var collectionFiles = SourceCollectionArchive.Children.ToFrozenDictionary(static x => x.Path, static x => x.AsLibraryFile());
 
         var patches = CollectionMod.Patches.ToArray();
@@ -426,17 +479,20 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     private async ValueTask<(PatchedFile, MemoryStream)> PatchFile(
         RelativePath srcPath,
         Crc32Value expectedHash,
-        FrozenDictionary<RelativePath, LibraryFile.ReadOnly> srcFiles,
+        Dictionary<RelativePath, (Hash Hash, Size Size)> srcFiles,
         FrozenDictionary<RelativePath, LibraryFile.ReadOnly> collectionFiles,
         CancellationToken cancellationToken)
     {
-        if (!srcFiles.TryGetValue(srcPath, out var srcFile)) throw new KeyNotFoundException($"Collection download archive doesn't contain file `{srcPath}`");
+        // Patch keys come from a Windows-authored manifest and can use backslashes.
+        var normalizedPath = RelativePath.FromUnsanitizedInput(srcPath.ToString());
+        if (!srcFiles.TryGetValue(srcPath, out var srcFile) && !srcFiles.TryGetValue(normalizedPath, out srcFile))
+            throw new KeyNotFoundException($"Collection download archive doesn't contain file `{srcPath}`");
 
         var patchName = RelativePath.FromUnsanitizedInput($"patches/{CollectionMod.Name}/{srcPath}.diff");
         if (!collectionFiles.TryGetValue(patchName, out var patchFile)) throw new KeyNotFoundException($"Collection archive doesn't contain file `{patchName}`");
 
         var patchedFileStream = new MemoryStream(capacity: (int)srcFile.Size.Value);
-        var (originalFileHashes, patchedFileHashes) = await PatchFile(fileToPatch: srcFile, patchDataFile: patchFile, expectedHash: expectedHash, outputStream: patchedFileStream, cancellationToken: cancellationToken);
+        var (originalFileHashes, patchedFileHashes) = await PatchFile(fileToPatchHash: srcFile.Hash, patchDataFile: patchFile, expectedHash: expectedHash, outputStream: patchedFileStream, cancellationToken: cancellationToken);
 
         var patchedFile = new PatchedFile(
             FileName: srcPath,
@@ -451,9 +507,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         return (patchedFile, patchedFileStream);
     }
 
-    private async ValueTask<(MultiHash OriginalFileHashes, MultiHash PatchedFileHashes)> PatchFile(LibraryFile.ReadOnly fileToPatch, LibraryFile.ReadOnly patchDataFile, Crc32Value expectedHash, Stream outputStream, CancellationToken cancellationToken)
+    private async ValueTask<(MultiHash OriginalFileHashes, MultiHash PatchedFileHashes)> PatchFile(Hash fileToPatchHash, LibraryFile.ReadOnly patchDataFile, Crc32Value expectedHash, Stream outputStream, CancellationToken cancellationToken)
     {
-        await using var inputStream = await FileStore.GetFileStream(fileToPatch.Hash, token: cancellationToken);
+        await using var inputStream = await FileStore.GetFileStream(fileToPatchHash, token: cancellationToken);
 
         var originalFileHashes = await MultiHasher.HashStream(inputStream, cancellationToken: cancellationToken);
         if (originalFileHashes.Crc32 != expectedHash.Value) throw new InvalidOperationException("The source file's CRC32 hash does not match the expected hash.");
