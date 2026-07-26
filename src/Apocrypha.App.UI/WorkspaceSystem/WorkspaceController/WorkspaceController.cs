@@ -413,12 +413,23 @@ internal sealed class WorkspaceController : ReactiveObject, IWorkspaceController
 
     private OpenPageBehavior CreateOpenPageBehavior(OpenPageBehaviorType behaviorType)
     {
-        var selectedPanel = ActiveWorkspace.SelectedPanel;
-        var selectedTab = selectedPanel.SelectedTab;
+        var workspace = ActiveWorkspace;
+
+        // NOTE: SelectedPanel and SelectedTab are only assigned reactively once the workspace
+        // view has been activated. Navigation triggered during startup (e.g. NavigateToHome when
+        // there was no window state to restore) runs before that happens, so both can still be
+        // null here. Fall back to the first panel/tab instead of dereferencing null, which would
+        // crash the app on every launch until the window state is restored.
+        var selectedPanel = (IPanelViewModel?)workspace.SelectedPanel ?? workspace.Panels.FirstOrDefault();
+        if (selectedPanel is null) return new OpenPageBehavior.NewPanel(Optional<WorkspaceGridState>.None);
+
+        var selectedTab = (IPanelTabViewModel?)selectedPanel.SelectedTab ?? selectedPanel.Tabs.FirstOrDefault();
 
         return behaviorType switch
         {
-            OpenPageBehaviorType.ReplaceTab => new OpenPageBehavior.ReplaceTab(selectedPanel.Id, selectedTab.Id),
+            OpenPageBehaviorType.ReplaceTab when selectedTab is not null => new OpenPageBehavior.ReplaceTab(selectedPanel.Id, selectedTab.Id),
+            // No tab to replace yet, so opening a new one is the closest equivalent.
+            OpenPageBehaviorType.ReplaceTab => new OpenPageBehavior.NewTab(selectedPanel.Id),
             OpenPageBehaviorType.NewTab => new OpenPageBehavior.NewTab(selectedPanel.Id),
             OpenPageBehaviorType.NewPanel => new OpenPageBehavior.NewPanel(Optional<WorkspaceGridState>.None),
         };
