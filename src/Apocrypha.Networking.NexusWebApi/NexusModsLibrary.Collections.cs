@@ -306,9 +306,12 @@ public partial class NexusModsLibrary
         RevisionNumber revisionNumber,
         CancellationToken cancellationToken)
     {
+        // A revision row can lose its collection reference (observed after deleting a collection
+        // loadout group), and reading `.Collection` on such a row throws. Without this guard the
+        // broken row poisons the whole lookup, so the collection can never be re-added.
         var revisions = CollectionRevisionMetadata
             .FindByRevisionNumber(_connection.Db, revisionNumber)
-            .Where(r => r.Collection.Slug == slug);
+            .Where(r => r.Contains(CollectionRevisionMetadata.Collection) && r.Collection.Slug == slug);
 
         if (revisions.TryGetFirst(out var revision)) return revision;
 
@@ -342,7 +345,17 @@ public partial class NexusModsLibrary
 
         var revisionId = RevisionId.From((ulong)collectionRevisionFragment.Id);
         var existingRevisions = CollectionRevisionMetadata.FindByRevisionId(db, revisionId);
-        if (existingRevisions.Count > 0) throw new NotSupportedException($"Revision with id `{revisionId}` already exists!");
+        if (existingRevisions.Count > 0)
+        {
+            // Only refuse when the existing rows are actually intact. A row that lost its
+            // collection reference would otherwise be a permanent dead end: it can't be read,
+            // and this throw stopped it from ever being rewritten. UpdateRevisionInfo upserts
+            // on RevisionId, so falling through repairs the row in place.
+            if (existingRevisions.All(static r => r.Contains(CollectionRevisionMetadata.Collection)))
+                throw new NotSupportedException($"Revision with id `{revisionId}` already exists!");
+
+            _logger.LogWarning("Revision `{RevisionId}` exists but is missing its collection reference; rewriting it", revisionId);
+        }
 
         var collectionRevisionEntityId = UpdateRevisionInfo(db, tx, collectionEntityId, collectionRevisionFragment);
 
