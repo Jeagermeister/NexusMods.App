@@ -1,13 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.Cli;
+using Apocrypha.Abstractions.Collections;
 using Apocrypha.Abstractions.Library;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using Apocrypha.Networking.NexusWebApi;
 using NexusMods.Paths;
+using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Loadouts;
 using Apocrypha.Sdk.ProxyConsole;
 
@@ -17,7 +20,9 @@ internal static class Verbs
 {
     internal static IServiceCollection AddCollectionVerbs(this IServiceCollection collection) =>
         collection
-            .AddVerb(() => InstallCollection);
+            .AddVerb(() => InstallCollection)
+            .AddVerb(() => RepairCuratedPluginState)
+            .AddVerb(() => SetGroupEnabled);
 
     [Verb("install-collection", "Installs a collection into the given loadout")]
     private static async Task<int> InstallCollection([Injected] IRenderer renderer,
@@ -62,6 +67,112 @@ internal static class Verbs
 
         var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
         await InstallCollectionJob.Create(serviceProvider, loadout, collectionFile, revisionMetadata, items);
+        return 0;
+    }
+
+    [Verb("collection-repair-plugin-state", "Applies each installed collection's curated plugin enable/disable state to an existing loadout")]
+    private static async Task<int> RepairCuratedPluginState([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to repair")] Loadout.ReadOnly loadout,
+        [Injected] NexusModsLibrary nexusModsLibrary,
+        [Injected] IConnection connection,
+        [Injected] CancellationToken token)
+    {
+        var db = connection.Db;
+
+        // A collection's manifest lists the plugins the curator actually runs -- Vortex records
+        // the enabled set, not the disabled one. Anything the install produced beyond that list
+        // (typically FOMOD options resolved differently than the curator's setup) is a plugin the
+        // curator does not load, and each such plugin can be a missing master that crashes the
+        // game on startup. The manifest is read straight out of the collection archive in the
+        // library, so this works fully offline.
+        foreach (var collectionGroup in NexusCollectionLoadoutGroup.All(db))
+        {
+            var groupItem = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem();
+            if (groupItem.LoadoutId != loadout.LoadoutId) continue;
+
+            var root = await nexusModsLibrary.ParseCollectionJsonFile(collectionGroup.LibraryFile, token);
+
+            var curatorPlugins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var plugin in root.Plugins)
+            {
+                if (plugin.Enabled != false) curatorPlugins.Add(plugin.Name);
+            }
+
+            if (curatorPlugins.Count == 0)
+            {
+                await renderer.TextLine($"Collection `{groupItem.Name}`: manifest lists no plugins; nothing to do");
+                continue;
+            }
+
+            using var tx = connection.BeginTransaction();
+            var disabled = 0;
+            foreach (var item in LoadoutItem.FindByLoadout(db, loadout))
+            {
+                if (!LoadoutItemWithTargetPath.TargetPath.TryGetValue(item, out var rawTargetPath)) continue;
+
+                GamePath targetPath = rawTargetPath;
+                var fileName = targetPath.Path.FileName.ToString();
+                if (!KnownPluginExtensions.Contains(targetPath.Path.Extension)) continue;
+                if (curatorPlugins.Contains(fileName)) continue;
+                if (!HasAncestor(item, collectionGroup.Id)) continue;
+                if (item.Contains(LoadoutItem.Disabled)) continue;
+
+                tx.Add(item.Id, LoadoutItem.Disabled, Null.Instance);
+                disabled++;
+            }
+
+            if (disabled > 0) await tx.Commit();
+            await renderer.TextLine($"Collection `{groupItem.Name}`: curator runs {curatorPlugins.Count} plugin(s); disabled {disabled} the install added beyond that");
+        }
+
+        await renderer.TextLine("Re-apply the loadout to update the game folder");
+        return 0;
+    }
+
+    private static readonly Extension[] KnownPluginExtensions = [new(".esp"), new(".esm"), new(".esl")];
+
+    private static bool HasAncestor(LoadoutItem.ReadOnly item, EntityId ancestorId)
+    {
+        var current = item;
+        while (current.Contains(LoadoutItem.Parent))
+        {
+            if (current.ParentId.Value == ancestorId) return true;
+            current = current.Parent.AsLoadoutItem();
+        }
+        return false;
+    }
+
+    [Verb("loadout-group-set-enabled", "Enables or disables a loadout group by name, including groups the UI treats as read-only")]
+    private static async Task<int> SetGroupEnabled([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout containing the group")] Loadout.ReadOnly loadout,
+        [Option("g", "group", "Exact name of the group")] string groupName,
+        [Option("e", "enabled", "true to enable, false to disable")] bool enabled,
+        [Injected] IConnection connection,
+        [Injected] CancellationToken token)
+    {
+        var db = connection.Db;
+        var matches = LoadoutItem.FindByLoadout(db, loadout)
+            .Where(item => item.IsLoadoutItemGroup() && string.Equals(item.Name, groupName, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (matches.Length == 0)
+        {
+            await renderer.TextLine($"No group named `{groupName}` in loadout `{loadout.Name}`");
+            return 1;
+        }
+        if (matches.Length > 1)
+        {
+            await renderer.TextLine($"`{groupName}` matches {matches.Length} groups; refusing to guess");
+            return 1;
+        }
+
+        var group = matches[0];
+        using var tx = connection.BeginTransaction();
+        if (enabled) tx.Retract(group.Id, LoadoutItem.Disabled, Null.Instance);
+        else tx.Add(group.Id, LoadoutItem.Disabled, Null.Instance);
+        await tx.Commit();
+
+        await renderer.TextLine($"Group `{group.Name}` is now {(enabled ? "enabled" : "DISABLED")}; re-apply the loadout to update the game folder");
         return 0;
     }
 }
