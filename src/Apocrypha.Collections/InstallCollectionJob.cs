@@ -11,6 +11,7 @@ using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusModsLibrary.Models;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Paths;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using Apocrypha.Networking.NexusWebApi;
 using Apocrypha.Sdk.FileStore;
@@ -148,6 +149,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
         });
 
+        await ApplyCuratedPluginState(root, collectionGroup);
+
         var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
         var allRequiredItemsInstalled = allRequiredItems.All(item => CollectionDownloader
             .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
@@ -201,6 +204,65 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         };
 
         return monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
+    }
+
+    /// <summary>
+    /// Disables the plugins the install produced that the curator does not run.
+    /// </summary>
+    /// <remarks>
+    /// The manifest's `plugins` array is the set of plugins the curator actually loads -- Vortex
+    /// records the enabled set, not the disabled one. An install can legitimately produce more
+    /// than that (FOMOD options resolved differently than the curator's setup, patch packs that
+    /// bundle a plugin per supported mod), and each extra plugin referencing a mod the collection
+    /// does not include is a missing master, which takes the game down on startup with no
+    /// indication of why. Only Gamebryo collections carry `plugins`; it is empty for every other
+    /// game, so this is a no-op there.
+    /// </remarks>
+    private async ValueTask ApplyCuratedPluginState(CollectionRoot root, NexusCollectionLoadoutGroup.ReadOnly collectionGroup)
+    {
+        var curatorPlugins = root.Plugins
+            .Where(static plugin => plugin.Enabled != false)
+            .Select(static plugin => plugin.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // No plugin list means no curated state to enforce -- never treat that as "disable all".
+        if (curatorPlugins.Count == 0) return;
+
+        var db = Connection.Db;
+        using var tx = Connection.BeginTransaction();
+
+        var disabledCount = 0;
+        foreach (var item in LoadoutItem.FindByLoadout(db, TargetLoadout))
+        {
+            if (!LoadoutItemWithTargetPath.TargetPath.TryGetValue(item, out var rawTargetPath)) continue;
+
+            GamePath targetPath = rawTargetPath;
+            if (!KnownPluginExtensions.Contains(targetPath.Path.Extension)) continue;
+            if (curatorPlugins.Contains(targetPath.Path.FileName.ToString())) continue;
+            if (!HasAncestor(item, collectionGroup.Id)) continue;
+            if (item.Contains(LoadoutItem.Disabled)) continue;
+
+            tx.Add(item.Id, LoadoutItem.Disabled, Null.Instance);
+            disabledCount++;
+        }
+
+        if (disabledCount == 0) return;
+
+        await tx.Commit();
+        Logger.LogInformation("Disabled {Count} plugin(s) the install produced that the curator does not run", disabledCount);
+    }
+
+    private static readonly Extension[] KnownPluginExtensions = [new(".esp"), new(".esm"), new(".esl")];
+
+    private static bool HasAncestor(LoadoutItem.ReadOnly item, EntityId ancestorId)
+    {
+        var current = item;
+        while (current.Contains(LoadoutItem.Parent))
+        {
+            if (current.ParentId.Value == ancestorId) return true;
+            current = current.Parent.AsLoadoutItem();
+        }
+        return false;
     }
 
     private static List<ModAndDownload> GatherDownloads(CollectionDownload.ReadOnly[] items, CollectionRoot root)
