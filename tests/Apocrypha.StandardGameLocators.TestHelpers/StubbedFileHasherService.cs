@@ -119,11 +119,26 @@ public class StubbedFileHasherService : IFileHashesService
         return [VanityVersion.From("1.0.Stubbed"), VanityVersion.From("1.1.Stubbed")];
     }
 
+    private readonly SemaphoreSlim _setupLock = new(1, 1);
+
     public async ValueTask<IDb> GetFileHashesDb()
     {
         if (_current is not null)
             return _current;
-        await SetupDb();
+
+        // The service is shared across parallel test classes; unguarded lazy setup let two
+        // CreateLoadout calls run SetupDb concurrently and corrupt the plain Dictionary.
+        await _setupLock.WaitAsync();
+        try
+        {
+            if (_current is null)
+                await SetupDb();
+        }
+        finally
+        {
+            _setupLock.Release();
+        }
+
         return _current!;
     }
 
