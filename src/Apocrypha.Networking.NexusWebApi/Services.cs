@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
+using Apocrypha.Networking.HttpDownloader;
 using Apocrypha.Networking.NexusWebApi.Auth;
 using Apocrypha.Networking.NexusWebApi.UpdateFilters;
 using Apocrypha.Networking.NexusWebApi.V1Interop;
@@ -77,6 +78,13 @@ public static class Services
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
             .AddHostedService<NexusModRequirementsBackfill>()
             .AddNexusApiVerbs();
+
+        // The GraphQL client uses its own named HttpClient via IHttpClientFactory, so the traffic
+        // monitor on the shared HttpClient never sees it. Attach the same counting handler here —
+        // GraphQL queries drew the API budget down during collection installs with no visibility.
+        collection
+            .AddHttpClient("NexusGraphQLClient")
+            .AddHttpMessageHandler<HttpTrafficMonitorHandler>();
 
         collection
             .AddNexusGraphQLClient()
