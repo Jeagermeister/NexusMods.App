@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Apocrypha.Abstractions.Loadouts;
-using Apocrypha.Abstractions.Loadouts.Sorting;
 using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Games.CreationEngine.Abstractions;
+using Apocrypha.Games.CreationEngine.SortOrder;
 using NexusMods.Paths;
 using Apocrypha.Sdk.FileStore;
 using Apocrypha.Sdk.Games;
@@ -17,7 +17,7 @@ public abstract class ACreationEngineSynchronizer : ALoadoutSynchronizer
     private Dictionary<GamePath, IIntrinsicFile> _intrinsicFiles;
     protected ACreationEngineSynchronizer(IServiceProvider provider, ICreationEngineGame game) : base(provider)
     {
-        var pluginsFile = new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), game, provider.GetRequiredService<ISorter>());
+        var pluginsFile = new PluginsFile(provider.GetRequiredService<ILogger<PluginsFile>>(), game, provider.GetRequiredService<PluginSortOrderVariety>());
         _intrinsicFiles = new Dictionary<GamePath, IIntrinsicFile>()
         {
             {pluginsFile.Path, pluginsFile},
