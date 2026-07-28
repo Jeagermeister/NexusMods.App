@@ -1,13 +1,12 @@
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Plugins.Records;
 
 using Apocrypha.Abstractions.Loadouts;
-using Apocrypha.Abstractions.Loadouts.Sorting;
 using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Abstractions.Loadouts.Synchronizers.Rules;
 using Apocrypha.Games.CreationEngine.Abstractions;
+using Apocrypha.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
@@ -20,49 +19,21 @@ namespace Apocrypha.Games.CreationEngine;
 public class PluginsFile : IIntrinsicFile
 {
     private readonly ICreationEngineGame _game;
-    private readonly ISorter _sorter;
+    private readonly PluginSortOrderVariety _sortOrderVariety;
     private readonly ILogger<PluginsFile> _logger;
 
     private record struct Metadata(RelativePath FileName, ModKey ModKey, Hash Hash, IMod Mod);
 
-    // The engine loads the master block (.esm/.esl) ahead of regular plugins, but that is a grouping,
-    // not a dependency. It used to be expressed as pairwise "after" rules against every other plugin,
-    // which had two problems: it allocated O(n^2) rules (~10^5+ on a large load-out), and it collided
-    // with real master references — a master-flagged plugin that masters an .esl/.esp closes a loop,
-    // and the topological sort then throws "Cyclic dependency detected", aborting the entire apply.
-    // Encoding it as sort priority instead leaves master references as the only hard ordering rules;
-    // those form a DAG, so a cycle can no longer be manufactured.
-    private static int LoadOrderClass(ModKey modKey) => modKey.Type switch
-    {
-        ModType.Master => 0,
-        ModType.Light => 1,
-        _ => 2,
-    };
-
-    // Within a class, a deterministic tie-break so plugins with no ordering rule between them are
-    // emitted in a stable order across applies. Without it the Sorter falls back to hash-based
-    // dictionary iteration order, which depends on per-process-randomized string hashes, so an
-    // unchanged load-out produced a different plugins.txt on every launch — silently reshuffling
-    // record-conflict winners. Master references still dominate the ordering.
-    private static readonly IComparer<ModKey> ModKeyTieBreak =
-        Comparer<ModKey>.Create(static (a, b) =>
-        {
-            var byClass = LoadOrderClass(a).CompareTo(LoadOrderClass(b));
-            return byClass != 0
-                ? byClass
-                : string.Compare(a.ToString(), b.ToString(), StringComparison.OrdinalIgnoreCase);
-        });
-
-    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, ISorter sorter)
+    public PluginsFile(ILogger<PluginsFile> logger, ICreationEngineGame game, PluginSortOrderVariety sortOrderVariety)
     {
         _game = game;
-        _sorter = sorter;
+        _sortOrderVariety = sortOrderVariety;
         Path = game.PluginsFile;
         _logger = logger;
     }
-    
+
     public GamePath Path { get; }
-    
+
     public async Task Write(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree)
     {
         var plugins = await syncTree
@@ -74,64 +45,70 @@ public class PluginsFile : IIntrinsicFile
 
         if (plugins.Count == 0)
             return;
-        
-        var sorted = _sorter.Sort(plugins.Values.ToList(), IdSelector, plugin => RuleCreator(plugin, plugins), ModKeyTieBreak)
+
+        // The persisted sort order is the preference layer: curated by a collection, arranged in
+        // the load-order UI, or absent entirely. Master references are re-applied as hard
+        // constraints below — they are correctness, not preference — so the file can never order a
+        // plugin ahead of one it requires, no matter what the persisted order says. Plugins the
+        // persisted order does not mention fall back to the conventional (masters, light, regular)
+        // block order that every mainstream tool emits, with a name tie-break so an unchanged
+        // load-out produces an identical plugins.txt on every apply.
+        var persistedOrder = _sortOrderVariety.GetPersistedPluginOrder(loadout.LoadoutId, loadout.Db);
+        Dictionary<string, int>? curatedIndex = null;
+        if (persistedOrder.Count > 0)
+        {
+            curatedIndex = new Dictionary<string, int>(persistedOrder.Count, StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < persistedOrder.Count; i++)
+            {
+                curatedIndex.TryAdd(persistedOrder[i], i);
+            }
+        }
+
+        var pluginList = plugins.Values.ToList();
+        var nodes = pluginList
+            .Select(p => new LoadOrderSorting.PluginNode(
+                p.FileName.ToString(),
+                p.Mod.MasterReferences.Select(m => m.Master.FileName.ToString()).ToArray()
+            ))
             .ToList();
-        _logger.LogDebug("Sorted {Count} plugin files", sorted.Count);
-        
+
+        var order = LoadOrderSorting.SortPlugins(nodes, curatedIndex, out var cyclePlugins);
+        if (cyclePlugins.Count > 0)
+        {
+            // Only malformed plugin headers can close a master loop; the affected plugins are
+            // still written, in preference order, after everything sortable.
+            _logger.LogWarning("Master references form a cycle involving {Plugins}; their relative order falls back to preference",
+                string.Join(", ", cyclePlugins.Take(5)));
+        }
+
+        _logger.LogDebug("Sorted {Count} plugin files ({Persisted} with a persisted position)", pluginList.Count, curatedIndex?.Count ?? 0);
+
         await using var sw = new StreamWriter(stream, leaveOpen: true);
         await sw.WriteLineAsync("# Generated by Nexus Mods App");
 
-        foreach (var plugin in sorted)
+        foreach (var index in order)
         {
-            await sw.WriteLineAsync($"*{plugin.FileName}");
+            await sw.WriteLineAsync($"*{pluginList[index].FileName}");
         }
 
         await sw.FlushAsync();
-    }
-
-    private static IReadOnlyList<ISortRule<Metadata, ModKey>> RuleCreator(Metadata metadata, Dictionary<ModKey, Metadata> allPlugins)
-    {
-        var resultList = new List<ISortRule<Metadata, ModKey>>();
-        foreach (var master in metadata.Mod.MasterReferences)
-        {
-            // Skip missing masters here, we'll catch that in diagnostics
-            if (!allPlugins.ContainsKey(master.Master))
-                continue;
-            
-            resultList.Add(new After<Metadata, ModKey>()
-            {
-                Other = master.Master,
-            });
-        }
-
-        // NOTE: .esm/.esl/.esp ordering is deliberately NOT emitted as rules here — see
-        // LoadOrderClass above. Master references are the only hard constraints, which keeps the
-        // rule graph a DAG and the rule count linear in the number of masters.
-        return resultList;
-    }
-
-    private static ModKey IdSelector(Metadata metadata)
-    {
-        return metadata.ModKey;
     }
 
     private async ValueTask<Metadata> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
     {
         var relPath = arg.Key.Path.FileName;
         Hash hash;
-        
+
         // We need to figure out if we should look at the loadout or the disk
         var syncNode = arg.Value;
         if (syncNode.Actions.HasFlag(Actions.ExtractToDisk) || syncNode.Disk.Hash == Hash.Zero || syncNode.SourceItemType == LoadoutSourceItemType.Game)
             hash = syncNode.Loadout.Hash;
         else
             hash = syncNode.Disk.Hash;
-        
+
         var modHeader = await _game.ParsePlugin(hash, relPath);
         return new Metadata(relPath, modHeader!.ModKey, hash, modHeader);
     }
-    
 
 
     public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)

@@ -45,3 +45,6 @@ coverage.json
 
 # PupNet output
 src/Apocrypha.App/Deploy/
+
+# Avalonia build-task scratch dirs (created on every build)
+.avalonia-build-tasks/

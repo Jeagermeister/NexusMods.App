@@ -55,7 +55,12 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
-            sortOrderManager.RegisterSortOrderVarieties([], this);
+            sortOrderManager.RegisterSortOrderVarieties(
+                sortOrderVarieties: [
+                    provider.GetRequiredService<SortOrder.PluginSortOrderVariety>(),
+                ],
+                game: this
+            );
             return sortOrderManager;
         });
 
