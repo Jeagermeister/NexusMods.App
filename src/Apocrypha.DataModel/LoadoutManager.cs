@@ -392,7 +392,12 @@ internal partial class LoadoutManager : ILoadoutManager
         tx.Add(new AddPriorityTxFunc(targetLoadout, groupId));
 
         var result = await tx.Commit();
-        return LoadoutItemGroup.Load(result.Db, groupId);
+        // The lambda usually returns the temporary id of a group it created in this transaction.
+        // Loading with the raw id binds the ReadOnly to a nonexistent entity: its Children are
+        // invisible (breaking anything that inspects the installed files, e.g. collection patch
+        // application) and attributes later written to that id mint a phantom group with metadata
+        // but no parent or content. The indexer remaps temp ids and passes real ids through.
+        return LoadoutItemGroup.Load(result.Db, result[groupId]);
     }
 
     public IJobTask<IInstallLoadoutItemJob, InstallLoadoutItemJobResult> InstallItem(
