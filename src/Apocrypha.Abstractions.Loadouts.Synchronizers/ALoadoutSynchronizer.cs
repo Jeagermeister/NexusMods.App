@@ -832,15 +832,25 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     private async Task ActionExtractToDisk(Dictionary<GamePath, SyncNode> groupings, GameLocations gameLocations, ITransaction tx, EntityId gameMetadataId, SynchronizeLoadoutJob? job = null)
     {
         List<(Hash Hash, AbsolutePath Path)> toExtract = [];
-        
+
+        // Two mods can declare the same directory with different casing (Data/F4SE/Plugins vs
+        // Data/F4SE/plugins). RelativePath compares case-insensitively, so the sync tree treats
+        // those as one directory — but ToAbsolutePath emits the literal casing carried by whichever
+        // GamePath it was handed, so on a case-sensitive filesystem they become two real directories.
+        // The game then reads only one of them and every file in the other is silently inert, with
+        // no error anywhere. NTFS merges them, which is why this is Linux-only.
+        var caseMap = new CaseCanonicalizer(_os, gameLocations, Logger);
+        var resolvedPaths = new Dictionary<GamePath, AbsolutePath>();
+
         foreach (var (path, node) in groupings)
         {
             if (!node.Actions.HasFlag(Actions.ExtractToDisk))
                 continue;
-            
+
             Debug.Assert(node.Loadout.Hash != Hash.Zero, "Loadout hash is zero, this should not happen");
 
-            var resolvedPath = gameLocations.ToAbsolutePath(path);
+            var resolvedPath = caseMap.Resolve(path);
+            resolvedPaths[path] = resolvedPath;
             toExtract.Add((node.Loadout.Hash, resolvedPath));
         }
 
@@ -857,7 +867,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 if (!node.Actions.HasFlag(Actions.ExtractToDisk))
                     continue;
 
-                var resolvedPath = gameLocations.ToAbsolutePath(gamePath);
+                // Must reuse the path we actually extracted to, not re-derive it, or the write
+                // time is read from a path that was never written.
+                var resolvedPath = resolvedPaths[gamePath];
                 var writeTimeUtc = new DateTimeOffset(resolvedPath.FileInfo.LastWriteTimeUtc);
                 
                 // Reuse the old disk state entry if it exists

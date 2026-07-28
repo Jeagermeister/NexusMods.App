@@ -62,6 +62,7 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         DiagnosticEmitters =
         [
             new MissingMasterEmitter(this),
+            new SaveBreakingChangeEmitter(),
         ];
 
         LibraryItemInstallers = 
@@ -119,4 +120,8 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
     }
 
     public GamePath PluginsFile => Fallout4KnownPaths.PluginsFile;
+
+    public GamePath? DlcListFile => Fallout4KnownPaths.DlcListFile;
+
+    public IReadOnlyList<RelativePath> KnownDlc => Fallout4KnownPaths.Dlc;
 }
