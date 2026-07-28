@@ -62,6 +62,7 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         DiagnosticEmitters =
         [
             new MissingMasterEmitter(this),
+            new SaveBreakingChangeEmitter(),
         ];
 
         LibraryItemInstallers =
