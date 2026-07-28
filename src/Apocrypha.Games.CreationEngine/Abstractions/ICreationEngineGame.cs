@@ -28,6 +28,18 @@ public interface ICreationEngineGame : IGame
     /// The official DLC plugins for this game, in the engine's release order.
     /// </summary>
     public IReadOnlyList<RelativePath> KnownDlc => [];
+
+    /// <summary>
+    /// The engine's ceiling on concurrently loaded general archives, or <c>null</c> when the
+    /// limit is unknown for this game — in which case no archive-count diagnostic is emitted.
+    /// </summary>
+    /// <remarks>
+    /// Exceeding the ceiling does not stop the game from launching; archive and file-handle
+    /// lookups start failing at runtime instead, which presents as garbage textures, missing
+    /// assets, or an access violation on the main menu. Nothing in the stock engine reports the
+    /// overrun, which makes it a debugging tarpit — hence the diagnostic.
+    /// </remarks>
+    public int? MaxGeneralArchives => null;
     /// <summary>
     /// Parse a plugin file. Currently, this loads only the header of the file, in the future
     /// we can add flags to load specific groups
