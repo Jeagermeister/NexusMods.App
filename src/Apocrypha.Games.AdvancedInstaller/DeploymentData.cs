@@ -32,7 +32,7 @@ public readonly struct DeploymentData
     /// then the KeyValuePair would be like ("texture.dds", "Game/Data/Textures/texture.dds").
     /// </example>
     /// <remarks>
-    /// Paths follow internal Nexus Mods App path standards: they use a "/" as a separator, trim whitespace, and do not alter "..".
+    /// Paths follow internal Apocrypha path standards: they use a "/" as a separator, trim whitespace, and do not alter "..".
     /// </remarks>
     public Dictionary<RelativePath, GamePath> ArchiveToOutputMap { get; init; } = new();
 

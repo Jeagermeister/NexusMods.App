@@ -21,8 +21,6 @@ internal class ProcessRunner : IProcessRunner
         _logger = serviceProvider.GetRequiredService<ILogger<ProcessRunner>>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
 
-        // TODO: rework
-        var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
         _processLogsFolder = LoggingSettings.GetLogBaseFolder(_fileSystem.OS, _fileSystem).Combine("ProcessLogs");
         _logger.LogInformation("Using process log folder at {Path}", _processLogsFolder);
 

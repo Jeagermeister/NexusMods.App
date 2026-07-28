@@ -33,7 +33,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         
         var plugins = syncTree.Where(static node =>
             node.Value.HaveLoadout &&
-            KnownCEExtensions.Plugins.Contains(node.Key.Extension) &&
+            KnownCEExtensions.PluginFiles.Contains(node.Key.Extension) &&
             node.Key.Parent == KnownPaths.Data);
         
         // Index the plugins in the loadout
@@ -41,7 +41,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())
         {
             var path = (GamePath)item.TargetPath;
-            if (path.LocationId == LocationId.Game && path.Parent == KnownPaths.Data && KnownCEExtensions.Plugins.Contains(path.Extension))
+            if (path.LocationId == LocationId.Game && path.Parent == KnownPaths.Data && KnownCEExtensions.PluginFiles.Contains(path.Extension))
                 pluginsInLoadout[path.FileName] = item.AsLoadoutItem().Parent;
 
         }

@@ -27,7 +27,7 @@ using ModAndDownload = (Mod Mod, CollectionDownload.ReadOnly Download);
 /// Job for installing a collection.
 /// </summary>
 public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob, NexusCollectionLoadoutGroup.ReadOnly>
-{ 
+{
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public required NexusModsCollectionLibraryFile.ReadOnly SourceCollection { get; init; }
     public required CollectionRevisionMetadata.ReadOnly RevisionMetadata { get; init; }
@@ -106,7 +106,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         }
         else
         {
-            using var tx = Connection.BeginTransaction() ;
+            using var tx = Connection.BeginTransaction();
             var group = new NexusCollectionLoadoutGroup.New(tx, out var id)
             {
                 CollectionId = RevisionMetadata.Collection,
@@ -156,6 +156,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var allRequiredItemsInstalled = allRequiredItems.All(item => CollectionDownloader
             .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
             .IsInstalled(out _));
+        // Scoped block so the transaction disposes before the reloaded group is returned.
         {
             await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
 
@@ -187,7 +188,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
         var job = new InstallCollectionDownloadJob
         {
-            Logger = ServiceProvider.GetRequiredService<ILogger<InstallCollectionJob>>(),
+            Logger = ServiceProvider.GetRequiredService<ILogger<InstallCollectionDownloadJob>>(),
             Item = modAndDownload.Download,
             CollectionMod = modAndDownload.Mod,
             Group = collectionGroup.AsCollectionGroup(),
@@ -221,32 +222,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
     /// </remarks>
     private async ValueTask ApplyCuratedPluginState(CollectionRoot root, NexusCollectionLoadoutGroup.ReadOnly collectionGroup)
     {
-        var curatorPlugins = root.Plugins
-            .Where(static plugin => plugin.Enabled != false)
-            .Select(static plugin => plugin.Name)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var curatorPlugins = CollectionPluginWhitelist.CuratorEnabledPlugins(root);
 
         // No plugin list means no curated state to enforce -- never treat that as "disable all".
         if (curatorPlugins.Count == 0) return;
 
-        var db = Connection.Db;
         using var tx = Connection.BeginTransaction();
-
-        var disabledCount = 0;
-        foreach (var item in LoadoutItem.FindByLoadout(db, TargetLoadout))
-        {
-            if (!LoadoutItemWithTargetPath.TargetPath.TryGetValue(item, out var rawTargetPath)) continue;
-
-            GamePath targetPath = rawTargetPath;
-            if (!KnownPluginExtensions.Contains(targetPath.Path.Extension)) continue;
-            if (curatorPlugins.Contains(targetPath.Path.FileName.ToString())) continue;
-            if (!HasAncestor(item, collectionGroup.Id)) continue;
-            if (item.Contains(LoadoutItem.Disabled)) continue;
-
-            tx.Add(item.Id, LoadoutItem.Disabled, Null.Instance);
-            disabledCount++;
-        }
-
+        var disabledCount = CollectionPluginWhitelist.DisableExtraPlugins(Connection.Db, tx, curatorPlugins, TargetLoadout, collectionGroup.Id);
         if (disabledCount == 0) return;
 
         await tx.Commit();
@@ -278,19 +260,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         }
     }
 
-    private static readonly Extension[] KnownPluginExtensions = [new(".esp"), new(".esm"), new(".esl")];
-
-    private static bool HasAncestor(LoadoutItem.ReadOnly item, EntityId ancestorId)
-    {
-        var current = item;
-        while (current.Contains(LoadoutItem.Parent))
-        {
-            if (current.ParentId.Value == ancestorId) return true;
-            current = current.Parent.AsLoadoutItem();
-        }
-        return false;
-    }
-
+    // Duplicated in NexusModsLibrary.Collections.cs (the projects sit on opposite sides of
+    // the Networking reference); keep the two copies in sync.
     private static List<ModAndDownload> GatherDownloads(CollectionDownload.ReadOnly[] items, CollectionRoot root)
     {
         var map = items.ToDictionary(static download => download.ArrayIndex, static download => download);

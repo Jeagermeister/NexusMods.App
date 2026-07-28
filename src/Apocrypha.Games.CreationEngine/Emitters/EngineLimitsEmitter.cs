@@ -68,7 +68,7 @@ public class EngineLimitsEmitter : ILoadoutDiagnosticEmitter
             if (!node.HaveLoadout || path.Parent != KnownPaths.Data)
                 continue;
 
-            if (KnownCEExtensions.Plugins.Contains(path.Extension))
+            if (KnownCEExtensions.PluginFiles.Contains(path.Extension))
                 pluginStems.Add(path.Path.FileName.ToString()[..^path.Extension.ToString().Length]);
             else if (path.Extension == KnownCEExtensions.BA2 || path.Extension == KnownCEExtensions.BSA)
                 archiveNames.Add(path.Path.FileName);

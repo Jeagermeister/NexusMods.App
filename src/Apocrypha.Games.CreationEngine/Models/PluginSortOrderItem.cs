@@ -12,6 +12,9 @@ namespace Apocrypha.Games.CreationEngine.Models;
 [Include<SortOrderItem>]
 public partial class PluginSortOrderItem : IModelDefinition
 {
+    // Persisted MnemonicDB attribute namespace, shipped in v0.3.0 datastores. It deliberately
+    // does NOT match the class name — renaming it (or "fixing" the branding) breaks existing
+    // installs; see the schema-stability rules in CLAUDE.md.
     private const string Namespace = "NexusMods.Games.CreationEngine.PluginSortableEntry";
 
     /// <summary>
