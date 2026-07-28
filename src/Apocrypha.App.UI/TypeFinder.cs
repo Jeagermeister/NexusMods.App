@@ -4,6 +4,7 @@ using Apocrypha.App.UI.Pages.Changelog;
 using Apocrypha.App.UI.Pages.CollectionDownload;
 using Apocrypha.App.UI.Pages.DebugControls;
 using Apocrypha.App.UI.Pages.Diagnostics;
+using Apocrypha.App.UI.Pages.HomeDashboard;
 using Apocrypha.App.UI.Pages.Diff.ApplyDiff;
 using Apocrypha.App.UI.Pages.Downloads;
 using Apocrypha.App.UI.Pages.LibraryPage;
@@ -41,6 +42,7 @@ internal class TypeFinder : ITypeFinder
         typeof(CollectionLoadoutPageContext),
         typeof(ProtocolRegistrationTestPageContext),
         typeof(DownloadsPageContext),
+        typeof(HomeDashboardPageContext),
 
         // workspace context
         typeof(EmptyContext),
