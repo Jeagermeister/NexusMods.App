@@ -13,14 +13,17 @@ public static class Services
     /// </summary>
     public static IServiceCollection AddHttpDownloader(this IServiceCollection services)
     {
-        return services.AddSingleton<HttpClient>(_ =>
-        {
-            var client = BuildClient();
-            return client;
-        });
+        return services
+            .AddSingleton<HttpTrafficMonitor>()
+            .AddTransient<HttpTrafficMonitorHandler>()
+            .AddSingleton<HttpClient>(serviceProvider =>
+            {
+                var client = BuildClient(serviceProvider.GetRequiredService<HttpTrafficMonitor>());
+                return client;
+            });
     }
 
-    private static HttpClient BuildClient()
+    private static HttpClient BuildClient(HttpTrafficMonitor trafficMonitor)
     {
         var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
             .AddRetry(new HttpRetryStrategyOptions
@@ -32,15 +35,21 @@ public static class Services
             })
             .Build();
 
-        HttpMessageHandler handler = new ResilienceHandler(pipeline)
+        // Traffic monitor sits outermost so it sees the logical request count, not the resilience
+        // pipeline's retries — a request retried three times is one intent, and counting it as
+        // four would misattribute a storm to whichever endpoint happens to be flaky.
+        HttpMessageHandler handler = new HttpTrafficMonitorHandler(trafficMonitor)
         {
-            // Negotiate gzip/deflate/brotli so responses served compressed (e.g. the multi-MB
-            // Thunderstore v1 community index, and all Nexus/GraphQL JSON) are transferred
-            // compressed instead of identity-encoded — a large bandwidth/latency win on the
-            // modpack-resolution path. The handler transparently decompresses the body.
-            InnerHandler = new SocketsHttpHandler
+            InnerHandler = new ResilienceHandler(pipeline)
             {
-                AutomaticDecompression = DecompressionMethods.All,
+                // Negotiate gzip/deflate/brotli so responses served compressed (e.g. the multi-MB
+                // Thunderstore v1 community index, and all Nexus/GraphQL JSON) are transferred
+                // compressed instead of identity-encoded — a large bandwidth/latency win on the
+                // modpack-resolution path. The handler transparently decompresses the body.
+                InnerHandler = new SocketsHttpHandler
+                {
+                    AutomaticDecompression = DecompressionMethods.All,
+                },
             },
         };
 
