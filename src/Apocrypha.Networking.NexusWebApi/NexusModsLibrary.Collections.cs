@@ -469,6 +469,8 @@ public partial class NexusModsLibrary
         return Optional<CollectionDownload.ReadOnly>.None;
     }
 
+    // Duplicated in Apocrypha.Collections' InstallCollectionJob (the projects sit on opposite
+    // sides of the Networking reference); keep the two copies in sync.
     private static List<ModAndDownload> GatherDownloads(CollectionDownload.ReadOnly[] items, CollectionRoot root)
     {
         var map = items.ToDictionary(static download => download.ArrayIndex, static download => download);

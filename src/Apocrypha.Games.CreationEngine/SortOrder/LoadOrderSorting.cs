@@ -21,6 +21,7 @@ public static class LoadOrderSorting
     /// The block a plugin belongs to in a conventional load order: masters (.esm) ahead of light
     /// plugins (.esl) ahead of regular plugins. A grouping preference, not a dependency — master
     /// references are the only hard ordering rules.
+    /// Extension suffixes here mirror <see cref="KnownCEExtensions.PluginFiles"/>.
     /// </summary>
     public static int LoadOrderClassOf(string fileName)
     {

@@ -42,6 +42,11 @@ public class CollectionPluginOrderSeeder : ICollectionLoadOrderSeeder
 
         _logger.LogInformation("Seeding curated load order: {Count} plugins", curatedOrder.Count);
 
+        // The loadout-scoped order is what PluginsFile.Write consumes; the collection-scoped
+        // copy is retained per collection for future per-collection order support. With more
+        // than one collection in a loadout, whichever collection seeds LAST has its curated
+        // block lead the loadout-scoped order (earlier collections keep relative order below
+        // it, and master rules are still enforced at write time).
         await _variety.ApplyCuratedOrder(loadoutId, OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId), curatedOrder, token);
         await _variety.ApplyCuratedOrder(loadoutId, OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId), curatedOrder, token);
     }

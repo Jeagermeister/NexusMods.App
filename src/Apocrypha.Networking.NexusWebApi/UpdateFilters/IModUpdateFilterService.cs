@@ -4,7 +4,7 @@ using Apocrypha.Sdk.NexusModsApi;
 namespace Apocrypha.Networking.NexusWebApi.UpdateFilters;
 
 /// <summary>
-/// This service provides services for filtering mod updates in the Nexus Mods App.
+/// This service provides services for filtering mod updates in Apocrypha.
 /// More specifically, this is the entry point for all filtering; it allows you to hide or show files
 /// and unifies underlying filters with potential different under the hood implementations as one.
 /// 
