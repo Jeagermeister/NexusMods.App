@@ -3,11 +3,8 @@ using FluentAssertions;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Games.CreationEngine.SortOrder;
 using Apocrypha.Games.TestFramework;
-using NexusMods.HyperDuck;
 using NexusMods.Paths;
 using Apocrypha.Sdk.Loadouts;
-using Apocrypha.StandardGameLocators.TestHelpers;
-using Xunit.Abstractions;
 using OneOf;
 
 namespace Apocrypha.Games.CreationEngine.Tests.SortOrder;
@@ -16,16 +13,15 @@ namespace Apocrypha.Games.CreationEngine.Tests.SortOrder;
 /// Datastore-backed coverage for the plugin sort order: seeding a curated order, reconciling
 /// later-installed plugins, and reading it back. No game install, no network.
 /// </summary>
-public class PluginSortOrderVarietyTests(ITestOutputHelper outputHelper) : AIsolatedGameTest<PluginSortOrderVarietyTests, CreationEngine.Fallout4.Fallout4>(outputHelper)
+/// <remarks>
+/// Uses the assembly-level DI (SkyrimSE universal locator from <see cref="Startup"/>) rather than
+/// <c>AIsolatedGameTest</c>: the isolated variant starts the app's hosted services, whose Linux
+/// protocol-handler registration shells out to <c>update-desktop-database</c> — absent on CI
+/// runners, which kills the host before the game registry populates. The variety under test is
+/// game-agnostic, so which Creation Engine game hosts it does not matter.
+/// </remarks>
+public class PluginSortOrderVarietyTests(IServiceProvider serviceProvider) : AGameTest<CreationEngine.SkyrimSE.SkyrimSE>(serviceProvider)
 {
-    protected override IServiceCollection AddServices(IServiceCollection services)
-    {
-        return base.AddServices(services)
-            .AddCreationEngine()
-            .AddAdapters()
-            .AddUniversalGameLocator<CreationEngine.Fallout4.Fallout4>(new Version("1.10.163"));
-    }
-
     [Fact]
     public async Task CuratedOrderPersistsAndReconciles()
     {
