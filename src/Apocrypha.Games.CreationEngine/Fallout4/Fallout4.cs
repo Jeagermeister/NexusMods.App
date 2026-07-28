@@ -55,7 +55,12 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
             var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
-            sortOrderManager.RegisterSortOrderVarieties([], this);
+            sortOrderManager.RegisterSortOrderVarieties(
+                sortOrderVarieties: [
+                    provider.GetRequiredService<SortOrder.PluginSortOrderVariety>(),
+                ],
+                game: this
+            );
             return sortOrderManager;
         });
 
