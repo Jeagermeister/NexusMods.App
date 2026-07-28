@@ -150,6 +150,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         });
 
         await ApplyCuratedPluginState(root, collectionGroup);
+        await SeedCuratedLoadOrder(root, collectionGroup, context.CancellationToken);
 
         var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
         var allRequiredItemsInstalled = allRequiredItems.All(item => CollectionDownloader
@@ -250,6 +251,31 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
         await tx.Commit();
         Logger.LogInformation("Disabled {Count} plugin(s) the install produced that the curator does not run", disabledCount);
+    }
+
+    /// <summary>
+    /// Seeds the game's load order from the collection's curated ordering data, where the game
+    /// registers a seeder for it. A failure here degrades to the derived order the app produced
+    /// before seeding existed — it must never fail the install.
+    /// </summary>
+    private async ValueTask SeedCuratedLoadOrder(CollectionRoot root, NexusCollectionLoadoutGroup.ReadOnly collectionGroup, CancellationToken token)
+    {
+        var loadout = Loadout.Load(Connection.Db, TargetLoadout);
+        var gameId = loadout.InstallationInstance.Game.GameId;
+
+        foreach (var seeder in ServiceProvider.GetServices<ICollectionLoadOrderSeeder>())
+        {
+            if (!seeder.GameIds.Contains(gameId)) continue;
+
+            try
+            {
+                await seeder.SeedAsync(root, TargetLoadout, collectionGroup.AsCollectionGroup().CollectionGroupId, token);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(e, "Failed to seed the curated load order for `{CollectionName}/{RevisionNumber}`", RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+            }
+        }
     }
 
     private static readonly Extension[] KnownPluginExtensions = [new(".esp"), new(".esm"), new(".esl")];

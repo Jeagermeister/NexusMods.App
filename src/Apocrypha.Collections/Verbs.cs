@@ -24,6 +24,7 @@ internal static class Verbs
         collection
             .AddVerb(() => InstallCollection)
             .AddVerb(() => RepairCuratedPluginState)
+            .AddVerb(() => SeedCuratedLoadOrder)
             .AddVerb(() => SetGroupEnabled)
             .AddVerb(() => LibraryExtractFile)
             .AddVerb(() => DeleteGroup);
@@ -130,6 +131,54 @@ internal static class Verbs
         }
 
         await renderer.TextLine("Re-apply the loadout to update the game folder");
+        return 0;
+    }
+
+    [Verb("collection-seed-load-order", "Applies each installed collection's curated load order to an existing loadout")]
+    private static async Task<int> SeedCuratedLoadOrder([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout to seed")] Loadout.ReadOnly loadout,
+        [Injected] NexusModsLibrary nexusModsLibrary,
+        [Injected] IConnection connection,
+        [Injected] IServiceProvider serviceProvider,
+        [Injected] CancellationToken token)
+    {
+        // The curated order is read straight out of the collection archive in the library, so this
+        // works fully offline — the path for installs that predate load-order seeding.
+        var db = connection.Db;
+        var gameId = loadout.InstallationInstance.Game.GameId;
+        var seeders = serviceProvider.GetServices<ICollectionLoadOrderSeeder>()
+            .Where(seeder => seeder.GameIds.Contains(gameId))
+            .ToArray();
+
+        if (seeders.Length == 0)
+        {
+            await renderer.TextLine("This game has no curated load-order support");
+            return 0;
+        }
+
+        var seeded = 0;
+        foreach (var collectionGroup in NexusCollectionLoadoutGroup.All(db))
+        {
+            var groupItem = collectionGroup.AsCollectionGroup().AsLoadoutItemGroup().AsLoadoutItem();
+            if (groupItem.LoadoutId != loadout.LoadoutId) continue;
+
+            var root = await nexusModsLibrary.ParseCollectionJsonFile(collectionGroup.LibraryFile, token);
+            foreach (var seeder in seeders)
+            {
+                await seeder.SeedAsync(root, loadout.LoadoutId, collectionGroup.AsCollectionGroup().CollectionGroupId, token);
+            }
+            seeded++;
+            await renderer.TextLine($"Collection `{groupItem.Name}`: curated load order applied");
+        }
+
+        if (seeded == 0)
+        {
+            await renderer.TextLine("No installed collections found in this loadout");
+        }
+        else
+        {
+            await renderer.TextLine("Re-apply the loadout to write the new plugins.txt");
+        }
         return 0;
     }
 
