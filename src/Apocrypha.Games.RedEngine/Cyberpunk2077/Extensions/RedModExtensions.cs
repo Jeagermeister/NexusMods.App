@@ -3,6 +3,7 @@ using DynamicData;
 using Apocrypha.Abstractions.Games;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Games.RedEngine.Cyberpunk2077.Models;
+using Apocrypha.Games.RedEngine.Cyberpunk2077.SortOrder;
 using NexusMods.MnemonicDB.Abstractions;
 using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Loadouts;

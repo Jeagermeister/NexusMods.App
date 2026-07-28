@@ -75,7 +75,7 @@ public class UndoService
         var toProcess = new HashSet<EntityId>();
         toProcess.Add(revisionRevision.TxEntity);
 
-        var tx = _conn.BeginTransaction();
+        using var tx = _conn.BeginTransaction();
         var processed = new HashSet<EntityId>();
         
         while (toProcess.Count > 0)

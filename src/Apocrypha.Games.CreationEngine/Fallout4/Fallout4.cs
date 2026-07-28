@@ -119,8 +119,11 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         var fileName = name?.FileName.ToString() ?? "unknown.esm";
         var key = ModKey.FromFileName(fileName);
         await using var stream = await _streamSource.OpenAsync(hash);
-        var meta = ParsingMeta.Factory(BinaryReadParameters.Default, GameRelease.Fallout4, key, stream!);
-        await using var mutagenStream = new MutagenBinaryReadStream(stream!, meta);
+        // An unknown hash yields no stream (e.g. a plugin whose archive was GC'd) -- callers
+        // treat a null header as "skip this plugin", which must not take down the whole pass.
+        if (stream == null) return null;
+        var meta = ParsingMeta.Factory(BinaryReadParameters.Default, GameRelease.Fallout4, key, stream);
+        await using var mutagenStream = new MutagenBinaryReadStream(stream, meta);
         using var frame = new MutagenFrame(mutagenStream);
         return Fallout4Mod.CreateFromBinary(frame, Fallout4Release.Fallout4, EmptyGroupMask);
     }

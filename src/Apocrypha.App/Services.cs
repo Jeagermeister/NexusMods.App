@@ -5,7 +5,9 @@ using Apocrypha.Abstractions.Games;
 using Apocrypha.Abstractions.Loadouts;
 using Apocrypha.Abstractions.Serialization;
 using Apocrypha.App.Commandline;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.App.UI;
+using Apocrypha.App.UI.Pages.LibraryPage.ModSources;
 using Apocrypha.App.UI.Settings;
 using Apocrypha.Backend;
 using Apocrypha.Backend.Games.Locators;
@@ -99,6 +101,11 @@ public static class Services
                 .AddSteamCli()
                 .AddThunderstore()
                 .AddModIo()
+                // Mod sources as enumerable capabilities: registered HERE, not in the UI
+                // composition root, so CLI/headless can GetServices<IModSource>() too.
+                .AddSingleton<IModSource, NexusModSource>()
+                .AddSingleton<IModSource, ThunderstoreModSource>()
+                .AddSingleton<IModSource, ModIoModSource>()
                 .AddGOG()
                 .AddFileHashes()
                 .AddGitHubApi();

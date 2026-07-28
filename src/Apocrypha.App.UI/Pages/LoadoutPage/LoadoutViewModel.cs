@@ -754,14 +754,14 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             // A click that changes nothing needs to say WHY, or the toggle just feels broken
             // (collection + own mods coexistence, §46).
             var lockedItem = items.FirstOrDefault(item => IsRequired(item.Id, connection));
-            if (lockedItem.IsValid())
+            if (lockedItem.IsValid() && lockedItem.HasParent())
             {
                 var collectionName = lockedItem.Parent.AsLoadoutItem().Name;
                 notificationService?.ShowToast(
                     $"This mod is required by the collection \"{collectionName}\" and can't be turned off. Mods you add yourself live in \"My Mods\" and toggle freely.",
                     ToastNotificationVariant.Neutral);
             }
-            else if (items.Length != 0)
+            else if (items.Length != 0 && items[0].HasParent())
             {
                 var collectionName = items[0].Parent.AsLoadoutItem().Name;
                 notificationService?.ShowToast(
@@ -919,11 +919,11 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         // TODO: handle errors
         var lastPublishedRevisionNumber = graphQlResult.AssertHasData();
 
+        if (!lastPublishedRevisionNumber.HasValue) return;
+
         using var tx = _connection.BeginTransaction();
-        if (lastPublishedRevisionNumber.HasValue)
-        {
-            tx.Add(managedCollectionLoadoutGroup, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, lastPublishedRevisionNumber.Value);
-        }
+        tx.Add(managedCollectionLoadoutGroup, ManagedCollectionLoadoutGroup.LastPublishedRevisionNumber, lastPublishedRevisionNumber.Value);
+        await tx.Commit();
     }
 
     private static IEnumerable<LoadoutItemId> GetLoadoutItemIds(CompositeItemModel<EntityId> itemModel)
@@ -936,13 +936,4 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
         return NexusCollectionItemLoadoutGroup.IsRequired.TryGetValue(LoadoutItem.Load(connection.Db, id), out var isRequired) && isRequired;
     }
 
-    // private static IClipboard GetClipboard()
-    // {
-    //     if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
-    //     {
-    //         return window.Clipboard!;
-    //     }
-    //
-    //     return null!;
-    // }
 }

@@ -101,7 +101,10 @@ internal class ModIoDataProvider : ILibraryDataProvider, ILoadoutDataProvider
         var mod = ModIoModMetadata.Load(_connection.Db, group.Key);
         var libraryItems = group.Cache.Connect().RefCount();
 
-        var linkedLoadoutItemsObservable = libraryItems.MergeManyChangeSets(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id));
+        // RefCount is load-bearing: multiple consumers below, one live ObserveDatoms per child.
+        var linkedLoadoutItemsObservable = libraryItems
+            .MergeManyChangeSets(item => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, item.Id))
+            .RefCount();
 
         var hasChildrenObservable = libraryItems.IsNotEmpty();
         var childrenObservable = libraryItems.Transform(item => ToFileLibraryItemModel(libraryFilter, item));

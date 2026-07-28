@@ -79,6 +79,11 @@ public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunch
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error launching game");
+            // A launch that fails must never be silent -- without this the button just flips
+            // back to LAUNCH (e.g. exec of a Windows PE on Linux for Heroic/GOG titles).
+            await MessageBoxOkViewModel.Show(_serviceProvider,
+                title: $"Failed to launch {marker.Installation.Name}",
+                description: $"The game could not be started: {ex.Message}\n\nSee the log file for details.");
         }
         SetLabelToLaunch();
     }

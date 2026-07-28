@@ -207,11 +207,13 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         
         token.ThrowIfCancellationRequested();
         
-        // Remove outdated persistent items
+        // Remove outdated persistent items. Matching folds case via MakeKey -- a reinstalled
+        // archive can legitimately re-case the folder, and a case-variant miss here deletes
+        // and re-inserts the row, silently resetting the user's position for that mod.
         foreach (var dbItem in persistentSortOrderEntries)
         {
             var newItem = newOrder.FirstOrOptional(
-                newItem => newItem.Key.Key == dbItem.RedModFolderName
+                newItem => newItem.Key.Equals(RedModReactiveSortItem.MakeKey(dbItem.RedModFolderName))
             );
 
             if (!newItem.HasValue)
@@ -233,7 +235,7 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         for (var i = 0; i < newOrder.Count; i++)
         {
             var newItem = newOrder[i];
-            if (persistentSortOrderEntries.Any(si => si.RedModFolderName == newItem.Key.Key))
+            if (persistentSortOrderEntries.Any(si => RedModReactiveSortItem.MakeKey(si.RedModFolderName).Equals(newItem.Key)))
                 continue;
 
             var newDbItem = new SortOrderItem.New(tx)
