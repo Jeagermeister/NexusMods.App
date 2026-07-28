@@ -974,11 +974,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         }
 
         var ingestedFiles = false;
-        
+        List<GamePath> ingestedPaths = [];
+
         foreach (var (path, node) in syncTree)
         {
             if (!node.Actions.HasFlag(Actions.IngestFromDisk))
                 continue;
+            ingestedPaths.Add(path);
 
             // If the overrides group is not new, we need to check if the file is already in the overrides group
             if (!newGroup)
@@ -1026,6 +1028,17 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
             tx.Add(node.Disk.EntityId, DiskStateEntry.LastModified, new DateTimeOffset(node.Disk.LastModifiedTicks, TimeSpan.Zero));
             ingestedFiles = true;
+        }
+
+        // Say it out loud: this preservation is otherwise completely silent, and a user staring at
+        // a hand-tuned config file has no way to know whether the next Apply will keep or revert
+        // it. (It keeps it — the ingested copy lands in Overrides and outranks the mod's file.)
+        if (ingestedPaths.Count > 0)
+        {
+            Logger.LogInformation(
+                "Preserved {Count} externally modified file(s) into the loadout's overrides (first: {First}). " +
+                "User edits to deployed files survive Apply",
+                ingestedPaths.Count, ingestedPaths[0]);
         }
 
         return ingestedFiles;
