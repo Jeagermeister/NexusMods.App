@@ -3,6 +3,7 @@ using Apocrypha.Abstractions.Cli;
 using Apocrypha.Abstractions.Collections;
 using Apocrypha.Abstractions.Library;
 using Apocrypha.Abstractions.Loadouts;
+using Apocrypha.Abstractions.Loadouts.Synchronizers;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
@@ -11,6 +12,7 @@ using NexusMods.MnemonicDB.Abstractions.ElementComparers;
 using Apocrypha.Networking.NexusWebApi;
 using NexusMods.Paths;
 using Apocrypha.Sdk.Games;
+using Apocrypha.Sdk.Library;
 using Apocrypha.Sdk.Loadouts;
 using Apocrypha.Sdk.ProxyConsole;
 
@@ -22,7 +24,9 @@ internal static class Verbs
         collection
             .AddVerb(() => InstallCollection)
             .AddVerb(() => RepairCuratedPluginState)
-            .AddVerb(() => SetGroupEnabled);
+            .AddVerb(() => SetGroupEnabled)
+            .AddVerb(() => LibraryExtractFile)
+            .AddVerb(() => DeleteGroup);
 
     [Verb("install-collection", "Installs a collection into the given loadout")]
     private static async Task<int> InstallCollection([Injected] IRenderer renderer,
@@ -140,6 +144,79 @@ internal static class Verbs
             current = current.Parent.AsLoadoutItem();
         }
         return false;
+    }
+
+    [Verb("library-extract-file", "Extracts files matching a name from library archives to a folder on disk")]
+    private static async Task<int> LibraryExtractFile([Injected] IRenderer renderer,
+        [Option("n", "name", "File name to match (case-insensitive, exact file name)")] string fileName,
+        [Option("o", "output", "Output folder")] AbsolutePath output,
+        [Option("p", "parent", "Only match entries whose parent archive name contains this (case-insensitive)", true)] string? parentFilter,
+        [Injected] IConnection connection,
+        [Injected] Apocrypha.Sdk.FileStore.IFileStore fileStore,
+        [Injected] CancellationToken token)
+    {
+        var db = connection.Db;
+        var matches = LibraryArchiveFileEntry.All(db)
+            .Where(entry => string.Equals(entry.Path.FileName.ToString(), fileName, StringComparison.OrdinalIgnoreCase))
+            .Where(entry => string.IsNullOrEmpty(parentFilter)
+                            || entry.Parent.AsLibraryFile().FileName.ToString().Contains(parentFilter, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(entry => entry.AsLibraryFile().Hash)
+            .Take(20)
+            .ToArray();
+
+        if (matches.Length == 0)
+        {
+            await renderer.TextLine($"No library archive entry named `{fileName}`");
+            return 1;
+        }
+
+        output.CreateDirectory();
+        foreach (var entry in matches)
+        {
+            var parentName = entry.Parent.AsLibraryFile().FileName;
+            var target = output.Combine(RelativePath.FromUnsanitizedInput($"{parentName}--{entry.Path.FileName}"));
+            await using var src = await fileStore.GetFileStream(entry.AsLibraryFile().Hash, token);
+            await using var dst = target.Create();
+            await src.CopyToAsync(dst, token);
+            await renderer.TextLine($"{entry.Parent.AsLibraryFile().FileName} :: {entry.Path} -> {target}");
+        }
+        return 0;
+    }
+
+    [Verb("loadout-group-delete", "Deletes a loadout group by exact name, including groups inside read-only collections")]
+    private static async Task<int> DeleteGroup([Injected] IRenderer renderer,
+        [Option("l", "loadout", "Loadout containing the group")] Loadout.ReadOnly loadout,
+        [Option("g", "group", "Exact name of the group to delete")] string groupName,
+        [Injected] ILoadoutManager loadoutManager,
+        [Injected] IConnection connection,
+        [Injected] CancellationToken token)
+    {
+        var db = connection.Db;
+        var matches = LoadoutItem.FindByLoadout(db, loadout)
+            .Where(item => item.IsLoadoutItemGroup() && string.Equals(item.Name, groupName, StringComparison.Ordinal))
+            .ToArray();
+
+        if (matches.Length == 0)
+        {
+            await renderer.TextLine($"No group named `{groupName}` in loadout `{loadout.Name}`");
+            return 1;
+        }
+        if (matches.Length > 1)
+        {
+            await renderer.TextLine($"`{groupName}` matches {matches.Length} groups; refusing to guess");
+            return 1;
+        }
+
+        if (!matches[0].TryGetAsLoadoutItemGroup(out var group))
+        {
+            await renderer.TextLine($"`{groupName}` is not a group");
+            return 1;
+        }
+
+        var childCount = group.Children.Count();
+        await loadoutManager.RemoveItems([group.LoadoutItemGroupId]);
+        await renderer.TextLine($"Deleted group `{groupName}` ({childCount} items). A collection retry can now reinstall it.");
+        return 0;
     }
 
     [Verb("loadout-group-set-enabled", "Enables or disables a loadout group by name, including groups the UI treats as read-only")]
