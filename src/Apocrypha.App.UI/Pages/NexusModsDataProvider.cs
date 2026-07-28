@@ -99,7 +99,12 @@ public class NexusModsDataProvider : ILibraryDataProvider, ILoadoutDataProvider
             .Transform(datom => NexusModsLibraryItem.Load(_connection.Db, datom.E))
             .RefCount();
 
-        var linkedLoadoutItemsObservable = libraryItems.MergeManyChangeSets(libraryItem => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, libraryItem.Id));
+        // RefCount is load-bearing: this cold pipeline opens a live ObserveDatoms per child
+        // library item, and it has two subscribers below -- without sharing, every mod page
+        // in a 900-mod library doubles its per-child DB subscriptions.
+        var linkedLoadoutItemsObservable = libraryItems
+            .MergeManyChangeSets(libraryItem => LibraryDataProviderHelper.GetLinkedLoadoutItems(_connection, libraryFilter, libraryItem.Id))
+            .RefCount();
 
         var hasChildrenObservable = libraryItems.IsNotEmpty();
         var childrenObservable = libraryItems.Transform(libraryItem => ToLibraryItemModel(libraryItem, libraryFilter));

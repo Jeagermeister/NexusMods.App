@@ -27,7 +27,9 @@ public static class PakFileParser
         var headerData = ParseHeaderInternal(br);
         var fileList = ParseFileListInternal(br, (int)headerData.FileListOffset, headerData);
 
-        var fileEntryInfo = fileList.FirstOrOptional(f => f.Name.Contains("meta.lsx"));
+        // Pak-internal names are author-typed on case-insensitive filesystems -- fold case
+        // or a "Meta.lsx" pak loses its diagnostics as "invalid".
+        var fileEntryInfo = fileList.FirstOrOptional(f => f.Name.Contains("meta.lsx", StringComparison.OrdinalIgnoreCase));
         if (!fileEntryInfo.HasValue)
         {
             throw new InvalidDataException($"Unable to find `meta.lsx` file in pak archive");
@@ -48,7 +50,7 @@ public static class PakFileParser
     private static Optional<LspkPackageFormat.ScriptExtenderConfigMetadata> GetScriptExtenderConfigMetaData(List<LspkPackageFormat.FileEntryInfoCommon> fileList, BinaryReader br)
     {
         var seConfig = fileList.FirstOrOptional(
-            f => f.Name.EndsWith("ScriptExtender/Config.json")
+            f => f.Name.EndsWith("ScriptExtender/Config.json", StringComparison.OrdinalIgnoreCase)
         );
 
         if (seConfig.HasValue)

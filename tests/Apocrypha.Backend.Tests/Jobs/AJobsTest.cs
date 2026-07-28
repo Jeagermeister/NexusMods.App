@@ -37,6 +37,13 @@ public class AJobsTest
         JobMonitor = ServiceProvider.GetRequiredService<IJobMonitor>();
     }
 
+    [After(Test)]
+    public async Task TearDownServices()
+    {
+        await _host.StopAsync();
+        _host.Dispose();
+    }
+
     public IJobMonitor JobMonitor { get; private set; } = null!;
 
     public IServiceProvider ServiceProvider { get; private set; } = null!;

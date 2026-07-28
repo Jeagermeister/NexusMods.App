@@ -48,9 +48,11 @@ public class EngineLimitsEmitter : ILoadoutDiagnosticEmitter
         _streamSource = streamSource;
     }
 
-    public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        // Obsolete overload -- the syncTree overload below is the real implementation.
+        await Task.Yield();
+        yield break;
     }
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)

@@ -5,7 +5,6 @@ using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.Collections;
 using Apocrypha.Abstractions.Diagnostics;
 using Apocrypha.Abstractions.Loadouts;
@@ -68,7 +67,6 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
         var monitor = serviceProvider.GetRequiredService<IJobMonitor>();
         var overlayController = serviceProvider.GetRequiredService<IOverlayController>();
         var gameRunningTracker = serviceProvider.GetRequiredService<GameRunningTracker>();
-        var logger = serviceProvider.GetRequiredService<ILogger<LoadoutLeftMenuViewModel>>();
 
         var collectionItemComparer = new LeftMenuCollectionItemComparer();
         var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();

@@ -22,7 +22,13 @@ public class SynchronizerRuleTests
     public void ActionSanityChecks(Abstractions.Loadouts.Synchronizers.Rules.Signature signature, string EnumShorthand, Optional<Hash> disk, Optional<Hash> prev, Optional<Hash> loadout, LoadoutSourceItemType itemType)
     {
         var action = ActionMapping.MapActions(signature);
-        action.Should().NotBe(0, "Every signature should have a corresponding action");
+        action.Should().NotBe(0, $"every signature should have a corresponding action (row {EnumShorthand})");
+
+        // The row's hash columns must agree with its signature flags -- catches rows whose
+        // shorthand drifted from the data they carry.
+        disk.HasValue.Should().Be(signature.HasFlag(DiskExists), $"row {EnumShorthand}: disk hash presence must match DiskExists");
+        prev.HasValue.Should().Be(signature.HasFlag(PrevExists), $"row {EnumShorthand}: prev hash presence must match PrevExists");
+        loadout.HasValue.Should().Be(signature.HasFlag(LoadoutExists), $"row {EnumShorthand}: loadout hash presence must match LoadoutExists");
 
         if (action.HasFlag(ExtractToDisk))
             signature.Should().HaveFlag(LoadoutArchived, "If we are extracting to disk, the loadout file should be archived");

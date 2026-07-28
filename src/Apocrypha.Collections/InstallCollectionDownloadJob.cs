@@ -349,7 +349,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         var libraryFile = GetLibraryFile(Item, Connection.Db);
         if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive))
-            throw new NotImplementedException();
+            throw new NotSupportedException("Expected library file to be an archive");
 
         await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
         {
