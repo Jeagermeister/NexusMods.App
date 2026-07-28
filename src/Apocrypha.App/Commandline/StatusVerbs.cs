@@ -8,7 +8,7 @@ namespace Apocrypha.App.Commandline;
 
 
 /// <summary>
-/// These verbs are used for checking the status of the Nexus Mods App.
+/// These verbs are used for checking the status of the Apocrypha app.
 /// </summary>
 public static class StatusVerbs
 {

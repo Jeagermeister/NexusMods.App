@@ -69,16 +69,7 @@ public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunch
             var tool = _toolManager.GetTools(marker).OfType<IRunGameTool>().First();
             await Task.Run(async () =>
             {
-                var installation = marker.InstallationInstance;
-                var sw = Stopwatch.StartNew();
-                try
-                {
-                    await _toolManager.RunTool(tool, marker, _monitor, token: token);
-                }
-                finally
-                {
-                    var duration = sw.Elapsed;
-                }
+                await _toolManager.RunTool(tool, marker, _monitor, token: token);
             }, token);
         }
         catch (ExecutableInUseException)

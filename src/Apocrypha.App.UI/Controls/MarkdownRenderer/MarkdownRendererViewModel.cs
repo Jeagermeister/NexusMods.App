@@ -88,8 +88,8 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
 
     private void ParseGitHubUri(Uri? markdownUri)
     {
-        // https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/CHANGELOG.md
-        // https://raw.githubusercontent.com/Nexus-Mods/NexusMods.App/main/docs/changelog-assets/081da2f32c8803bbd759cf2f22641810.webp
+        // https://raw.githubusercontent.com/Jeagermeister/Apocrypha/linux-fork/CHANGELOG.md
+        // https://raw.githubusercontent.com/Jeagermeister/Apocrypha/linux-fork/docs/changelog-assets/<hash>.webp
 
         _gitHubBaseUri = null;
         if (markdownUri is null) return;

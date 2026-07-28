@@ -47,7 +47,7 @@ public class SaveBreakingChangeEmitter : ILoadoutDiagnosticEmitter
         {
             if (path.LocationId != LocationId.Game ||
                 path.Parent != KnownPaths.Data ||
-                !KnownCEExtensions.Plugins.Contains(path.Extension))
+                !KnownCEExtensions.PluginFiles.Contains(path.Extension))
                 continue;
 
             // Only a plugin appearing or disappearing renumbers the load order. A plugin whose

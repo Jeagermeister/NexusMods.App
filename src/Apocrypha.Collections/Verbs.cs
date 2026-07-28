@@ -97,12 +97,7 @@ internal static class Verbs
 
             var root = await nexusModsLibrary.ParseCollectionJsonFile(collectionGroup.LibraryFile, token);
 
-            var curatorPlugins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var plugin in root.Plugins)
-            {
-                if (plugin.Enabled != false) curatorPlugins.Add(plugin.Name);
-            }
-
+            var curatorPlugins = CollectionPluginWhitelist.CuratorEnabledPlugins(root);
             if (curatorPlugins.Count == 0)
             {
                 await renderer.TextLine($"Collection `{groupItem.Name}`: manifest lists no plugins; nothing to do");
@@ -110,21 +105,7 @@ internal static class Verbs
             }
 
             using var tx = connection.BeginTransaction();
-            var disabled = 0;
-            foreach (var item in LoadoutItem.FindByLoadout(db, loadout))
-            {
-                if (!LoadoutItemWithTargetPath.TargetPath.TryGetValue(item, out var rawTargetPath)) continue;
-
-                GamePath targetPath = rawTargetPath;
-                var fileName = targetPath.Path.FileName.ToString();
-                if (!KnownPluginExtensions.Contains(targetPath.Path.Extension)) continue;
-                if (curatorPlugins.Contains(fileName)) continue;
-                if (!HasAncestor(item, collectionGroup.Id)) continue;
-                if (item.Contains(LoadoutItem.Disabled)) continue;
-
-                tx.Add(item.Id, LoadoutItem.Disabled, Null.Instance);
-                disabled++;
-            }
+            var disabled = CollectionPluginWhitelist.DisableExtraPlugins(db, tx, curatorPlugins, loadout.LoadoutId, collectionGroup.Id);
 
             if (disabled > 0) await tx.Commit();
             await renderer.TextLine($"Collection `{groupItem.Name}`: curator runs {curatorPlugins.Count} plugin(s); disabled {disabled} the install added beyond that");
@@ -182,19 +163,6 @@ internal static class Verbs
         return 0;
     }
 
-    private static readonly Extension[] KnownPluginExtensions = [new(".esp"), new(".esm"), new(".esl")];
-
-    private static bool HasAncestor(LoadoutItem.ReadOnly item, EntityId ancestorId)
-    {
-        var current = item;
-        while (current.Contains(LoadoutItem.Parent))
-        {
-            if (current.ParentId.Value == ancestorId) return true;
-            current = current.Parent.AsLoadoutItem();
-        }
-        return false;
-    }
-
     [Verb("library-extract-file", "Extracts files matching a name from library archives to a folder on disk")]
     private static async Task<int> LibraryExtractFile([Injected] IRenderer renderer,
         [Option("n", "name", "File name to match (case-insensitive, exact file name)")] string fileName,
@@ -210,6 +178,8 @@ internal static class Verbs
             .Where(entry => string.IsNullOrEmpty(parentFilter)
                             || entry.Parent.AsLibraryFile().FileName.ToString().Contains(parentFilter, StringComparison.OrdinalIgnoreCase))
             .DistinctBy(entry => entry.AsLibraryFile().Hash)
+            // Safety cap: this is a debugging verb; matching more than 20 distinct archives
+            // almost always means the name filter is too broad.
             .Take(20)
             .ToArray();
 

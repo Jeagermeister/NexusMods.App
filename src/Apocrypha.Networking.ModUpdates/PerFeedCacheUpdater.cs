@@ -22,13 +22,13 @@ namespace Apocrypha.Networking.ModUpdates;
 ///        - Out of date mods. These require re-querying the data from external source.
 /// </summary>
 /// <remarks>
-/// Within the Nexus Mods App:
+/// Within Apocrypha:
 ///
 /// - 'Input' is our set of locally cached mod pages.
 /// - 'Update' is our results of `updated.json` for a given game domain.
 /// - 'Output' are the pages we need to update.
 ///
-/// The 'Feed' in the context of the Nexus App is the individual game's 'updated.json' endpoint;
+/// The 'Feed' in the context of Apocrypha is the individual game's 'updated.json' endpoint;
 /// i.e. a 'Game Mod Feed'
 /// </remarks>
 public class PerFeedCacheUpdater<TUpdateableItem> where TUpdateableItem : IModFeedItem

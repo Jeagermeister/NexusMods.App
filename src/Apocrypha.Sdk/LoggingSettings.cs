@@ -8,7 +8,7 @@ using Apocrypha.Sdk.Settings;
 namespace Apocrypha.CrossPlatform;
 
 /// <summary>
-/// Settings related to logging in the Nexus Mods App. 
+/// Settings related to logging in Apocrypha.
 /// </summary>
 public record LoggingSettings : ISettings
 {
