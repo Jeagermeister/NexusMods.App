@@ -93,4 +93,36 @@ the mods' content.
             .AddValue<string>("RemovedPlugins")
         )
         .Finish();
+
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate TooManyArchives = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 4))
+        .WithTitle("Too many archives for the engine")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{ArchiveCount} archives are loaded by enabled plugins, above the engine's limit of {ArchiveLimit}")
+        .WithDetails("""
+Enabled plugins load **{ArchiveCount}** archives, but this engine can only handle **{ArchiveLimit}** at once.
+
+The game will still launch — the failures happen later and look unrelated: purple or garbage textures, missing meshes and sounds, or a crash at the main menu with an access violation deep in texture code. Nothing in the game reports the real cause.
+
+Current state: {CurrentMitigation}
+
+The most effective fix is **Buffout 4** with both of these set in `Data/F4SE/Plugins/Buffout4/config.toml`:
+
+- `ArchiveLimit = true` — bypasses the archive ceiling
+- `MaxStdIO = 2048` — raises the C-runtime's file-handle cap from its 512 default (2048 is the maximum the old runtime accepts; **larger values crash the game silently on startup**)
+
+Alternatively, disable enough archive-loading mods to get under the limit.
+
+Once both Buffout settings are in place, this warning goes away on its own.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("ArchiveCount")
+            .AddValue<int>("ArchiveLimit")
+            .AddValue<string>("CurrentMitigation")
+        )
+        .Finish();
 }
