@@ -133,7 +133,11 @@ public class PluginsFile : IIntrinsicFile
 
     public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
-        // TODO: Implement once we have sorting
+        // TODO: parse the file's `*Name` lines and persist them via ApplyCuratedOrder so a
+        // hand-edited (or pre-existing) plugins.txt is learned instead of ignored. Until
+        // then an edited file goes permanently unmanaged: new installs never enter it and
+        // seeded curated orders never reach disk (review finding B-1; the sorting machinery
+        // this used to wait on shipped in PR #92).
         return Task.CompletedTask;
     }
 }
