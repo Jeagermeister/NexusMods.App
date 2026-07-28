@@ -317,12 +317,9 @@ public static class Services
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILibraryDataProvider, ModIoDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ModIoDataProvider>()
-            // Mod sources as enumerable capabilities (CODE_REVIEW.md §5): source-agnostic consumers
-            // resolve GetServices<IModSource>() instead of hardcoding a per-source property, so a new
-            // source is one registration here rather than an edit to every consumer.
-            .AddSingleton<IModSource, NexusModSource>()
-            .AddSingleton<IModSource, ThunderstoreModSource>()
-            .AddSingleton<IModSource, ModIoModSource>()
+            // IModSource registrations moved to Apocrypha.App's AddApp so CLI/headless can
+            // enumerate mod sources too (CODE_REVIEW.md §5 still applies: one registration
+            // there, no per-consumer edits).
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()

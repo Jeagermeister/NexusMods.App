@@ -17,7 +17,7 @@ namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
 /// also resolves the App.UI → Networking.NexusWebApi layering inversion (CODE_REVIEW.md §5).
 /// </remarks>
 [UsedImplicitly]
-internal sealed class NexusModSource : IModSource
+public sealed class NexusModSource : IModSource
 {
     private readonly IGameDomainToGameIdMappingCache _gameIdMappingCache;
 

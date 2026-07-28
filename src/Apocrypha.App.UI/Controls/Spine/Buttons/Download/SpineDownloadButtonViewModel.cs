@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Kernel;
+using Humanizer.Bytes;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Apocrypha.Abstractions.HttpDownloads;
@@ -32,9 +33,12 @@ public class SpineDownloadButtonViewModel : AViewModel<ISpineDownloadButtonViewM
             jobMonitor.ObserveActiveJobs<IHttpDownloadJob>()
                 .SumRateOfProgress()
                 .OnUI()
-                // Convert from bytes to MB/s
-                // TODO: use Humanizer
-                .Subscribe(rate => Number = rate / 1024 / 1024)
+                .Subscribe(rate =>
+                {
+                    var size = ByteSize.FromBytes(rate);
+                    Number = size.LargestWholeNumberValue;
+                    Units = $"{size.LargestWholeNumberSymbol}/s";
+                })
                 .DisposeWith(disposables);
             
         });

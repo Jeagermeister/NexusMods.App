@@ -29,7 +29,7 @@ public class RedModInstaller : ALibraryArchiveInstaller
     private static readonly RelativePath Mods = "mods";
     private readonly IFileStore _fileStore;
     
-    private async Task<RedModInfo?> ReadInfoJson(Hash hash, IStreamFactory? streamFactory = null)
+    private async Task<RedModInfo?> ReadInfoJson(Hash hash)
     {
         try
         {
@@ -38,12 +38,6 @@ public class RedModInstaller : ALibraryArchiveInstaller
         }
         catch (Exception ex)
         {
-            // TODO: Remove this after we get rid of the old mod code
-            if (streamFactory != null)
-            {
-                await using var streamDirect = await streamFactory.GetStreamAsync();
-                return await JsonSerializer.DeserializeAsync<RedModInfo>(streamDirect);
-            }
             Logger.LogError(ex, "Failed to read info.json for {Hash}", hash);
             return null;
         }

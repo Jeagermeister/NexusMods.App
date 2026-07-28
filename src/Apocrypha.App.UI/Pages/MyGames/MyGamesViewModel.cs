@@ -359,10 +359,9 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     
     private async Task CleanGameFolder(GameInstallation installation, Loadout.ReadOnly loadout)
     {
-        var db = _connection.Db;
-        var tx = _connection.BeginTransaction();
-        var changeEntries = await GetExternalChangesItems(loadout.Rebase()); 
-        
+        using var tx = _connection.BeginTransaction();
+        var changeEntries = await GetExternalChangesItems(loadout.Rebase());
+
         // Remove items from External Changes mod
         foreach (var entry in changeEntries)
         {
@@ -370,12 +369,14 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         }
         await tx.Commit();
 
+        // Rebase AFTER the commit so the sync sees the deletions -- reloading against a db
+        // snapshot captured before the transaction would resurrect them.
         loadout = loadout.Rebase();
         var game = installation.GetGame();
         var syncer = game.Synchronizer;
-        
+
         // Apply clean state to game folder
-        await syncer.Synchronize(Loadout.Load(db, loadout));
+        await syncer.Synchronize(loadout);
     }
 
     private async Task<Loadout.ReadOnly> ManageGame(GameInstallation installation)

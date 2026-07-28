@@ -77,7 +77,10 @@ internal class ProcessRunner : IProcessRunner
             // https://github.com/Nexus-Mods/NexusMods.App/issues/1905#issuecomment-2302486535
             command = command.WithStandardInputPipe(stdInPipe);
             if (command.StandardOutputPipe == PipeTarget.Null) command = command.WithStandardOutputPipe(PipeTarget.ToStream(Stream.Null));
-            if (command.StandardOutputPipe == PipeTarget.Null) command = command.WithStandardErrorPipe(PipeTarget.ToStream(Stream.Null));
+            // Checking the ERROR pipe here: the old copy-paste re-check of the output pipe
+            // was always false after the line above, so stderr kept the null sentinel and
+            // the pipe-handling issue the comment above cites persisted for stderr.
+            if (command.StandardErrorPipe == PipeTarget.Null) command = command.WithStandardErrorPipe(PipeTarget.ToStream(Stream.Null));
             return command;
         }
 

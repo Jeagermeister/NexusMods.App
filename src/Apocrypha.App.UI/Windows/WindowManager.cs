@@ -123,7 +123,10 @@ internal sealed class WindowManager : ReactiveObject, IWindowManager
                 tx.Add(found.Id, WindowDataAttributes.Data, WindowDataAttributes.Encode(_connection.Db, data));
             }
 
-            tx.Commit();
+            // Block on the commit: this runs on the sync window-close path, and firing the
+            // Task and returning lets `using` dispose the tx while the commit is in flight —
+            // the window layout then silently fails to persist on shutdown.
+            tx.Commit().GetAwaiter().GetResult();
         }
         catch (Exception e)
         {
@@ -175,7 +178,9 @@ internal sealed class WindowManager : ReactiveObject, IWindowManager
             tx.Delete(datom.E, recursive: true);
         }
 
-        tx.Commit();
+        // Block on the commit (see SaveWindowState): this is the broken-state recovery path,
+        // and an un-awaited commit can leave the broken rows in place for the next launch.
+        tx.Commit().GetAwaiter().GetResult();
     }
     
     public async Task<StandardDialogResult> ShowDialog(IDialog dialog, DialogWindowType windowType)
