@@ -5,6 +5,7 @@ using Apocrypha.Games.CreationEngine.SortOrder;
 using Apocrypha.Games.TestFramework;
 using NexusMods.Paths;
 using Apocrypha.Sdk.Loadouts;
+using Apocrypha.StandardGameLocators.TestHelpers.StubbedGames;
 using OneOf;
 
 namespace Apocrypha.Games.CreationEngine.Tests.SortOrder;
@@ -14,13 +15,14 @@ namespace Apocrypha.Games.CreationEngine.Tests.SortOrder;
 /// later-installed plugins, and reading it back. No game install, no network.
 /// </summary>
 /// <remarks>
-/// Uses the assembly-level DI (SkyrimSE universal locator from <see cref="Startup"/>) rather than
-/// <c>AIsolatedGameTest</c>: the isolated variant starts the app's hosted services, whose Linux
-/// protocol-handler registration shells out to <c>update-desktop-database</c> — absent on CI
-/// runners, which kills the host before the game registry populates. The variety under test is
-/// game-agnostic, so which Creation Engine game hosts it does not matter.
+/// Runs against the stubbed game on assembly-level DI, for two CI constraints learned the hard
+/// way: <c>AIsolatedGameTest</c> starts the app's hosted services, whose Linux protocol-handler
+/// registration shells out to <c>update-desktop-database</c> (absent on runners); and the real
+/// Creation Engine games fail to locate on runners because <c>KnownPath.MyGamesDirectory</c>
+/// cannot resolve there. The variety under test is game-agnostic — it only reads loadout items
+/// with `Data/*.es[pml]` target paths — so the host game does not matter.
 /// </remarks>
-public class PluginSortOrderVarietyTests(IServiceProvider serviceProvider) : AGameTest<CreationEngine.SkyrimSE.SkyrimSE>(serviceProvider)
+public class PluginSortOrderVarietyTests(IServiceProvider serviceProvider) : AGameTest<StubbedGame>(serviceProvider)
 {
     [Fact]
     public async Task CuratedOrderPersistsAndReconciles()
