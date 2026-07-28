@@ -18,7 +18,10 @@ public class NexusLoginOverlayViewModel : AOverlayViewModel<INexusLoginOverlayVi
 
         Cancel = new ReactiveCommand(execute: _ =>
         {
-            // TODO: cancel job
+            // Cancel the OAuth job too -- closing the overlay alone leaves the login flow
+            // waiting on a callback that will never be completed by the user.
+            if (job.Status.IsActive())
+                job.AsContext().Cancel();
             Close();
         });
     }
