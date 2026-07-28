@@ -60,5 +60,37 @@ To fix this, you’ll need to install the missing master before playing.
         )
         .Finish();
 
-  
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate SaveBreakingLoadOrderChange = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 3))
+        .WithTitle("Load order change will break existing saves")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("{SaveCount} existing save(s) were made with a different set of plugins ({AddedCount} added, {RemovedCount} removed)")
+        .WithDetails("""
+Applying this loadout changes which plugins are loaded, and you have **{SaveCount}** save(s) for this game.
+
+Added: {AddedPlugins}
+
+Removed: {RemovedPlugins}
+
+A Creation Engine save stores every object it knows about by *load order position*, not by name. Adding
+or removing a plugin shifts the positions of the plugins after it, so a save written before the change
+resolves its objects to the wrong plugins. In practice the game either refuses to load the save or
+crashes shortly after you select it.
+
+New games started after applying are unaffected. If you want to keep playing an existing save, restore
+the previous set of plugins first — matching the plugins the save was made with is what matters, not
+the mods' content.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<int>("SaveCount")
+            .AddValue<int>("AddedCount")
+            .AddValue<int>("RemovedCount")
+            .AddValue<string>("AddedPlugins")
+            .AddValue<string>("RemovedPlugins")
+        )
+        .Finish();
 }

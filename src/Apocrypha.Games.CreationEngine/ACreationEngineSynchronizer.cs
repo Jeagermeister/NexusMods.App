@@ -22,6 +22,14 @@ public abstract class ACreationEngineSynchronizer : ALoadoutSynchronizer
         {
             {pluginsFile.Path, pluginsFile},
         };
+
+        // Games that declare a DLC manifest get it managed too — an unmanaged one can hold a stale
+        // entry that crashes the main menu with no diagnostic anywhere in the app.
+        if (game.DlcListFile is { } dlcListPath && game.KnownDlc.Count > 0)
+        {
+            var dlcListFile = new DlcListFile(dlcListPath, game.KnownDlc);
+            _intrinsicFiles[dlcListFile.Path] = dlcListFile;
+        }
     }
 
     
