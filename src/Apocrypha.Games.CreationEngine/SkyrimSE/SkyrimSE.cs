@@ -95,6 +95,13 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
 
     public GamePath GetPrimaryFile(GameInstallation installation) => new(LocationId.Game, "SkyrimSE.exe");
 
+    /// <summary>
+    /// Collection content with no better destination belongs in the game's mod folder, and
+    /// replicated collection files are declared relative to it -- without this they land in the
+    /// game root where the engine never loads them.
+    /// </summary>
+    public Optional<GamePath> GetFallbackCollectionInstallDirectory(GameInstallation installation) => new GamePath(LocationId.Game, "Data");
+
     private static readonly GroupMask EmptyGroupMask = new(false);
     public async ValueTask<IMod?> ParsePlugin(Hash hash, RelativePath? name = null)
     {

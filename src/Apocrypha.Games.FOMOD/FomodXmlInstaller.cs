@@ -158,6 +158,13 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         foreach (var warning in instructions.Where(instruction => instruction.type == "unsupported"))
             _logger.LogWarning("Installer uses unsupported function: {}", warning.source);
 
+        // A FOMOD run that copies nothing installs nothing. Report it as NotSupported so the
+        // caller can fall back to the regular installer chain instead of committing a group with
+        // metadata but no content -- which reads as "installed" everywhere while deploying zero
+        // files.
+        if (!instructions.Any(static instruction => instruction.type == "copy"))
+            return new NotSupported(Reason: "FOMOD script produced no file copy instructions");
+
         InstructionsToLoadoutItems(transaction, loadout, loadoutGroup,instructions, fomodArchiveFiles, _fomodInstallationPath);
         return new Success();
     }

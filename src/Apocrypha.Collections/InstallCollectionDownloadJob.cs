@@ -149,10 +149,41 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         // carries whatever wrapper the author shipped -- a "ModName/" folder, a "Data/" prefix,
         // or FOMOD option directories like "00 Required/". Resolving patches against the archive
         // therefore misses every mod that isn't packaged flat, which aborts the whole mod install.
+        // The manifest can record fomod choices for archives that contain no FOMOD at all, and a
+        // FOMOD script can legitimately produce zero file copies for this setup. In both cases the
+        // fomod path reports NotSupported and the mod must fall back to the standard installer
+        // chain -- previously the empty group was committed anyway, yielding a mod that reads as
+        // installed everywhere while deploying nothing, with no error in sight.
+        async ValueTask<(LoadoutItemGroup.ReadOnly, PatchedFile[])> InstallViaStandardChain()
+        {
+            var result = await LoadoutManager.InstallItem(
+                libraryFile.AsLibraryItem(),
+                TargetLoadout,
+                parent: Group.AsLoadoutItemGroup().LoadoutItemGroupId,
+                // NOTE(erri120): https://github.com/Nexus-Mods/NexusMods.App/issues/2553
+                // The advanced installer shouldn't appear when installing collections,
+                // the decision was made that the app should behave similar to Vortex,
+                // which installs unknown stuff into a "default folder"
+                fallbackInstaller: FallbackInstaller
+            );
+
+            Debug.Assert(result.LoadoutItemGroup.HasValue);
+            var installedGroup = result.LoadoutItemGroup!.Value;
+            return (installedGroup, await PatchInstalledGroup(installedGroup, hasPatches, context.CancellationToken));
+        }
+
         if (CollectionMod.Choices is { Type: ChoicesType.fomod })
         {
-            var fomodGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
-            return (fomodGroup, await PatchInstalledGroup(fomodGroup, hasPatches, context.CancellationToken));
+            try
+            {
+                var fomodGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
+                return (fomodGroup, await PatchInstalledGroup(fomodGroup, hasPatches, context.CancellationToken));
+            }
+            catch (FomodNotApplicableException e)
+            {
+                Logger.LogWarning("FOMOD install of `{Name}` is not applicable ({Reason}); falling back to the standard installer chain", Item.Name, e.Message);
+                return await InstallViaStandardChain();
+            }
         }
 
         // A FOMOD whose choices were never recorded by the curator must NOT fall through to the
@@ -164,25 +195,27 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             && maybeFomodArchive.Children.Any(static c => c.Path.EndsWith(FomodConstants.XmlConfigName)))
         {
             Logger.LogInformation("Collection mod {Name} is a FOMOD without recorded choices; installing non-interactively with installer defaults", Item.Name);
-            var defaultsGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
-            return (defaultsGroup, await PatchInstalledGroup(defaultsGroup, hasPatches, context.CancellationToken));
+            try
+            {
+                var defaultsGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
+                return (defaultsGroup, await PatchInstalledGroup(defaultsGroup, hasPatches, context.CancellationToken));
+            }
+            catch (FomodNotApplicableException e)
+            {
+                Logger.LogWarning("FOMOD-with-defaults install of `{Name}` is not applicable ({Reason}); falling back to the standard installer chain", Item.Name, e.Message);
+                return await InstallViaStandardChain();
+            }
         }
 
-        var result = await LoadoutManager.InstallItem(
-            libraryFile.AsLibraryItem(),
-            TargetLoadout,
-            parent: Group.AsLoadoutItemGroup().LoadoutItemGroupId,
-            // NOTE(erri120): https://github.com/Nexus-Mods/NexusMods.App/issues/2553
-            // The advanced installer shouldn't appear when installing collections,
-            // the decision was made that the app should behave similar to Vortex,
-            // which installs unknown stuff into a "default folder"
-            fallbackInstaller: FallbackInstaller
-        );
-
-        Debug.Assert(result.LoadoutItemGroup.HasValue);
-        var installedGroup = result.LoadoutItemGroup!.Value;
-        return (installedGroup, await PatchInstalledGroup(installedGroup, hasPatches, context.CancellationToken));
+        return await InstallViaStandardChain();
     }
+
+    /// <summary>
+    /// Thrown inside the fomod install transaction when the installer reports the archive cannot
+    /// be handled as a FOMOD; aborts the transaction (so no empty group is committed) and signals
+    /// the caller to use the standard installer chain instead.
+    /// </summary>
+    private sealed class FomodNotApplicableException(string reason) : Exception(reason);
 
     private Task<LoadoutItemGroup.ReadOnly> InstallBundledMod(CollectionDownloadBundled.ReadOnly download) => LoadoutManager.InstallItemWrapper(TargetLoadout, tx =>
     {
@@ -293,7 +326,11 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         // Choices may legitimately be null here (the defaults route above): an empty preset makes
         // PresetGuidedInstaller emit the installer's default selections for every step.
         var options = CollectionMod.Choices?.Options ?? [];
-        await fomodInstaller.ExecuteAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, cancellationToken: cancellationToken);
+        var installerResult = await fomodInstaller.ExecuteAsync(libraryArchive, loadoutItemGroup, tx, loadout, options, cancellationToken: cancellationToken);
+
+        // Throwing here aborts the wrapper's transaction, so the group above is never committed.
+        if (installerResult.IsNotSupported(out var notSupportedReason))
+            throw new FomodNotApplicableException(notSupportedReason ?? "not supported");
 
         return loadoutItemGroup;
     });
@@ -370,12 +407,22 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             LoadoutItemGroup = group.GetNexusCollectionItemLoadoutGroup(tx).GetLoadoutItemGroup(tx),
         };
 
+        // Replicated paths in the manifest are relative to the game's mod install directory
+        // (for Creation Engine games that is `Data`), matching how Vortex deploys them. Mapping
+        // them onto the game root instead puts plugins where the engine never looks -- the mod
+        // reports as installed while every plugin that masters it fails with a missing master.
+        var replicatedRoot = FallbackCollectionInstallDirectory;
+
         // Now we map the files to their locations based on the hashes
         foreach (var pair in CollectionMod.Hashes)
         {
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
                 throw new InvalidOperationException("The hash was not found in the archive.");
+
+            var targetPath = replicatedRoot.HasValue
+                ? new GamePath(replicatedRoot.Value.LocationId, replicatedRoot.Value.Path.Join(pair.Path))
+                : new GamePath(LocationId.Game, pair.Path);
 
             // Map the file to the specific path
             _ = new LoadoutFile.New(tx, out var fileId)
@@ -384,7 +431,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 Size = libraryItem.Size,
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
                 {
-                    TargetPath = (fileId, LocationId.Game, pair.Path),
+                    TargetPath = (fileId, targetPath.LocationId, targetPath.Path),
                     LoadoutItem = new LoadoutItem.New(tx, fileId)
                     {
                         Name = pair.Path,
