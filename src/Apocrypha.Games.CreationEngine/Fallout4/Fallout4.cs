@@ -63,6 +63,7 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         [
             new MissingMasterEmitter(this),
             new SaveBreakingChangeEmitter(),
+            new EngineLimitsEmitter(this, _streamSource),
         ];
 
         LibraryItemInstallers = 
@@ -124,4 +125,11 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
     public GamePath? DlcListFile => Fallout4KnownPaths.DlcListFile;
 
     public IReadOnlyList<RelativePath> KnownDlc => Fallout4KnownPaths.Dlc;
+
+    /// <summary>
+    /// Fallout 4's general-archive ceiling. Confirmed the hard way: 334 enabled-plugin archives
+    /// on a 908-mod collection produced main-menu access violations that bisected to file-handle
+    /// exhaustion, not to any individual mod.
+    /// </summary>
+    public int? MaxGeneralArchives => 256;
 }
