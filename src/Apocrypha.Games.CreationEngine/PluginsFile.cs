@@ -41,6 +41,8 @@ public class PluginsFile : IIntrinsicFile
             .Where(p => p.Value.HaveLoadout)
             .ToAsyncEnumerable()
             .SelectAwait(MakeMetadata)
+            .Where(static metadata => metadata.HasValue)
+            .Select(static metadata => metadata!.Value)
             .ToDictionaryAsync(x => x.ModKey);
 
         if (plugins.Count == 0)
@@ -94,7 +96,7 @@ public class PluginsFile : IIntrinsicFile
         await sw.FlushAsync();
     }
 
-    private async ValueTask<Metadata> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
+    private async ValueTask<Metadata?> MakeMetadata(KeyValuePair<GamePath, SyncNode> arg)
     {
         var relPath = arg.Key.Path.FileName;
         Hash hash;
@@ -106,8 +108,26 @@ public class PluginsFile : IIntrinsicFile
         else
             hash = syncNode.Disk.Hash;
 
-        var modHeader = await _game.ParsePlugin(hash, relPath);
-        return new Metadata(relPath, modHeader!.ModKey, hash, modHeader);
+        IMod? modHeader;
+        try
+        {
+            modHeader = await _game.ParsePlugin(hash, relPath);
+        }
+        catch (Exception e)
+        {
+            // One corrupt plugin must degrade to one missing plugins.txt line, not abort the
+            // whole write -- that fails every Apply until the user hunts down the bad file.
+            _logger.LogWarning(e, "Failed to parse the header of plugin `{Plugin}`; leaving it out of the plugins file", relPath);
+            return null;
+        }
+
+        if (modHeader == null)
+        {
+            _logger.LogWarning("No readable content for plugin `{Plugin}` (unknown hash?); leaving it out of the plugins file", relPath);
+            return null;
+        }
+
+        return new Metadata(relPath, modHeader.ModKey, hash, modHeader);
     }
 
 

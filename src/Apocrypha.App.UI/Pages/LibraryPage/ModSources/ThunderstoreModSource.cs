@@ -11,7 +11,7 @@ namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
 /// <see cref="IThunderstoreCommunityGame"/> community, and browsing goes to that community.
 /// </summary>
 [UsedImplicitly]
-internal sealed class ThunderstoreModSource : IModSource
+public sealed class ThunderstoreModSource : IModSource
 {
     public ModSourceId Id => ModSourceId.Thunderstore;
     public string DisplayName => "Thunderstore";

@@ -36,8 +36,10 @@ SELECT
 FROM (
          SELECT
              matchingMods.*,
+             -- REDmod folder names are case-insensitive identifiers, so the partition folds
+             -- case (mirrors PluginSortOrderQueries.sql; keep in sync with MakeKey in C#).
              ROW_NUMBER() OVER (
-                            PARTITION BY matchingMods.ModFolderName
+                            PARTITION BY lower(matchingMods.ModFolderName)
                             ORDER BY matchingMods.IsEnabled DESC, matchingMods.ModGroupId DESC
                         ) AS ranking
          FROM redmod.LoadoutRedModGroups(db, loadoutId, gameLocationId) AS matchingMods
@@ -57,6 +59,8 @@ SELECT
     loadoutData.ModName, 
     loadoutData.ModGroupId
 FROM mdb_RedModSortOrderItem(Db=>db) sortItem
-LEFT OUTER JOIN redmod.WinningLoadoutRedModGroups(db, loadoutId, gameLocationId) loadoutData on sortItem.RedModFolderName = loadoutData.ModFolderName
+-- Case-folded join: the persisted row keeps display casing while the loadout row carries
+-- whatever casing the archive shipped -- they are the same mod.
+LEFT OUTER JOIN redmod.WinningLoadoutRedModGroups(db, loadoutId, gameLocationId) loadoutData on lower(sortItem.RedModFolderName) = lower(loadoutData.ModFolderName)
 WHERE sortItem.ParentSortOrder = sortOrderId
 ORDER BY sortItem.SortIndex;

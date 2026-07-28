@@ -212,7 +212,7 @@ internal static class Verbs
     {
         var db = connection.Db;
         var matches = LoadoutItem.FindByLoadout(db, loadout)
-            .Where(item => item.IsLoadoutItemGroup() && string.Equals(item.Name, groupName, StringComparison.Ordinal))
+            .Where(item => item.IsLoadoutItemGroup() && string.Equals(item.Name, groupName, StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
         if (matches.Length == 0)

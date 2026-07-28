@@ -14,7 +14,7 @@ namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
 /// only in-app surface, so hiding it is what "disabled" means.
 /// </summary>
 [UsedImplicitly]
-internal sealed class ModIoModSource : IModSource
+public sealed class ModIoModSource : IModSource
 {
     private readonly ISettingsManager _settingsManager;
 
