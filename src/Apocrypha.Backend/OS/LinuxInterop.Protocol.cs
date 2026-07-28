@@ -150,7 +150,7 @@ internal partial class LinuxInterop
         var originalApplicationsDirectory = applicationsDirectory.ToString();
         var escapedApplicationsDirectory = EscapeDesktopExecFilePath(originalApplicationsDirectory);
         if (escapedApplicationsDirectory != originalApplicationsDirectory)
-            _logger.LogWarning("XDG_DATA_HOME is in a folder that needs escaping. If login does not work, see https://gitlab.freedesktop.org/xdg/xdg-utils/-/issues/279 , https://github.com/Nexus-Mods/NexusMods.App/issues/3293 . It's out of our hands.");
+            _logger.LogWarning("XDG_DATA_HOME is in a folder that needs escaping. If login does not work, see https://gitlab.freedesktop.org/xdg/xdg-utils/-/issues/279 or report it at https://github.com/Jeagermeister/Apocrypha/issues . It's out of our hands.");
 
         var scriptName = $"{ApplicationId}.sh";
         var scriptPath = applicationsDirectory.Combine(scriptName);
