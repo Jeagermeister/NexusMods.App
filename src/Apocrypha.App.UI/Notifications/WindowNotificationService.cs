@@ -48,13 +48,19 @@ public class WindowNotificationService : IWindowNotificationService
                 var manager = GetNotificationManager();
                 if (manager == null) return;
                 
-                // TODO: Use ToastNotificationVariant
                 // TODO: Use buttons and handler
-        
+
+                var notificationType = type switch
+                {
+                    ToastNotificationVariant.Success => NotificationType.Success,
+                    ToastNotificationVariant.Failure => NotificationType.Error,
+                    _ => NotificationType.Information,
+                };
+
                 var notification = new Notification(
                     null,
                     message,
-                    NotificationType.Information,
+                    notificationType,
                     expiration ?? TimeSpan.FromSeconds(5));
                 
                 // Must be on UI thread to show the notification
