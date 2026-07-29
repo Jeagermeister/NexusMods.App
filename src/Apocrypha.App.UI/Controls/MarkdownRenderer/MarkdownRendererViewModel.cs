@@ -39,6 +39,8 @@ public class MarkdownRendererViewModel : AViewModel<IMarkdownRendererViewModel>,
     public MarkdownRendererViewModel()
     {
         _logger = NullLogger.Instance;
+        // Design-time (XAML previewer) constructor only -- there is no service provider here, so
+        // this cannot use the monitored DI client. The runtime constructor below is injected.
         _httpClient = new HttpClient();
         _remoteImagePipeline = ImagePipelines.CreateMarkdownRendererRemoteImagePipeline(_httpClient);
 

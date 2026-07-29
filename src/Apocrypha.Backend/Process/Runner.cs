@@ -25,7 +25,58 @@ internal class ProcessRunner : IProcessRunner
         _logger.LogInformation("Using process log folder at {Path}", _processLogsFolder);
 
         _processLogsFolder.CreateDirectory();
+
+        // Every logged run leaves a `{name}-{guid}.stdout/.stderr.log` pair behind and nothing
+        // ever removed them, so the folder grew without bound (10,452 files on one real install).
+        // The retention span has existed as a setting since the fork but was never consumed.
+        var retentionSpan = serviceProvider.GetRequiredService<ISettingsManager>().Get<LoggingSettings>().ProcessLogRetentionSpan;
+        var logsFolder = _processLogsFolder;
+        var logger = _logger;
+        Task.Run(() => SweepOldProcessLogs(logsFolder, retentionSpan, logger))
+            .FireAndForget(_logger, cancellationToken: CancellationToken.None);
     }
+
+    /// <summary>
+    /// Deletes process logs older than <paramref name="retentionSpan"/>, returning how many were
+    /// removed and how many resisted. Only the two suffixes this class writes, and only in its own
+    /// folder -- never recursive, so nothing else sharing the Logs tree can be caught by it.
+    /// A non-positive span disables the sweep.
+    /// </summary>
+    internal static (int Deleted, int Failed) SweepOldProcessLogs(AbsolutePath processLogsFolder, TimeSpan retentionSpan, ILogger logger)
+    {
+        if (retentionSpan <= TimeSpan.Zero) return (0, 0);
+        if (!processLogsFolder.DirectoryExists()) return (0, 0);
+
+        var cutoff = DateTime.UtcNow - retentionSpan;
+        var deleted = 0;
+        var failed = 0;
+
+        foreach (var pattern in ProcessLogPatterns)
+        {
+            foreach (var file in processLogsFolder.EnumerateFiles(pattern, recursive: false))
+            {
+                try
+                {
+                    if (file.FileInfo.LastWriteTimeUtc >= cutoff) continue;
+                    file.Delete();
+                    deleted++;
+                }
+                catch (Exception e)
+                {
+                    // A log we cannot delete is not worth failing startup over; count it and move on.
+                    failed++;
+                    logger.LogDebug(e, "Failed to delete stale process log {Path}", file);
+                }
+            }
+        }
+
+        if (deleted > 0 || failed > 0)
+            logger.LogInformation("Swept {Deleted} process log(s) older than {Retention} ({Failed} could not be deleted)", deleted, retentionSpan, failed);
+
+        return (deleted, failed);
+    }
+
+    private static readonly string[] ProcessLogPatterns = ["*.stdout.log", "*.stderr.log"];
 
     private string GetFileName(Command command)
     {

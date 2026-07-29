@@ -18,6 +18,27 @@ namespace Apocrypha.Games.StardewValley.Emitters;
 
 internal static class Helpers
 {
+    /// <summary>
+    /// Resolves the mod group that owns a manifest file.
+    /// </summary>
+    /// <remarks>
+    /// An item whose parent has been retracted is a husk: <c>Parent</c> throws on it. Emitters
+    /// run over every item in the loadout, so one husk would otherwise abort the entire
+    /// diagnostics pass for the game. Callers skip what this returns false for.
+    /// </remarks>
+    public static bool TryGetOwningGroup(SMAPIManifestLoadoutFile.ReadOnly manifestLoadoutItem, out LoadoutItemGroup.ReadOnly group)
+    {
+        var loadoutItem = manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem();
+        if (!loadoutItem.HasParent())
+        {
+            group = default(LoadoutItemGroup.ReadOnly);
+            return false;
+        }
+
+        group = loadoutItem.Parent;
+        return true;
+    }
+
     public static NamedLink GetNexusModsLink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetGameUri(mapping[StardewValley.NexusModsGameId.Value]));
     public static NamedLink GetSMAPILink(IGameDomainToGameIdMappingCache mapping) => new("Nexus Mods", NexusModsUrlBuilder.GetModUri(mapping[StardewValley.NexusModsGameId.Value], ModId.From(2400)));
 
@@ -86,7 +107,12 @@ internal static class Helpers
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Exception while loading manifest for `{GroupName}`", manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.AsLoadoutItem().Name);
+                // Resolve the name defensively: an unguarded Parent here would throw from inside
+                // the handler, turning one unreadable manifest into a failed diagnostics pass.
+                var groupName = TryGetOwningGroup(manifestLoadoutItem, out var owningGroup)
+                    ? owningGroup.AsLoadoutItem().Name
+                    : "<no owning group>";
+                logger.LogError(e, "Exception while loading manifest for `{GroupName}`", groupName);
             }
         }
 
