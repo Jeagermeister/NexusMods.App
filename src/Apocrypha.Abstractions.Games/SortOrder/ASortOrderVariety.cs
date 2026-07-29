@@ -195,10 +195,10 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
     public virtual async ValueTask ReconcileSortOrder(SortOrderId sortOrderId, IDb? referenceDb = null, CancellationToken token = default)
     {
         // If this is passed a specific database, don't retry the reconciliation using the most recent database.
-        var noRetry = referenceDb is not null; 
-        var retryCount = 0;
+        var noRetry = referenceDb is not null;
+        var attempt = 0;
 
-        while (retryCount <= 3)
+        while (attempt < MaxReconcileAttempts)
         {
             var refDb = referenceDb ?? Connection.Db;
 
@@ -208,24 +208,47 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
                 // Sort order no longer exists, collection/loadout was deleted, abort.
                 return;
             }
-            
+
             var reconciledItems = ReconcileSortOrderCore(sortOrderId, refDb);
-            
+
             var succeeded = await TryPersistSortOrder(sortOrderId, reconciledItems.Select(tuple => tuple.SortedEntry).ToArray(), refDb, token);
             if (succeeded) return;
-        
+
             if (noRetry)
             {
                 _logger.LogWarning("Reconciliation of sort order {SortOrderId} failed, but no retry is allowed", sortOrderId);
                 return;
             }
-            
-            retryCount++;
-            _logger.LogWarning("Reconciliation of sort order {SortOrderId} failed, retrying ({RetryCount}/3)", sortOrderId, retryCount);
+
+            attempt++;
+            if (attempt >= MaxReconcileAttempts) break;
+
+            // Back off before re-reading. The old loop retried immediately, so under a burst of
+            // commits -- a collection install is thousands of them -- every attempt could lose to
+            // the same still-committing writer and the whole reconciliation was abandoned with a
+            // single LogError. Jitter keeps concurrent reconciliations from lockstepping.
+            var backoff = ReconcileBackoffBase * (1 << (attempt - 1));
+            var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, (int)ReconcileBackoffBase.TotalMilliseconds));
+            await Task.Delay(backoff + jitter, token);
+
+            _logger.LogDebug("Reconciliation of sort order {SortOrderId} lost a race, retrying ({Attempt}/{MaxAttempts})",
+                sortOrderId, attempt, MaxReconcileAttempts);
         }
-        
-        _logger.LogError("Reconciliation of sort order {SortOrderId} failed after 4 attempts", sortOrderId);
+
+        _logger.LogError("Reconciliation of sort order {SortOrderId} failed after {MaxAttempts} attempts; its order may be stale until the next change",
+            sortOrderId, MaxReconcileAttempts);
     }
+
+    /// <summary>
+    /// How many times reconciliation re-reads and retries after losing the compare-and-swap.
+    /// </summary>
+    private const int MaxReconcileAttempts = 6;
+
+    /// <summary>
+    /// First backoff step; each further attempt doubles it and adds up to one step of jitter.
+    /// Six attempts is therefore bounded well under a second in the worst case.
+    /// </summary>
+    private static readonly TimeSpan ReconcileBackoffBase = TimeSpan.FromMilliseconds(15);
     
     /// <inheritdoc />
     public virtual async ValueTask DeleteSortOrder(SortOrderId sortOrderId, CancellationToken token = default)
@@ -281,18 +304,21 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
                 
                 if (currentTxId > oldTxId || currentTxId == default(TxId))
                 {
-                    throw new InvalidOperationException(
+                    throw new SortOrderConflictException(
                         $"Unable to complete transaction: Sort Order {orderId} changed, Current TxId: {currentTxId}, Old TxId: {oldTxId}");
                 }
             });
-        
+
         try
         {
             await tx.Commit();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (SortOrderConflictException.IsConflict(ex))
         {
-            _logger.LogError(ex, "Failed to persist sort order {SortOrderId}", sortOrderId);
+            // A lost race, not a fault -- the caller retries against a fresh database. Logged at
+            // debug because reconciliation is expected to lose occasionally under a burst of
+            // commits; only giving up entirely is worth an error.
+            _logger.LogDebug(ex, "Sort order {SortOrderId} changed underneath us; will re-read and retry", sortOrderId);
             return false;
         }
 
