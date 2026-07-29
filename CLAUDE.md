@@ -12,7 +12,11 @@ dotnet run --project src/Apocrypha.App          # run the app
 dotnet test                                     # default test suite
 ```
 
-CI (`pr-builds.yaml`) builds Linux + Windows (macOS is intentionally unsupported).
+CI (`pr-builds.yaml`) builds **Linux only**. Windows was deliberately removed from CI,
+releases and tests — it was failing on races that do not affect the shipped product, and
+Apocrypha is Linux-first. Windows comes back when we choose to support it properly; the
+reusable `build-windows-pupnet.yaml` workflow is kept (unreferenced) so re-enabling is a
+small change. macOS is intentionally unsupported.
 Networking, mod-install, and clean-environment suites run as separate CI jobs with
 `dotnet test --filter ...`; don't be surprised when they're skipped locally.
 
@@ -41,6 +45,6 @@ Networking, mod-install, and clean-environment suites run as separate CI jobs wi
 ## Releases
 
 Dispatched via `release.yaml` (workflow_dispatch, `version: vX.Y.Z`) off `linux-fork`;
-produces 4 artifacts (AppImage, Linux zip, InnoSetup `Apocrypha.x64.exe`, Windows zip)
+produces 2 artifacts (AppImage, Linux zip)
 as a draft — the maintainer titles and publishes. The binary version is derived from
 the tag; keep them matching so the in-app updater behaves.
