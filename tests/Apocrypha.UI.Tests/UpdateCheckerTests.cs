@@ -8,7 +8,9 @@ namespace Apocrypha.UI.Tests;
 
 public class UpdateCheckerTests
 {
-    private static readonly OSPlatform[] Platforms = [OSPlatform.Linux, OSPlatform.Windows];
+    // Apocrypha publishes Linux artifacts only; the Windows rows described releases we no
+    // longer build. Restore them alongside the Windows release job when it comes back.
+    private static readonly OSPlatform[] Platforms = [OSPlatform.Linux];
     private static readonly InstallationMethod[] InstallationMethods = Enum.GetValues<InstallationMethod>();
 
     [Theory]
@@ -33,8 +35,6 @@ public class UpdateCheckerTests
         return new TheoryData<string, OSPlatform, InstallationMethod>
         {
             { "App.linux-x64.zip", OSPlatform.Linux, InstallationMethod.Archive },
-            { "App.win-x64.zip", OSPlatform.Windows, InstallationMethod.Archive },
-            { "App.exe", OSPlatform.Windows, InstallationMethod.InnoSetup },
             { "App.AppImage", OSPlatform.Linux, InstallationMethod.AppImage},
         };
     }
