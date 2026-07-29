@@ -111,6 +111,9 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     .Where(id => id != default(SMAPIManifestLoadoutFileId))
                     .Select(id => SMAPIManifestLoadoutFile.Load(loadout.Db, id))
                     .Where(loadoutItem => loadoutItem.IsValid() && !loadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().IsEnabled())
+                    // A husk has no owning group to point the diagnostic at; skip it rather than
+                    // let Parent throw and take the whole pass down.
+                    .Where(loadoutItem => loadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().HasParent())
                     .Select(loadoutItem => loadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent)
                     .ToArray();
 
@@ -122,6 +125,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         {
             var (loadoutItemId, disabledDependencies) = tuple;
             var loadoutItem = LoadoutItem.Load(loadout.Db, loadoutItemId);
+            if (!loadoutItem.HasParent()) return Enumerable.Empty<Diagnostic>();
 
             return disabledDependencies.Select(dependency => Diagnostics.CreateDisabledRequiredDependency(
                 SMAPIMod: loadoutItem.Parent.ToReference(loadout),
@@ -175,9 +179,11 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         return collect.SelectMany(kv =>
         {
             var (loadoutItemId, missingDependencies) = kv;
+            var loadoutItem = LoadoutItem.Load(loadout.Db, loadoutItemId);
+            if (!loadoutItem.HasParent()) return Enumerable.Empty<Diagnostic>();
+
             return missingDependencies.Select(missingDependency =>
             {
-                var loadoutItem = LoadoutItem.Load(loadout.Db, loadoutItemId);
                 var modDetails = apiMods.GetValueOrDefault(missingDependency);
 
                 var name = modDetails?.Name ?? missingDependency;
@@ -266,13 +272,18 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
             smapiIDs: allMissingDependencies
         );
 
-        return collect.Select(tuple => Diagnostics.CreateRequiredDependencyIsOutdated(
-            Dependent: LoadoutItem.Load(loadout.Db, tuple.LoadoutItemId).Parent.ToReference(loadout),
-            Dependency: LoadoutItem.Load(loadout.Db, tuple.DependencyModId).Parent.ToReference(loadout),
-            MinimumVersion: tuple.MinimumVersion.ToString(),
-            CurrentVersion: tuple.CurrentVersion.ToString(),
-            NexusModsDependencyUri: apiMods.GetLink(tuple.DependencyId, defaultValue: Helpers.GetNexusModsLink(_mappingCache))
-        ));
+        return collect
+            // Both ends of the diagnostic need an owning group to point at; if either is a husk
+            // there is nothing to report, and Parent would throw.
+            .Where(tuple => LoadoutItem.Load(loadout.Db, tuple.LoadoutItemId).HasParent() &&
+                            LoadoutItem.Load(loadout.Db, tuple.DependencyModId).HasParent())
+            .Select(tuple => Diagnostics.CreateRequiredDependencyIsOutdated(
+                Dependent: LoadoutItem.Load(loadout.Db, tuple.LoadoutItemId).Parent.ToReference(loadout),
+                Dependency: LoadoutItem.Load(loadout.Db, tuple.DependencyModId).Parent.ToReference(loadout),
+                MinimumVersion: tuple.MinimumVersion.ToString(),
+                CurrentVersion: tuple.CurrentVersion.ToString(),
+                NexusModsDependencyUri: apiMods.GetLink(tuple.DependencyId, defaultValue: Helpers.GetNexusModsLink(_mappingCache))
+            ));
     }
 
     private static List<string> GetRequiredDependencies(SMAPIManifest manifest)

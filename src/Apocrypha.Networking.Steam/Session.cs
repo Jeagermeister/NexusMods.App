@@ -73,7 +73,10 @@ public class Session : ISteamSession
 
         var steamConfiguration = SteamConfiguration.Create(configurator =>
         {
-            // The client will dispose of these on its own
+            // The client will dispose of these on its own -- which is exactly why this one stays
+            // raw instead of resolving the DI HttpClient: SteamKit takes ownership and would
+            // dispose the app-wide, traffic-monitored singleton out from under everything else.
+            // Steam CDN traffic is therefore a known, deliberate blind spot in the monitor.
             configurator.WithHttpClientFactory(_ => new HttpClient());
         });
         _steamClient = new SteamClient(steamConfiguration);

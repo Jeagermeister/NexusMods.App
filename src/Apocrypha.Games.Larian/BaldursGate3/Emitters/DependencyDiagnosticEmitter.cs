@@ -71,6 +71,8 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
         foreach (var metaFileTuple in metaFileTuples)
         {
             var (mod, metadataOrError) = metaFileTuple;
+            // A parentless husk must not take the whole diagnostics pass down with it.
+            if (!mod.AsLoadoutItemWithTargetPath().AsLoadoutItem().HasParent()) continue;
             var loadoutItemGroup = mod.AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent;
 
             // error case
@@ -134,6 +136,7 @@ public class DependencyDiagnosticEmitter : ILoadoutDiagnosticEmitter
                     x => x.Item2.Result.MetaFileData.ModuleShortDesc.SemanticVersion
                 );
                 var installedMatchModule = highestInstalledMatch.Item2.Result.MetaFileData.ModuleShortDesc;
+                if (!highestInstalledMatch.Item1.AsLoadoutItemWithTargetPath().AsLoadoutItem().HasParent()) continue;
                 var matchLoadoutItemGroup = highestInstalledMatch.Item1.AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent;
 
                 // Check if found dependency is outdated

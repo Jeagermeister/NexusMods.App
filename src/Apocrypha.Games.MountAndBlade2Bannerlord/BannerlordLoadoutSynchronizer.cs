@@ -165,6 +165,13 @@ public class BannerlordLoadoutSynchronizer : ALoadoutSynchronizer
             return false;
         }
 
+        // A manifest file with no owning group is a husk; report "not found" rather than throwing.
+        if (!file.AsLoadoutItem().HasParent())
+        {
+            mod = default(BannerlordModuleLoadoutItem.ReadOnly);
+            return false;
+        }
+
         mod = BannerlordModuleLoadoutItem.Load(db, file.AsLoadoutItem().Parent);
         return true;
     }
