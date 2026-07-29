@@ -51,10 +51,9 @@ public record LoggingSettings : ISettings
     public bool LogToConsole { get; [UsedImplicitly] set; } = ApplicationConstants.IsDebug;
 
     /// <summary>
-    /// Gets the retention span for process logs. Process logs older than this are swept on
-    /// startup; <see cref="TimeSpan.Zero"/> or a negative span disables the sweep.
+    /// Gets the retention span for process logs.
     /// </summary>
-    public TimeSpan ProcessLogRetentionSpan { get; init; } = TimeSpan.FromDays(7);
+    public TimeSpan ProcessLogRetentionSpan { get; } = TimeSpan.FromDays(7);
 
     /// <summary>
     /// When enabled, shows an exception modal to the user on every observed exception.
