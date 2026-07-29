@@ -114,8 +114,11 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         var fileName = name?.FileName.ToString() ?? "unknown.esm";
         var key = ModKey.FromFileName(fileName);
         await using var stream = await _streamSource.OpenAsync(hash);
-        var meta = ParsingMeta.Factory(BinaryReadParameters.Default, GameRelease.SkyrimSE, key, stream!);
-        await using var mutagenStream = new MutagenBinaryReadStream(stream!, meta);
+        // An unknown hash yields no stream (e.g. a plugin whose archive was GC'd) -- callers
+        // treat a null header as "skip this plugin", which must not take down the whole pass.
+        if (stream == null) return null;
+        var meta = ParsingMeta.Factory(BinaryReadParameters.Default, GameRelease.SkyrimSE, key, stream);
+        await using var mutagenStream = new MutagenBinaryReadStream(stream, meta);
         using var frame = new MutagenFrame(mutagenStream);
         return SkyrimMod.CreateFromBinary(frame, SkyrimRelease.SkyrimSE, EmptyGroupMask);
     }

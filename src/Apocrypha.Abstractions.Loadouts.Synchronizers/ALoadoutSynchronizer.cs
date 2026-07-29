@@ -1461,6 +1461,10 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
         var tree = BuildSyncTree(DiskStateToPathPartPair(diskStateEntries), DiskStateToPathPartPair(diskStateEntries), loadout);
         ProcessSyncTree(tree);
+        // Same insurance as the Synchronize path: a loadout whose Game-layer files all
+        // vanished (hash-DB read failure class) must refuse rather than mass-delete the
+        // install -- this path is exactly the one that deletes files the target lacks.
+        GuardAgainstVanishedGameFiles(loadout, tree);
         await RunActions(tree, loadout);
     }
 

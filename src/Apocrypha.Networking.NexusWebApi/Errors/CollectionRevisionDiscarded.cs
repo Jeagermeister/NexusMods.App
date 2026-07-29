@@ -31,8 +31,10 @@ public record CollectionRevisionDiscarded : IGraphQlError<CollectionRevisionDisc
 
         if (extensions.TryGetValue("revision_number", out var oRevisionNumber))
         {
-            // TODO: figure out the type
-            Debugger.Break();
+            // TODO: figure out the type and store the value on the error record.
+            // Guarded: a bare Debugger.Break() on a reachable error path raises SIGTRAP and
+            // kills the process when no debugger is attached.
+            if (Debugger.IsAttached) Debugger.Break();
         }
 
         return true;

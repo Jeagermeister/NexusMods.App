@@ -97,13 +97,18 @@ public class DownloadsLeftMenuViewModel : AViewModel<IDownloadsLeftMenuViewModel
             Icon = IconValues.FolderEditOutline, // Initial fallback icon
         };
 
-        // Load game icon asynchronously
-        R3.Observable.Return((IGame)gameInstallation.Game)
-            .SelectAwait((game, _) => ImageHelper.LoadGameIconAsync(game, (int)ImageSizes.LeftMenuIcon.Width, logger))
-            .AsSystemObservable()
-            .WhereNotNull()
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(bitmap => viewModel.Icon = ImageHelper.CreateIconValueFromBitmap(bitmap, IconValues.FolderEditOutline));
+        // Load game icon asynchronously, tied to the item's activation so the subscription
+        // dies with the item instead of dangling after the game is removed.
+        viewModel.WhenActivated(d =>
+        {
+            R3.Observable.Return((IGame)gameInstallation.Game)
+                .SelectAwait((game, _) => ImageHelper.LoadGameIconAsync(game, (int)ImageSizes.LeftMenuIcon.Width, logger))
+                .AsSystemObservable()
+                .WhereNotNull()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(bitmap => viewModel.Icon = ImageHelper.CreateIconValueFromBitmap(bitmap, IconValues.FolderEditOutline))
+                .DisposeWith(d);
+        });
 
         return viewModel;
     }

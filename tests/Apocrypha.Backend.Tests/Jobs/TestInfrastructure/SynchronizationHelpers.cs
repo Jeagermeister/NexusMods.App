@@ -11,6 +11,6 @@ public static class SynchronizationHelpers
         while (job.Status != expectedStatus && DateTime.UtcNow - startTime < timeout)
             await Task.Delay(10);
         
-        await Assert.That(job.Status).IsEqualTo(expectedStatus, $"Job should have reached {expectedStatus} within {timeout}");
+        await Assert.That(job.Status).IsEqualTo(expectedStatus).Because($"Job should have reached {expectedStatus} within {timeout}");
     }
 }

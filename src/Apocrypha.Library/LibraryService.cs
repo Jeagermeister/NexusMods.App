@@ -185,9 +185,13 @@ public sealed class LibraryService : ILibraryService
                 {
                     if (options.IgnoreReadOnlyCollections)
                     {
-                        var collection = tuple.linkedItem.AsLoadoutItem().Parent;
-                        var asCollectionGroup = collection.ToCollectionGroup();
-                        return !asCollectionGroup.IsReadOnly;
+                        // Standalone installs legitimately have no parent, and a parent is not
+                        // necessarily a collection group -- treat both as "not read-only"
+                        // instead of crashing the whole replace pass.
+                        var loadoutItem = tuple.linkedItem.AsLoadoutItem();
+                        if (!loadoutItem.HasParent()) return true;
+                        var asCollectionGroup = loadoutItem.Parent.ToCollectionGroup();
+                        return !asCollectionGroup.IsValid() || !asCollectionGroup.IsReadOnly;
                     }
 
                     return true;

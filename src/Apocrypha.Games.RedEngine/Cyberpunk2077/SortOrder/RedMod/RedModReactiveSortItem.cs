@@ -16,6 +16,16 @@ public class RedModReactiveSortItem : IReactiveSortItem<RedModReactiveSortItem, 
         IsActive = isActive;
         Key = new SortItemKey<string>(redModFolderName);
     }
+
+    /// <summary>
+    /// Case-folding comparison key for persistence matching: the same REDmod folder can
+    /// legitimately appear with different casing in the datastore and a reinstalled archive
+    /// (the NanoSuit.esp incident class), and a case-variant miss in PersistSortOrderCore
+    /// silently resets the mod's position. Reactive keys deliberately keep display casing —
+    /// MoveItems and modlist.txt are keyed/written display-cased; folding those end-to-end
+    /// needs the Creation Engine's PluginSortItemData pattern (folded key + display field).
+    /// </summary>
+    public static SortItemKey<string> MakeKey(RelativePath redModFolderName) => new(redModFolderName.ToString().ToLowerInvariant());
     
     public RelativePath RedModFolderName { get; set; }
 

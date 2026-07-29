@@ -136,6 +136,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var game = (loadout.InstallationInstance.Game as IGame)!;
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
 
+        var failedCount = 0;
         await Parallel.ForEachAsync(modsAndDownloads, context.CancellationToken, async (modAndDownload, _) =>
         {
             try
@@ -145,6 +146,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
             catch (Exception e)
             {
+                Interlocked.Increment(ref failedCount);
                 Logger.LogError(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
             }
         });
@@ -173,6 +175,16 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
 
             var result = await tx.Commit();
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
+        }
+
+        // One aggregate line at the end -- the per-item errors above are easy to miss, and
+        // without this the job reports success while the collection sits mysteriously disabled.
+        if (failedCount > 0)
+        {
+            Logger.LogWarning(
+                "{Failed} of {Total} item(s) failed to install for `{CollectionName}/{RevisionNumber}`; {State}. Retry the install to fetch the missing items",
+                failedCount, modsAndDownloads.Count, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber,
+                allRequiredItemsInstalled ? "all required items made it, so the collection is enabled" : "required items are missing, so the collection was left disabled");
         }
 
         return collectionGroup;
