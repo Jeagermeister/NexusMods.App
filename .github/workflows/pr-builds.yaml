@@ -52,16 +52,3 @@ jobs:
       BuildAppImage: true
       BuildArchive: false
 
-  build-windows:
-    if: github.event.pull_request.draft == false
-    needs: [ transformInputs ]
-    uses: ./.github/workflows/build-windows-pupnet.yaml
-    with:
-      AppVersion: "0.0.1"
-      # this is a bit of a hack, you can't use environment variables here
-      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      ProjectFile: ${{ needs.transformInputs.outputs.ProjectFile }}
-      RetentionDays: 1
-      SignExecutable: false
-      BuildInnoSetup: true
-      BuildArchive: true

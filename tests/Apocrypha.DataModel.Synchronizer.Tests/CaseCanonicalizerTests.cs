@@ -38,11 +38,9 @@ public class CaseCanonicalizerTests : IDisposable
         return new CaseCanonicalizer(OSInformation.Shared, locations, NullLogger.Instance);
     }
 
-    [SkippableFact]
+    [Fact]
     public void DeploysIntoTheDirectoryCasingThatAlreadyExists()
     {
-        Skip.IfNot(OSInformation.Shared.IsUnix(), "Case folding only matters on a case-sensitive filesystem");
-
         // F4SE reads Data/F4SE/Plugins; a mod that declares "plugins" must land in the same folder
         // rather than creating a second one the game will never open.
         _root.Combine("Data/F4SE/Plugins").CreateDirectory();
@@ -52,11 +50,9 @@ public class CaseCanonicalizerTests : IDisposable
         resolved.Should().Be(_root.Combine("Data/F4SE/Plugins/BakaFramework.dll"));
     }
 
-    [SkippableFact]
+    [Fact]
     public void FoldsLaterModsIntoTheCasingChosenByTheFirst()
     {
-        Skip.IfNot(OSInformation.Shared.IsUnix(), "Case folding only matters on a case-sensitive filesystem");
-
         // Neither directory exists yet, so the first mod in the apply fixes the casing and the
         // second is folded into it — otherwise a fresh install reproduces the split.
         var canonicalizer = Create();
@@ -67,11 +63,9 @@ public class CaseCanonicalizerTests : IDisposable
         second.Parent.Should().Be(first.Parent);
     }
 
-    [SkippableFact]
+    [Fact]
     public void PreservesTheCasingOfTheFileNameItself()
     {
-        Skip.IfNot(OSInformation.Shared.IsUnix(), "Case folding only matters on a case-sensitive filesystem");
-
         // Only directories are containers that mods intend to share; a file is opened by name.
         _root.Combine("Data").CreateDirectory();
 
@@ -80,11 +74,9 @@ public class CaseCanonicalizerTests : IDisposable
         resolved.FileName.Should().Be("NanoSuit.esp");
     }
 
-    [SkippableFact]
+    [Fact]
     public void CountsOnlyThePathsItActuallyRewrote()
     {
-        Skip.IfNot(OSInformation.Shared.IsUnix(), "Case folding only matters on a case-sensitive filesystem");
-
         _root.Combine("Data/Textures").CreateDirectory();
         var canonicalizer = Create();
 
