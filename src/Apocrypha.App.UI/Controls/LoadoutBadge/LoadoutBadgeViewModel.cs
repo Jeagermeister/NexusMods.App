@@ -46,7 +46,6 @@ public class LoadoutBadgeViewModel : AViewModel<ILoadoutBadgeViewModel>, ILoadou
             
             if (hideOnSingleLoadout)
             {
-                var startingLoadouts = Loadout.All(conn.Db);
                 Loadout.ObserveAll(conn)
                     .Filter(l => l.InstallationId == LoadoutValue.Value.InstallationId)
                     .Count()

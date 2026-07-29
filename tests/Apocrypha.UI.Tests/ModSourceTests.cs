@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using DynamicData.Kernel;
 using FluentAssertions;
 using Apocrypha.Abstractions.ModIo;
@@ -130,7 +131,7 @@ public class ModSourceTests
             => (T)(object)new ModIoSettings { EnableModIo = _enableModIo };
 
         public void Set<T>(T value, string? key = null) where T : class, ISettings, new() => throw new NotSupportedException();
-        public bool TryGet<T>(out T? value, string? key = null) where T : class, ISettings, new() => throw new NotSupportedException();
+        public bool TryGet<T>([NotNullWhen(true)] out T? value, string? key = null) where T : class, ISettings, new() => throw new NotSupportedException();
         public T GetDefault<T>() where T : class, ISettings, new() => throw new NotSupportedException();
         public T Update<T>(Func<T, T> updater, string? key = null) where T : class, ISettings, new() => throw new NotSupportedException();
         public Observable<T> GetChanges<T>(string? key = null, bool prependCurrent = false) where T : class, ISettings, new() => throw new NotSupportedException();

@@ -38,6 +38,13 @@ public sealed class HttpTrafficMonitor
     private long _hourlyRemaining = -1;
     private long _dailyRemaining = -1;
     private int _lowBudgetWarned;
+    private int _rateLimitWarned;
+    private long _rateLimitedSinceLastDump;
+
+    // Per-endpoint counts as of the previous summary, so each summary reports the endpoints
+    // that moved SINCE the last one -- lifetime top-8 can hide a late-session storm entirely.
+    private Dictionary<string, long> _lastDumpSnapshot = new();
+    private readonly object _dumpLock = new();
 
     public HttpTrafficMonitor(ILogger<HttpTrafficMonitor> logger)
     {
@@ -75,10 +82,19 @@ public sealed class HttpTrafficMonitor
 
         if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
         {
-            _logger.LogWarning("Nexus rate limit hit (HTTP 429) on {Endpoint}; hourly remaining: {Hourly}, daily remaining: {Daily}",
-                endpoint, _hourlyRemaining, _dailyRemaining);
+            Interlocked.Increment(ref _rateLimitedSinceLastDump);
+            // First 429 of a storm logs immediately; the rest are counted and reported in
+            // the next summary, so the storm cannot drown its own diagnosis in warnings.
+            if (Interlocked.Exchange(ref _rateLimitWarned, 1) == 0)
+            {
+                _logger.LogWarning("Nexus rate limit hit (HTTP 429) on {Endpoint}; hourly remaining: {Hourly}, daily remaining: {Daily}. Further 429s are counted into the traffic summaries",
+                    endpoint, _hourlyRemaining, _dailyRemaining);
+            }
             return;
         }
+
+        // Any non-429 response ends the storm and re-arms the immediate warning.
+        Interlocked.Exchange(ref _rateLimitWarned, 0);
 
         // Warn once per drop below the threshold rather than on every request while low.
         var hourlyNow = Interlocked.Read(ref _hourlyRemaining);
@@ -101,14 +117,23 @@ public sealed class HttpTrafficMonitor
 
     private void DumpSummary()
     {
-        var top = _endpointCounts
-            .OrderByDescending(static kv => kv.Value)
-            .Take(8)
-            .Select(static kv => $"{kv.Key}={kv.Value}");
+        var current = _endpointCounts.ToDictionary();
+        string movers;
+        lock (_dumpLock)
+        {
+            movers = string.Join(", ", current
+                .Select(kv => (kv.Key, Delta: kv.Value - _lastDumpSnapshot.GetValueOrDefault(kv.Key)))
+                .Where(static t => t.Delta > 0)
+                .OrderByDescending(static t => t.Delta)
+                .Take(8)
+                .Select(static t => $"{t.Key}=+{t.Delta}"));
+            _lastDumpSnapshot = current;
+        }
 
+        var rateLimited = Interlocked.Exchange(ref _rateLimitedSinceLastDump, 0);
         _logger.LogInformation(
-            "HTTP traffic: {Total} request(s) total; top endpoints: {Endpoints}; Nexus budget: hourly {Hourly}, daily {Daily} (-1 = not yet seen)",
-            TotalRequests, string.Join(", ", top), Interlocked.Read(ref _hourlyRemaining), Interlocked.Read(ref _dailyRemaining));
+            "HTTP traffic: {Total} request(s) total; top endpoints since last report: {Endpoints}; 429s since last report: {RateLimited}; Nexus budget: hourly {Hourly}, daily {Daily} (-1 = not yet seen)",
+            TotalRequests, movers, rateLimited, Interlocked.Read(ref _hourlyRemaining), Interlocked.Read(ref _dailyRemaining));
     }
 
     private static bool TryReadHeader(HttpResponseMessage response, string name, out long value)

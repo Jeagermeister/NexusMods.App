@@ -22,9 +22,12 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         _game = game;
     }
     
-    public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        // Obsolete overload -- the syncTree overload below is the real implementation.
+        // Returning empty beats throwing for any future caller.
+        await Task.Yield();
+        yield break;
     }
 
     public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, FrozenDictionary<GamePath, SyncNode> syncTree, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -36,14 +39,19 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
             KnownCEExtensions.PluginFiles.Contains(node.Key.Extension) &&
             node.Key.Parent == KnownPaths.Data);
         
-        // Index the plugins in the loadout
-        Dictionary<string, LoadoutItemGroup.ReadOnly> pluginsInLoadout = new();
+        // Index the plugins in the loadout. Plugin names are case-insensitive to the engine
+        // and master references routinely disagree on casing with the on-disk name (the
+        // NanoSuit.esp/Nanosuit.esp incident), so the index must fold case.
+        Dictionary<string, LoadoutItemGroup.ReadOnly> pluginsInLoadout = new(StringComparer.OrdinalIgnoreCase);
         foreach (var item in LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemWithTargetPath())
         {
             var path = (GamePath)item.TargetPath;
-            if (path.LocationId == LocationId.Game && path.Parent == KnownPaths.Data && KnownCEExtensions.PluginFiles.Contains(path.Extension))
-                pluginsInLoadout[path.FileName] = item.AsLoadoutItem().Parent;
+            if (path.LocationId != LocationId.Game || path.Parent != KnownPaths.Data || !KnownCEExtensions.PluginFiles.Contains(path.Extension))
+                continue;
 
+            var loadoutItem = item.AsLoadoutItem();
+            if (!loadoutItem.HasParent()) continue;
+            pluginsInLoadout[path.FileName] = loadoutItem.Parent;
         }
 
         // Index the plugins that will be on-disk in the game folder
@@ -59,6 +67,12 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
         // For each on-disk plugin, check if it has all the required masters
         foreach (var header in pluginHeaders)
         {
+            // The "Mod" reference needs the plugin's owning GROUP -- the sync node only
+            // carries the file entity, which the group formatter renders as invalid.
+            var ownerId = pluginsInLoadout.TryGetValue(header.Key.FileName, out var ownerGroup)
+                ? ownerGroup.LoadoutItemGroupId.Value
+                : header.Value.Node.Loadout.EntityId;
+
             foreach (var master in header.Value.Header.MasterReferences)
             {
                 // If the master is already in the loadout, skip it
@@ -72,7 +86,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                         new LoadoutItemGroupReference()
                         {
                             TxId = loadout.Db.BasisTxId,
-                            DataId = header.Value.Node.Loadout.EntityId
+                            DataId = ownerId,
                         },
                         header.Key,
                         master.Master,
@@ -90,7 +104,7 @@ public class MissingMasterEmitter : ILoadoutDiagnosticEmitter
                         new LoadoutItemGroupReference()
                         {
                             TxId = loadout.Db.BasisTxId,
-                            DataId = header.Value.Node.Loadout.EntityId
+                            DataId = ownerId,
                         },
                         header.Key,
                         master.Master

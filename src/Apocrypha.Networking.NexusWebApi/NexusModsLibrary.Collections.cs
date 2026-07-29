@@ -530,7 +530,7 @@ public partial class NexusModsLibrary
             if (res.ContainsKey(fileId)) continue;
 
             // TODO: use normal API to query information about this file
-            throw new NotImplementedException();
+            throw new NotSupportedException($"Collection references file `{collectionMod.Source.FileId}` of mod `{collectionMod.Source.ModId}` in `{collectionMod.DomainName}`, but the API no longer lists this file for the revision; the collection is stale or was partially removed");
         }
 
         return res;
@@ -673,7 +673,7 @@ public partial class NexusModsLibrary
         else
             resolver.Add(CollectionRevisionMetadata.TotalSize, Size.Zero);
 
-        if (float.TryParse(revisionInfo.OverallRating ?? "0.0", out var overallRating))
+        if (float.TryParse(revisionInfo.OverallRating ?? "0.0", CultureInfo.InvariantCulture, out var overallRating))
             resolver.Add(CollectionRevisionMetadata.OverallRating, overallRating / 100);
         if (revisionInfo.OverallRatingCount is not null)
             resolver.Add(CollectionRevisionMetadata.TotalRatings, (ulong)revisionInfo.OverallRatingCount.Value);
