@@ -151,10 +151,12 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
             }
             else if (installedDependencies.TryGetValue(requiredMod, out var group))
             {
-               // Disabled Dependency Group 
+               // Disabled Dependency Group
                var (dependencyPaths, pattern) = group;
+               // A parentless husk must not take the whole diagnostics pass down with it.
+               if (!row.File.AsLoadoutItem().HasParent()) continue;
                var parent = row.File.AsLoadoutItem().Parent;
-               
+
                // Group that is disabled
                var disabledGroup = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup()
                    .Where(group =>
@@ -183,6 +185,7 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
             else
             {
                 // Missing mod
+                if (!row.File.AsLoadoutItem().HasParent()) continue;
                 var parent = row.File.AsLoadoutItem().Parent;
                 var downloadLink = new NamedLink("Nexus Mods", NexusModsUrlBuilder.GetModUri(_gameDomain, row.Pattern.ModId));
                 if (row.MatchingSegment.HasValue)

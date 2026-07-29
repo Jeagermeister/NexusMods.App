@@ -108,19 +108,21 @@ public class SMAPIModDatabaseCompatibilityDiagnosticEmitter : ILoadoutDiagnostic
             var (manifestLoadoutItem, manifest, versionedFields) = tuple;
             var reasonPhrase = versionedFields.StatusReasonPhrase ?? versionedFields.StatusReasonDetails;
 
+            if (!Helpers.TryGetOwningGroup(manifestLoadoutItem, out var owningGroup)) continue;
+
             if (versionedFields.Status == ModStatus.Obsolete)
             {
                 yield return Diagnostics.CreateModCompatabilityObsolete(
-                    SMAPIMod: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.ToReference(loadout),
-                    SMAPIModName: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.AsLoadoutItem().Name,
+                    SMAPIMod: owningGroup.ToReference(loadout),
+                    SMAPIModName: owningGroup.AsLoadoutItem().Name,
                     ReasonPhrase: reasonPhrase ?? "the feature/fix has been integrated into SMAPI or Stardew Valley or has otherwise been made obsolete.",
                     SMAPIModList: SMAPIModCompatibilityLink
                 );
             } else if (versionedFields.Status == ModStatus.AssumeBroken)
             {
                 yield return Diagnostics.CreateModCompatabilityAssumeBroken(
-                    SMAPIMod: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.ToReference(loadout),
-                    SMAPIModName: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.AsLoadoutItem().Name,
+                    SMAPIMod: owningGroup.ToReference(loadout),
+                    SMAPIModName: owningGroup.AsLoadoutItem().Name,
                     ReasonPhrase: reasonPhrase ?? "it's no longer compatible",
                     ModLink:apiMods.GetLink(manifest.UniqueID, defaultValue: SMAPIModCompatibilityLink),
                     ModVersion: manifest.Version.ToString()
