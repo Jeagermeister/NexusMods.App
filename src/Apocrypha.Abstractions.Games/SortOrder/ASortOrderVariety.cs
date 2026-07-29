@@ -93,10 +93,14 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         IDb? db = null,
         CancellationToken token = default)
     {
-        var dbToUse = db ?? Connection.Db;
+        // A user's reorder must not be silently discarded because a background reconciliation
+        // committed between our read and our write, so the whole read-mutate-persist is retried
+        // against a fresh database (unless the caller pinned one).
+        await PersistWithRetry(sortOrderId, db, token, (dbToUse, stagingListOut) =>
+        {
         // retrieve the sorting from the db
         var startingOrder = RetrieveSortOrder(sortOrderId, dbToUse);
-        
+
         // prepare the data for moving
         var sortedSourceItems = itemsToMove
             .Select(key => startingOrder.FirstOrOptional(item => item.Key.Equals(key)))
@@ -116,7 +120,7 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         if (dropTargetIndex == -1)
         {
             _logger.LogWarning("Drop target item {DropTargetItem} not found in sort order {SortOrderId}", dropTargetItem, sortOrderId);
-            return;
+            return false;
         }
         
         var targetIndex = relativePosition == TargetRelativePosition.BeforeTarget ? dropTargetIndex : dropTargetIndex + 1;
@@ -142,27 +146,26 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
             item.SortIndex = i;
         }
         
-        if (token.IsCancellationRequested) return;
-        
-        // TODO: Should we retry if the transaction fails due to a data race?
-        await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
+            stagingListOut.AddRange(stagingList);
+            return true;
+        });
     }
 
     /// <inheritdoc />
     public async Task MoveItemDelta(SortOrderId sortOrderId, TKey sourceItem, int delta, IDb? db = null, CancellationToken token = default)
     {
-        var dbToUse = db ?? Connection.Db;
-        
+        await PersistWithRetry(sortOrderId, db, token, (dbToUse, stagingListOut) =>
+        {
         // retrieve the sorting from the db
         var startingOrder = RetrieveSortOrder(sortOrderId, dbToUse);
         var stagingList = startingOrder.ToList();
-        
+
         // get the index of the source item
         var foundItem = stagingList.FirstOrOptional(item => item.Key.Equals(sourceItem));
         if (!foundItem.HasValue)
         {
             _logger.LogWarning("Source item {SourceItem} not found in sort order {SortOrderId}", sourceItem, sortOrderId);
-            return;
+            return false;
         }
         var sortOrderItem = foundItem.Value;
         var currentIndex = sortOrderItem.SortIndex;
@@ -171,7 +174,7 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
         
         // Ensure the new index is within bounds
         newIndex = Math.Clamp(newIndex, 0, stagingList.Count - 1);
-        if (newIndex == currentIndex) return;
+        if (newIndex == currentIndex) return false;
         
         
         // Move the item in the list
@@ -185,10 +188,9 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
             item.SortIndex = i;
         }
             
-        if (token.IsCancellationRequested) return;
-        
-        // TODO: Should we retry if the transaction fails due to a data race?
-        await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token);
+            stagingListOut.AddRange(stagingList);
+            return true;
+        });
     }
 
     /// <inheritdoc />
@@ -227,11 +229,9 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
             // commits -- a collection install is thousands of them -- every attempt could lose to
             // the same still-committing writer and the whole reconciliation was abandoned with a
             // single LogError. Jitter keeps concurrent reconciliations from lockstepping.
-            var backoff = ReconcileBackoffBase * (1 << (attempt - 1));
-            var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, (int)ReconcileBackoffBase.TotalMilliseconds));
             try
             {
-                await Task.Delay(backoff + jitter, token);
+                await Task.Delay(BackoffFor(attempt), token);
             }
             catch (OperationCanceledException)
             {
@@ -247,6 +247,72 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
 
         _logger.LogError("Reconciliation of sort order {SortOrderId} failed after {MaxAttempts} attempts; its order may be stale until the next change",
             sortOrderId, MaxReconcileAttempts);
+    }
+
+    /// <summary>
+    /// Runs a read-mutate-persist against a fresh database, retrying if the compare-and-swap loses
+    /// a race. <paramref name="buildOrder"/> reads the current order, applies the caller's change,
+    /// writes the result into the supplied list and returns false to abort (nothing to do).
+    /// </summary>
+    /// <remarks>
+    /// User-initiated moves previously persisted exactly once and ignored the result: a background
+    /// reconciliation committing in between silently discarded the user's reorder, with no log and
+    /// no feedback. Retrying re-reads first, so the change is re-applied on top of whatever landed.
+    /// </remarks>
+    private async Task<bool> PersistWithRetry(
+        SortOrderId sortOrderId,
+        IDb? pinnedDb,
+        CancellationToken token,
+        Func<IDb, List<TItemSortData>, bool> buildOrder)
+    {
+        var attempt = 0;
+
+        while (attempt < MaxReconcileAttempts)
+        {
+            if (token.IsCancellationRequested) return false;
+
+            var dbToUse = pinnedDb ?? Connection.Db;
+            var stagingList = new List<TItemSortData>();
+
+            if (!buildOrder(dbToUse, stagingList)) return false;
+            if (token.IsCancellationRequested) return false;
+
+            if (await TryPersistSortOrder(sortOrderId, stagingList, dbToUse, token)) return true;
+
+            // A caller that pinned a database asked for that exact snapshot; re-reading would
+            // silently change what it asked for, so a lost race ends here.
+            if (pinnedDb is not null)
+            {
+                _logger.LogWarning("Sort order {SortOrderId} changed while applying a move against a pinned database; the move was not applied", sortOrderId);
+                return false;
+            }
+
+            attempt++;
+            if (attempt >= MaxReconcileAttempts) break;
+
+            try
+            {
+                await Task.Delay(BackoffFor(attempt), token);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+        }
+
+        _logger.LogError("Sort order {SortOrderId} could not be updated after {MaxAttempts} attempts; the requested move was not applied",
+            sortOrderId, MaxReconcileAttempts);
+        return false;
+    }
+
+    /// <summary>
+    /// Exponential backoff with jitter, so concurrent writers stop lockstepping into each other.
+    /// </summary>
+    private static TimeSpan BackoffFor(int attempt)
+    {
+        var backoff = ReconcileBackoffBase * (1 << (attempt - 1));
+        var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, (int)ReconcileBackoffBase.TotalMilliseconds));
+        return backoff + jitter;
     }
 
     /// <summary>
