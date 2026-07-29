@@ -1,9 +1,11 @@
 name: .NET build and test
 
 # Vendored from Nexus-Mods/NexusMods.App.Meta (dotnet-build-and-test-with-osx.yaml)
-# so the fork controls its own test matrix: Linux + Windows only, no macOS.
-# Differences from upstream: macOS dropped, checkout v4, LFS always on (the fork
-# vendors the game-hashes DB via git-lfs), codecov upload removed.
+# so the fork controls its own test matrix. Apocrypha is Linux-first and currently tests
+# ONLY on Linux -- Windows was removed deliberately (it was failing on races that do not
+# affect the shipped product) and will come back when we choose to support it properly.
+# Differences from upstream: macOS and Windows dropped, checkout v4, LFS always on (the
+# fork vendors the game-hashes DB via git-lfs), codecov upload removed.
 
 on:
   workflow_call:
@@ -40,7 +42,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ ubuntu-latest ]
 
     steps:
       - name: Free Disk Space (Ubuntu)
