@@ -229,7 +229,17 @@ public abstract class ASortOrderVariety<TKey, TReactiveSortItem, TItemLoadoutDat
             // single LogError. Jitter keeps concurrent reconciliations from lockstepping.
             var backoff = ReconcileBackoffBase * (1 << (attempt - 1));
             var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, (int)ReconcileBackoffBase.TotalMilliseconds));
-            await Task.Delay(backoff + jitter, token);
+            try
+            {
+                await Task.Delay(backoff + jitter, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Shutting down mid-retry. This runs under a reactive subscription, so letting the
+                // cancellation escape puts an unhandled exception on a background thread and takes
+                // the process with it. Stopping here just leaves the order to the next change.
+                return;
+            }
 
             _logger.LogDebug("Reconciliation of sort order {SortOrderId} lost a race, retrying ({Attempt}/{MaxAttempts})",
                 sortOrderId, attempt, MaxReconcileAttempts);
