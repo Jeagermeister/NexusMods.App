@@ -71,19 +71,22 @@ public static class ImagePipelines
             .AddKeyedSingleton<IResourceLoader<EntityId, Bitmap>>(
                 serviceKey: ModPageThumbnailPipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateModPageThumbnailPipeline(
-                    connection: serviceProvider.GetRequiredService<IConnection>()
+                    connection: serviceProvider.GetRequiredService<IConnection>(),
+                    httpClient: serviceProvider.GetRequiredService<HttpClient>()
                 )
             )
             .AddKeyedSingleton<IResourceLoader<EntityId, Bitmap>>(
                 serviceKey: ThunderstoreIconPipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateThunderstoreIconPipeline(
-                    connection: serviceProvider.GetRequiredService<IConnection>()
+                    connection: serviceProvider.GetRequiredService<IConnection>(),
+                    httpClient: serviceProvider.GetRequiredService<HttpClient>()
                 )
             )
             .AddKeyedSingleton<IResourceLoader<EntityId, Bitmap>>(
                 serviceKey: ModIoIconPipelineKey,
                 implementationFactory: static (serviceProvider, _) => CreateModIoIconPipeline(
-                    connection: serviceProvider.GetRequiredService<IConnection>()
+                    connection: serviceProvider.GetRequiredService<IConnection>(),
+                    httpClient: serviceProvider.GetRequiredService<HttpClient>()
                 )
             )
             .AddKeyedSingleton<IResourceLoader<Uri, Bitmap>>(
@@ -240,9 +243,11 @@ public static class ImagePipelines
     /// Output: Image (cached)
     /// </summary>
     private static IResourceLoader<EntityId, Bitmap> CreateModPageThumbnailPipeline(
-        IConnection connection)
+        IConnection connection,
+        HttpClient httpClient)
     {
-        var pipeline = new HttpLoader(new HttpClient())
+        // The DI client carries the traffic monitor; a raw one made image/CDN traffic invisible.
+        var pipeline = new HttpLoader(httpClient)
             .ChangeIdentifier<ValueTuple<EntityId, Uri>, Uri, byte[]>(static tuple => tuple.Item2)
             .Decode(decoderType: DecoderType.Skia)
             .Resize(newSize: new SKSizeI(90, 56))
@@ -271,9 +276,11 @@ public static class ImagePipelines
     /// Output: Image (cached)
     /// </summary>
     private static IResourceLoader<EntityId, Bitmap> CreateThunderstoreIconPipeline(
-        IConnection connection)
+        IConnection connection,
+        HttpClient httpClient)
     {
-        var pipeline = new HttpLoader(new HttpClient())
+        // The DI client carries the traffic monitor; a raw one made image/CDN traffic invisible.
+        var pipeline = new HttpLoader(httpClient)
             .ChangeIdentifier<ValueTuple<EntityId, Uri>, Uri, byte[]>(static tuple => tuple.Item2)
             .Decode(decoderType: DecoderType.Skia)
             .Resize(newSize: new SKSizeI(90, 56))
@@ -302,9 +309,11 @@ public static class ImagePipelines
     /// Output: Image (cached)
     /// </summary>
     private static IResourceLoader<EntityId, Bitmap> CreateModIoIconPipeline(
-        IConnection connection)
+        IConnection connection,
+        HttpClient httpClient)
     {
-        var pipeline = new HttpLoader(new HttpClient())
+        // The DI client carries the traffic monitor; a raw one made image/CDN traffic invisible.
+        var pipeline = new HttpLoader(httpClient)
             .ChangeIdentifier<ValueTuple<EntityId, Uri>, Uri, byte[]>(static tuple => tuple.Item2)
             .Decode(decoderType: DecoderType.Skia)
             .Resize(newSize: new SKSizeI(90, 56))

@@ -33,6 +33,7 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 {
     private readonly ILoginManager _loginManager;
     private readonly ILogger<TopBarViewModel> _logger;
+    private readonly HttpClient _httpClient;
     private readonly IWindowNotificationService _notificationService;
 
     [Reactive] public string ActiveWorkspaceTitle { get; [UsedImplicitly] set; } = string.Empty;
@@ -71,11 +72,13 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
         IOSInterop osInterop,
         ISettingsManager settingsManager,
         IFileSystem fileSystem,
-        IWindowNotificationService notificationService)
+        IWindowNotificationService notificationService,
+        HttpClient httpClient)
     {
         _logger = logger;
         _loginManager = loginManager;
         _notificationService = notificationService;
+        _httpClient = httpClient;
 
         var workspaceController = windowManager.ActiveWorkspaceController;
 
@@ -205,8 +208,9 @@ public class TopBarViewModel : AViewModel<ITopBarViewModel>, ITopBarViewModel
 
         try
         {
-            var client = new HttpClient();
-            var stream = await client.GetByteArrayAsync(uri);
+            // Was a fresh, undisposed HttpClient per avatar load: invisible to the traffic
+            // monitor and a socket leak. The DI client is shared and monitored.
+            var stream = await _httpClient.GetByteArrayAsync(uri);
             return new Bitmap(new MemoryStream(stream));
         }
         catch (Exception e)

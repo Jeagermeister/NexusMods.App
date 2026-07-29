@@ -64,14 +64,16 @@ public class VersionDiagnosticEmitter : ILoadoutDiagnosticEmitter
         {
             var (manifestLoadoutItem, manifest) = tuple;
 
+            if (!Helpers.TryGetOwningGroup(manifestLoadoutItem, out var owningGroup)) continue;
+
             var minimumApiVersion = manifest.MinimumApiVersion;
             var minimumGameVersion = manifest.MinimumGameVersion;
 
             if (minimumApiVersion is not null && smapiVersion.IsOlderThan(minimumApiVersion))
             {
                 yield return Diagnostics.CreateSMAPIVersionOlderThanMinimumAPIVersion(
-                    SMAPIMod: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.ToReference(loadout),
-                    SMAPIModName: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.AsLoadoutItem().Name,
+                    SMAPIMod: owningGroup.ToReference(loadout),
+                    SMAPIModName: owningGroup.AsLoadoutItem().Name,
                     MinimumAPIVersion: minimumApiVersion.ToString(),
                     CurrentSMAPIVersion: smapiVersion.ToString(),
                     NexusModsLink: apiMods.GetLink(manifest.UniqueID, defaultValue: Helpers.GetNexusModsLink(_mappingCache)),
@@ -82,8 +84,8 @@ public class VersionDiagnosticEmitter : ILoadoutDiagnosticEmitter
             if (minimumGameVersion is not null && gameVersion.IsOlderThan(minimumGameVersion))
             {
                 yield return Diagnostics.CreateGameVersionOlderThanModMinimumGameVersion(
-                    SMAPIMod: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.ToReference(loadout),
-                    SMAPIModName: manifestLoadoutItem.AsLoadoutFile().AsLoadoutItemWithTargetPath().AsLoadoutItem().Parent.AsLoadoutItem().Name,
+                    SMAPIMod: owningGroup.ToReference(loadout),
+                    SMAPIModName: owningGroup.AsLoadoutItem().Name,
                     MinimumGameVersion: minimumGameVersion.ToString(),
                     CurrentGameVersion: gameVersion.ToString(),
                     NexusModsLink: apiMods.GetLink(manifest.UniqueID, defaultValue: Helpers.GetNexusModsLink(_mappingCache))
