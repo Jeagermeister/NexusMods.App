@@ -29,10 +29,17 @@ internal class ProcessRunner : IProcessRunner
         // Every logged run leaves a `{name}-{guid}.stdout/.stderr.log` pair behind and nothing
         // ever removed them, so the folder grew without bound (10,452 files on one real install).
         // The retention span has existed as a setting since the fork but was never consumed.
-        var retentionSpan = serviceProvider.GetRequiredService<ISettingsManager>().Get<LoggingSettings>().ProcessLogRetentionSpan;
+        // Everything here happens off the construction path on purpose. Resolving the settings
+        // manager while the host is still wiring itself up pulls settings initialisation into
+        // whatever is being constructed alongside us -- janitorial work must not perturb startup
+        // ordering for the sake of deleting old files.
         var logsFolder = _processLogsFolder;
         var logger = _logger;
-        Task.Run(() => SweepOldProcessLogs(logsFolder, retentionSpan, logger))
+        Task.Run(() =>
+            {
+                var retentionSpan = serviceProvider.GetRequiredService<ISettingsManager>().Get<LoggingSettings>().ProcessLogRetentionSpan;
+                SweepOldProcessLogs(logsFolder, retentionSpan, logger);
+            })
             .FireAndForget(_logger, cancellationToken: CancellationToken.None);
     }
 
