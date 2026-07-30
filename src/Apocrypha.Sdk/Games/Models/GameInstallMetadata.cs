@@ -48,6 +48,20 @@ public partial class GameInstallMetadata : IModelDefinition
     public static readonly ReferenceAttribute<Transaction> LastSyncedLoadoutTransaction = new(Namespace, nameof(LastSyncedLoadoutTransaction)) { IsOptional = true };
 
     /// <summary>
+    /// The loadout that disk is currently being switched TO, set before any file is written or
+    /// deleted and retracted in the same transaction that updates <see cref="LastSyncedLoadout"/>.
+    /// </summary>
+    /// <remarks>
+    /// Its presence means the last switch did not finish: disk is an indeterminate mix of the
+    /// outgoing loadout and this one, while <see cref="LastSyncedLoadout"/> still names the
+    /// outgoing loadout. Synchronizing in that state would attribute this loadout's files to the
+    /// outgoing one as user edits, and reify deletes for the outgoing files that were already
+    /// removed. Anything that reads disk state must therefore converge to this loadout first --
+    /// see the recovery path in <c>ALoadoutSynchronizer.Synchronize</c>.
+    /// </remarks>
+    public static readonly ReferenceAttribute<Loadout> SwitchInProgressLoadout = new(Namespace, nameof(SwitchInProgressLoadout)) { IsOptional = true };
+
+    /// <summary>
     /// The 'AsOf' transaction ID of the initial disk state when the game folder was first indexed
     /// </summary>
     public static readonly ReferenceAttribute<Transaction> InitialDiskStateTransaction = new(Namespace, nameof(InitialDiskStateTransaction)) { IsOptional = true };
