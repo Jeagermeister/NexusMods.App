@@ -10,6 +10,7 @@ using Apocrypha.Games.CreationEngine.SortOrder;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
+using OneOf;
 using Apocrypha.Sdk.FileStore;
 using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Loadouts;
@@ -131,13 +132,84 @@ public class PluginsFile : IIntrinsicFile
     }
 
 
-    public Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
+    /// <summary>
+    /// Learns the order from a plugins.txt this app did not write — either hand-edited, or already
+    /// present before the game was managed — by persisting it as the loadout's plugin order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Reaching this method means the file on disk differs from what we last recorded, which the
+    /// action mapping routes to <c>AdaptLoadout</c> rather than <c>WriteIntrinsic</c>. While this was
+    /// a no-op that had a compounding cost: the edit was never learned, and because the same
+    /// signature does not carry <c>WriteIntrinsic</c>, the file was not regenerated either — so an
+    /// edited plugins.txt stayed frozen and no persisted order, curated or hand-arranged, could ever
+    /// reach disk. Review finding B-1.
+    /// </para>
+    /// <para>
+    /// Only the <b>order</b> is learned. The <c>*</c> prefix marks a plugin as enabled, but mod
+    /// enablement lives on loadout items and is not this file's to decide, so a disabled entry
+    /// contributes its position and nothing else. Order is also a preference, not a guarantee:
+    /// <see cref="Write"/> re-applies master references as hard constraints, so an ingested order
+    /// that puts a plugin ahead of its master comes back corrected rather than being honoured.
+    /// </para>
+    /// <para>
+    /// The transaction is deliberately unused. Persisting a sort order goes through
+    /// <c>ApplyCuratedOrder</c>, which owns a compare-and-swap retry loop and commits for itself; the
+    /// alternative was a transaction-participating variant of that machinery, which is a rework of
+    /// the CAS path for no behavioural gain here. The consequence is that a failure after this point
+    /// in the sync leaves the learned order committed while the rest of the sync rolls back — the
+    /// order is a preference and re-learning it is idempotent, so that is the harmless direction to
+    /// fail in.
+    /// </para>
+    /// </remarks>
+    public async Task Ingest(Stream stream, Loadout.ReadOnly loadout, Dictionary<GamePath, SyncNode> syncTree, ITransaction tx)
     {
-        // TODO: parse the file's `*Name` lines and persist them via ApplyCuratedOrder so a
-        // hand-edited (or pre-existing) plugins.txt is learned instead of ignored. Until
-        // then an edited file goes permanently unmanaged: new installs never enter it and
-        // seeded curated orders never reach disk (review finding B-1; the sorting machinery
-        // this used to wait on shipped in PR #92).
-        return Task.CompletedTask;
+        var order = await ParseOrder(stream);
+        if (order.Count == 0)
+        {
+            _logger.LogDebug("`{Path}` listed no recognisable plugins; leaving the persisted order alone", Path);
+            return;
+        }
+
+        _logger.LogInformation("Learning the plugin order from `{Path}` ({Count} plugin(s))", Path, order.Count);
+
+        await _sortOrderVariety.ApplyCuratedOrder(
+            loadout.LoadoutId,
+            OneOf<LoadoutId, CollectionGroupId>.FromT0(loadout.LoadoutId),
+            order
+        );
+    }
+
+    /// <summary>
+    /// Reads plugin file names from a plugins.txt in file order, preserving the casing on disk.
+    /// </summary>
+    internal static async Task<List<string>> ParseOrder(Stream stream)
+    {
+        var order = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        using var reader = new StreamReader(stream, leaveOpen: true);
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0) continue;
+            if (trimmed.StartsWith('#')) continue;
+
+            // A leading '*' means enabled. We take the position either way; see Ingest's remarks.
+            if (trimmed.StartsWith('*')) trimmed = trimmed[1..].Trim();
+            if (trimmed.Length == 0) continue;
+
+            // Ignore anything that is not a plugin: these files are hand-edited, and a stray word
+            // must not become a phantom entry in the persisted order.
+            var extension = RelativePath.FromUnsanitizedInput(trimmed).Extension;
+            if (!KnownCEExtensions.PluginFiles.Contains(extension)) continue;
+
+            // Duplicates are ignored case-insensitively, but the casing kept is the first one seen:
+            // persisted plugin names are a display-casing contract elsewhere in the engine.
+            if (!seen.Add(trimmed)) continue;
+            order.Add(trimmed);
+        }
+
+        return order;
     }
 }
