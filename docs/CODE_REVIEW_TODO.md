@@ -9,16 +9,24 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
 
 ## Needs a decision or environment we didn't have
 
-1. **CI dead lanes** — 42 `RequiresNetworking` tests (16 NexusWebApi, 26 CreationEngine,
-   collection e2e, the one HttpDownloader test) never run in any lane. The 2026-07-28 review
-   sharpened this: `Apocrypha.Collections.Tests` contains ZERO offline tests, so the
-   collections install pipeline — the highest-churn subsystem — has no CI coverage at all.
-   Options unchanged: convert what can be hermetic (the unused `LocalHttpServer` helper; the
-   HttpDownloader test is the natural pilot), quarantine the rest behind an explicit
-   category, or stand up a self-hosted lane with a `NEXUS_API_KEY`. Also note
-   `AIsolatedGameTest` is CI-hostile for offline use (starts hosted services →
-   protocol-handler registration shells out) — offline DB tests should use assembly-level
-   `AGameTest<StubbedGame>` DI instead (the pattern PRs #92/#96 established).
+1. **CI dead lanes** — **the pilot is done; the remainder is not convertible and needs a
+   decision.** The HttpDownloader test was converted onto `LocalHttpServer` and now runs in
+   every lane, taking `HttpDownloadJob` from zero CI coverage to two hermetic tests. That was
+   the only cheaply-convertible lane, and the conversion established the pattern.
+
+   The other ~40 `RequiresNetworking` tests **cannot** follow it as written: the 26
+   CreationEngine and 16 NexusWebApi tests download real mods, and `CollectionInstallTests`
+   additionally needs a **premium** Nexus account, snapshots recorded against live revisions,
+   and `ACyberpunkIsolatedGameTest`, which is CI-hostile anyway (starts hosted services →
+   protocol-handler registration shells out). Making them hermetic means faking the Nexus
+   GraphQL API plus the CDN — a fixture far larger than the tests.
+
+   So `Apocrypha.Collections.Tests` still has ZERO offline tests, and the way to fix that is
+   **not** converting the e2e test but *writing new* offline tests for the install pipeline
+   against a synthetic collection archive, using assembly-level `AGameTest<StubbedGame>` DI
+   (the pattern PRs #92/#96 established). That is its own session. The standing alternatives
+   for the rest: quarantine behind an explicit category, or a self-hosted lane with a
+   `NEXUS_API_KEY`.
 
 2. **At-rest secrets → OS keyring** (`JWTToken.cs`) — Nexus OAuth refresh token, API key,
    mod.io key, and Steam auth data are plaintext in the datastore/configs. Needs a design
