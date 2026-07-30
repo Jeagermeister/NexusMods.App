@@ -167,6 +167,24 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     provokes it — expect intermittent red. Pre-existing (untouched since the R5 rebrand) and
     unrelated to the change that surfaced it. Fix direction: wait on an observable signal rather
     than polling a collection for a wall-clock duration.
+19c. **Suspected `HttpDownloadJob` retry-path corruption — decision needed** — the hermetic
+    `DownloadsFromAServerThatDoesNotSupportRanges` test (added in #103) failed **once** in a
+    full-solution run with correct file size but wrong content, and did not reproduce in ~56
+    attempts including 50 downloads under deliberate CPU load, nor in any CI run since. Ruled out:
+    a missing flush (`StreamProgressWrapper` disposes its inner stream), and a server-side error
+    (nothing logged). That leaves the resilience-retry path as the leading suspect — specifically
+    the reset branch in `HttpDownloadJob.StartAsyncImpl` that handles a 200 response arriving for
+    a range request, which is the one path #103 deliberately did not cover because reaching it
+    needs a timing-dependent pause/resume cycle.
+
+    Why this is not just a flaky test: "correct size, wrong content" is the signature of a
+    **truncated download**, because the destination is pre-allocated to the advertised
+    Content-Length. If the retry path can leave a partially-written file that reports success, that
+    is silent mod corruption. The test is therefore deliberately **not** marked `FlakeyTest`; its
+    assertion now reports the first differing offset and any zero-tail length, so the next
+    occurrence carries its own evidence. **Decision: quarantine it, or invest in a deterministic
+    resume test (inject the retry rather than provoking it with load).**
+
 20. **Nexus GraphQL client error handling** — thirteen `// TODO: handle errors` sites
     across `NexusModsLibrary`/`RunUpdateCheck`/`NexusApiClient` are one systemic theme:
     `AssertHasData()` throws raw on GraphQL errors (in two UI cases from inside a
