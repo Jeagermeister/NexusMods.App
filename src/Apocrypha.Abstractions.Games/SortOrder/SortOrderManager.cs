@@ -22,7 +22,8 @@ public class SortOrderManager : ISortOrderManager, IDisposable
     private readonly IConnection _connection;
     private IDisposable? _subscription;
     private readonly ILogger<SortOrderManager> _logger;
-    
+    private readonly TimeProvider _timeProvider;
+
     private FrozenDictionary<SortOrderVarietyId, ISortOrderVariety> _sortOrderVarieties;
 
     public SortOrderManager(IServiceProvider serviceProvider)
@@ -31,6 +32,8 @@ public class SortOrderManager : ISortOrderManager, IDisposable
         _connection = _serviceProvider.GetRequiredService<IConnection>();
         _sortOrderVarieties = FrozenDictionary<SortOrderVarietyId, ISortOrderVariety>.Empty;
         _logger = _serviceProvider.GetRequiredService<ILogger<SortOrderManager>>();
+        // Drives the reconcile-batching window; overridable so tests don't wait on wall-clock.
+        _timeProvider = _serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -172,41 +175,42 @@ public class SortOrderManager : ISortOrderManager, IDisposable
         // Listen to item additions/removals
         // TODO: consider making this Variant specific, to only listen to changes for the relevant items
         // TODO: listen to changes to Game files too
-        SortOrderQueries.TrackLoadoutItemChanges(_connection, nexusModsGameId)
+        //
+        // Reconciliation is a full, idempotent recomputation, so a burst of commits only needs one
+        // of them. Gather the affected targets over a short window instead of reconciling per
+        // commit -- see SortOrderReconcileBatching for the measurements behind that.
+        var itemChanges = SortOrderQueries.TrackLoadoutItemChanges(_connection, nexusModsGameId)
             .ToObservable()
-            .SubscribeAwait(this, static async (changes, state, token) =>
+            .Select(static changes =>
             {
-                // Filter out updates where nothing changed
-                var filteredChanges = changes
-                    .Where(change => change.Reason != ChangeReason.Update)
-                    .ToList();
-                if (filteredChanges.Count == 0) return;
-
-                var loadouts = new HashSet<LoadoutId>();
-                var collections = new Dictionary<CollectionGroupId, LoadoutId>();
-                foreach (var change in filteredChanges)
+                // Updates never move an item in or out of a sort order.
+                var targets = new List<ReconcileTarget>();
+                foreach (var change in changes)
                 {
-                    if (change.Reason == ChangeReason.Update)
-                        continue;
-                    
+                    if (change.Reason == ChangeReason.Update) continue;
+
                     var loadoutId = change.Current.LoadoutId;
-                    loadouts.Add(loadoutId);
-                    
+                    targets.Add(new ReconcileTarget(loadoutId, EntityId.From(0)));
+
                     var collectionId = change.Current.CollectionId;
                     if (collectionId != 0)
-                        collections[collectionId] = loadoutId;
+                        targets.Add(new ReconcileTarget(loadoutId, collectionId));
                 }
-                
-                // Update loadout sort orders
-                foreach (var loadoutId in loadouts)
+
+                return (IReadOnlyList<ReconcileTarget>)targets;
+            });
+
+        SortOrderReconcileBatching
+            .Batch(itemChanges, SortOrderReconcileBatching.ReconcileWindow, _timeProvider)
+            .SubscribeAwait(this, static async (targets, state, token) =>
+            {
+                foreach (var target in targets)
                 {
-                    await state.UpdateLoadOrders(loadoutId, token: token);
-                }
-                
-                // Update collection sort orders
-                foreach (var pair in collections)
-                {
-                    await state.UpdateLoadOrders(pair.Value, Optional.Some(pair.Key), token: token);
+                    var collectionId = target.IsCollectionLevel
+                        ? Optional.Some(CollectionGroupId.From(target.CollectionId))
+                        : Optional<CollectionGroupId>.None;
+
+                    await state.UpdateLoadOrders(target.LoadoutId, collectionId, token: token);
                 }
             })
             .AddTo(compositeDisposable);

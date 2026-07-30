@@ -267,7 +267,13 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Failed to seed the curated load order for `{CollectionName}/{RevisionNumber}`", RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+                // Same reasoning as the failed-item aggregate above: the install still reports
+                // success, so the log line is the only place the user can learn that the order they
+                // are looking at is ours and not the curator's. Say the consequence, not just that
+                // something failed.
+                Logger.LogError(e,
+                    "Failed to seed the curated load order for `{CollectionName}/{RevisionNumber}`; the collection is installed but sorted by our derived order instead of the curator's. Re-installing the collection re-attempts the seed",
+                    RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
             }
         }
     }
