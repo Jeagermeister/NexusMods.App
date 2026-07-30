@@ -21,12 +21,20 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    protocol-handler registration shells out). Making them hermetic means faking the Nexus
    GraphQL API plus the CDN — a fixture far larger than the tests.
 
-   So `Apocrypha.Collections.Tests` still has ZERO offline tests, and the way to fix that is
-   **not** converting the e2e test but *writing new* offline tests for the install pipeline
-   against a synthetic collection archive, using assembly-level `AGameTest<StubbedGame>` DI
-   (the pattern PRs #92/#96 established). That is its own session. The standing alternatives
-   for the rest: quarantine behind an explicit category, or a self-hosted lane with a
-   `NEXUS_API_KEY`.
+   `Apocrypha.Collections.Tests` still has ZERO offline tests **in that assembly**, but the
+   collection status logic it exercises is now covered offline from
+   `Apocrypha.DataModel.Tests` (`OfflineCollectionStatusTests`) — and via a cheaper route than
+   the "synthetic collection archive" this item used to recommend: `AArchivedDatabaseTest`
+   already provides a **recorded datastore containing a real installed collection**
+   (`two_sdv_collections_added_removed.zip` — g14kxi revision 42, 110 downloads, 96 required),
+   fully offline with a substituted GraphQL client. Prefer that harness for anything that needs
+   realistic collection shape; keep synthetic construction for edge states the recording does
+   not contain (that test mutates the recording to build one — see item 6).
+
+   Still uncovered offline: the install *job* itself (`InstallCollectionJob`), which needs the
+   archive-parsing and download entities a recording alone does not supply. The standing
+   alternatives for the network-bound remainder: quarantine behind an explicit category, or a
+   self-hosted lane with a `NEXUS_API_KEY`.
 
 2. **At-rest secrets → OS keyring** (`JWTToken.cs`) — Nexus OAuth refresh token, API key,
    mod.io key, and Steam auth data are plaintext in the datastore/configs. Needs a design
@@ -58,7 +66,12 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    branches self-commit the group, THEN apply curator patches, THEN tag
    `NexusCollectionItemLoadoutGroup` in a second tx. A patch failure strands an installed,
    deployed, unpatched, untagged group that `GetStatus` counts as installed — no retry
-   heals it. Fix direction: patch before commit (`InstallReplicatedMod` already
+   heals it. **No longer an inference: `OfflineCollectionStatusTests`
+   `AnUntaggedGroupStillReportsInstalled_S5_1` demonstrates it** — strip the tag from a real
+   installed item in the recorded datastore and `GetStatus` still reports installed, because it
+   keys only on a `LibraryLinkedLoadoutItem` parented to the collection group. That test
+   characterises today's behaviour and is **expected to fail when this is fixed**; updating it
+   is part of the fix. Fix direction: patch before commit (`InstallReplicatedMod` already
    demonstrates the single-tx pattern) or a compensating retract. Related smaller
    deferrals: enabled-group aborts leave uncurated partial state (A-3); download rules
    committed in a detached second tx with no repair path (A-4); hash-mismatched curator
