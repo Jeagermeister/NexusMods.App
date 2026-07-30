@@ -46,13 +46,19 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
 
 ## Deferred from the 2026-07-28 review (largest first)
 
-4. **Loadout-switch crash-window attribution (C-1)** — a mid-switch abort leaves disk
-   part-target while `LastSyncedLoadout` still names the outgoing loadout; the next sync
-   ingests the target's half-written files into the outgoing loadout's Overrides and
-   reifies deletes for its files. Needs a switch-in-progress marker committed before
-   `BuildProcessRun` mutates disk + a recovery path that diffs against the target without
-   ingest attribution. The catastrophic-delete guard for the switch path landed in #94;
-   this is the remaining (harder) half.
+4. ~~**Loadout-switch crash-window attribution (C-1)**~~ — **FIXED.**
+   `GameInstallMetadata.SwitchInProgressLoadout` is committed before `BuildProcessRun` touches
+   disk and retracted in the same transaction that sets `LastSyncedLoadout`, so it is set
+   exactly while disk and the database disagree. `Synchronize` now converges to the marked
+   loadout through `BuildProcessRun` (which never ingests) before anything is allowed to read
+   disk as user intent. The corruption was reproduced first and the fix verified against it:
+   `InterruptedSwitchRecoveryTests` fails without the recovery call, with loadout B's file
+   adopted into loadout A. The catastrophic-delete guard for the switch path landed in #94.
+
+   Residual, deliberately not covered: a crash during a *same-loadout* Apply can still reify a
+   not-yet-committed delete as a user deletion on the next sync. It is a much narrower window
+   and does not cross loadouts, so it is not part of C-1; it belongs with item 10's
+   progress/cancellation work on that path.
 
 5. **`PluginsFile.Ingest` (B-1)** — still a no-op; with intrinsic sync rules that means an
    edited or pre-existing plugins.txt is permanently unmanaged: new installs never enter
