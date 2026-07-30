@@ -519,6 +519,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadout, loadout.Id);
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction, EntityId.From(tx.ThisTxId.Value));
+
+        // Disk now matches the loadout, so the switch is no longer in progress. This must land in
+        // the same transaction as LastSyncedLoadout: the marker's whole meaning is "disk and
+        // LastSyncedLoadout disagree", so the two must never be observable out of step.
+        // Read from a CURRENT database, not loadout.Db: the marker is committed by BuildProcessRun
+        // after this loadout was loaded, so the loadout's basis predates it and would report no
+        // marker to retract -- leaving it set forever and forcing a needless re-converge on every
+        // later sync.
+        var metadataForMarker = Sdk.Games.GameInstallMetadata.Load(Connection.Db, gameMetadataId);
+        if (Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout.TryGetValue(metadataForMarker, out var switchTarget))
+            tx.Retract(gameMetadataId, Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout, switchTarget);
+
         tx.Add(gameMetadataId, Sdk.Games.GameInstallMetadata.LastScannedDiskStateTransaction, EntityId.From(tx.ThisTxId.Value));
         tx.Add(loadout.Id, Loadout.LastAppliedDateTime, DateTime.UtcNow);
         await tx.Commit();
@@ -1044,14 +1056,70 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return ingestedFiles;
     }
 
+    /// <summary>
+    /// Records that disk is being switched to <paramref name="target"/>, so an interrupted switch is
+    /// recoverable. See <see cref="Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout"/>.
+    /// </summary>
+    private async ValueTask MarkSwitchInProgress(GameInstallMetadata.ReadOnly state, Loadout.ReadOnly target)
+    {
+        using var tx = Connection.BeginTransaction();
+        tx.Add(state.Id, Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout, target.Id);
+        await tx.Commit();
+    }
+
+    /// <summary>
+    /// If a previous switch was interrupted, brings disk back to a known loadout before anything is
+    /// allowed to interpret disk contents as user intent.
+    /// </summary>
+    /// <remarks>
+    /// Recovery deliberately goes through <see cref="BuildProcessRun"/>, which diffs the target
+    /// against whatever is on disk without ever ingesting: that is precisely what is needed here,
+    /// because the files on disk are the interrupted switch's own output, not the user's edits.
+    /// Attributing them to a loadout is the corruption we are preventing.
+    /// </remarks>
+    private async ValueTask RecoverInterruptedSwitch(Loadout.ReadOnly loadout)
+    {
+        var metadata = loadout.Installation;
+        if (!Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout.TryGetValue(metadata, out var targetId)) return;
+
+        var target = Loadout.Load(loadout.Db, targetId);
+        if (!target.IsValid())
+        {
+            // The half-applied loadout was deleted after the crash, so there is nothing to converge
+            // to. Clear the marker and let the caller proceed: its sync will ingest the leftovers,
+            // which is wrong but is the only option left, and it must not be silent.
+            Logger.LogWarning(
+                "A previous loadout switch to {TargetId} was interrupted and that loadout no longer exists. " +
+                "The game folder may still hold its files, which will be ingested into '{LoadoutName}'",
+                targetId, loadout.Name);
+
+            using var tx = Connection.BeginTransaction();
+            tx.Retract(metadata.Id, Sdk.Games.GameInstallMetadata.SwitchInProgressLoadout, targetId);
+            await tx.Commit();
+            return;
+        }
+
+        Logger.LogWarning(
+            "A previous switch to loadout '{TargetName}' ({TargetId}) was interrupted; the game folder is " +
+            "part-way between loadouts. Completing that switch before synchronizing '{LoadoutName}'",
+            target.Name, targetId, loadout.Name);
+
+        await _loadoutManager.ActivateLoadout(target);
+    }
+
     /// <inheritdoc />
     public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
         loadout = loadout.Rebase();
-        
+
+        // Before anything reads disk as though it reflected a loadout, finish any switch that was
+        // interrupted. Doing this first is what keeps the crash window from corrupting a loadout.
+        await RecoverInterruptedSwitch(loadout);
+        loadout = loadout.Rebase();
+
         // Update locator IDs before building the sync tree
         loadout = await UpdateLocatorIds(loadout);
-        
+
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
         // any changes (so they're attributed to the outgoing loadout, not the incoming one), then diff
         // the new loadout directly against the current disk state. This intentionally does NOT go
@@ -1458,6 +1526,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     public async ValueTask BuildProcessRun(Loadout.ReadOnly loadout, GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken)
     {
+        // Mark the switch BEFORE anything touches disk. RunActions updates LastSyncedLoadout only
+        // after every file has been written and deleted, so without this marker a crash mid-run
+        // leaves disk part-way to `loadout` while the database still names the outgoing one -- and
+        // the next Synchronize would ingest this loadout's files into the outgoing loadout as user
+        // edits. The marker is retracted in the same transaction that sets LastSyncedLoadout, so it
+        // is set exactly while disk is indeterminate.
+        await MarkSwitchInProgress(state, loadout);
+
         var diskStateEntries = DiskStateEntry.FindByGame(state.Db, state);
         var tree = BuildSyncTree(DiskStateToPathPartPair(diskStateEntries), DiskStateToPathPartPair(diskStateEntries), loadout);
         ProcessSyncTree(tree);
