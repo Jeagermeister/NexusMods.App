@@ -26,4 +26,8 @@
       <PackageReference Include="Mutagen.Bethesda.Skyrim" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Apocrypha.Games.CreationEngine.Tests" />
+    </ItemGroup>
+
 </Project>
