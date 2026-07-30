@@ -41,10 +41,7 @@ public class HttpDownloadJobWorkerTests
         _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
 
         outputPath.Path.FileExists.Should().BeTrue();
-        outputPath.Path.FileInfo.Size.Should().Be(Size.FromLong(_server.LargeData.Length));
-
-        var hash = await outputPath.Path.XxHash3Async();
-        hash.Should().Be(_server.LargeDataHash);
+        await AssertContentMatchesServer(outputPath.Path);
     }
 
     /// <summary>
@@ -59,9 +56,43 @@ public class HttpDownloadJobWorkerTests
         await using var outputPath = _temporaryFileManager.CreateFile();
         _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
 
-        outputPath.Path.FileInfo.Size.Should().Be(Size.FromLong(_server.LargeData.Length));
+        await AssertContentMatchesServer(outputPath.Path);
+    }
 
-        var hash = await outputPath.Path.XxHash3Async();
-        hash.Should().Be(_server.LargeDataHash);
+    /// <summary>
+    /// Compares the downloaded file against what the server holds, and on a mismatch says *where* it
+    /// diverged.
+    /// </summary>
+    /// <remarks>
+    /// Note what is deliberately NOT asserted: file size on its own. The download pre-allocates the
+    /// destination to the advertised content length, so a download that stopped half way still has
+    /// exactly the right size — checking it passes while the content is wrong, which is how the one
+    /// observed failure of this test presented (a bare hash mismatch with a correct size, and no
+    /// clue whether the body was short, misaligned, or written at the wrong offset). The first
+    /// differing offset and the zero-tail length distinguish those cases.
+    /// </remarks>
+    private async Task AssertContentMatchesServer(AbsolutePath path)
+    {
+        var expected = _server.LargeData;
+        var actual = await path.ReadAllBytesAsync();
+
+        var hash = await path.XxHash3Async();
+        if (hash == _server.LargeDataHash) return;
+
+        var firstDifference = -1;
+        var shared = Math.Min(actual.Length, expected.Length);
+        for (var i = 0; i < shared; i++)
+        {
+            if (actual[i] == expected[i]) continue;
+            firstDifference = i;
+            break;
+        }
+
+        var zeroTail = 0;
+        for (var i = actual.Length - 1; i >= 0 && actual[i] == 0; i--) zeroTail++;
+
+        hash.Should().Be(_server.LargeDataHash,
+            "the downloaded bytes should match the served bytes (length {0} vs expected {1}, first difference at {2}, {3} zero bytes at the end)",
+            actual.Length, expected.Length, firstDifference, zeroTail);
     }
 }
