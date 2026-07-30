@@ -60,11 +60,14 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    the seeder can race `SortOrderManager`'s CollectionGroup subscription into duplicate
    SortOrder entities, stranding the curated order in the shadowed one. Detect-after-commit
    or a tx-function uniqueness check. Watch live logs for "Multiple SortOrder entities"
-   after collection installs to confirm incidence. Related: reconcile batching is
-   per-commit (~1,800 reconciles across a 900-item install) and the seeder's 3-attempt CAS
-   is likeliest to exhaust exactly then, dropping the curated order with only a LogError
-   (B-8: debounce + surface seed failure into the job result); the raw CAS-retry path is
-   still untested (B-9 — #96 covers the observable idempotency/convergence halves).
+   after collection installs to confirm incidence. **B-8 and B-9 are now closed**: the CAS
+   retry got exponential backoff, 6 attempts and a typed `SortOrderConflictException` (#101,
+   confirmed by CI going green and staying green), and reconciliation is now batched over a
+   500 ms window instead of running per commit. What remains open here is only the
+   *structured* half of "surface seed failure": `InstallCollectionJob` returns a DB entity,
+   not a result record, so a seed failure is still reported as an aggregate log line (which
+   now names the consequence) rather than something the UI can show. Threading a warnings
+   channel out of that job is its own PR, and it is the same theme as A-5 (see item 6).
 
 8. **MyGames fallback for xdg-less Linux (B-4)** — FO4/SSE silently fail to register when
    `KnownPath.MyGamesDirectory` cannot resolve (no `~/Documents`). Module-local
@@ -139,10 +142,14 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
 
 22. **Event-sourced history retention** — nothing compacts the main store; undo depends on
     history, so this needs a retention policy, not blind compaction.
-23. **Plugin-header cache (B-7)** — `PluginsFile.Write` and `MissingMasterEmitter` re-parse
-    every plugin header per Apply/diagnostics pass. Measure on the real 682-plugin loadout
-    first; if warranted, a `Hash → (ModKey, masters)` cache service consumed by both
-    (content-addressed → immutable entries).
+23. ~~**Plugin-header cache (B-7)**~~ — **measured 2026-07-28, decided against.** In-app
+    `PluginsFile.MakeMetadata` costs 255 ms cumulative for 682 plugins against a ~2 s gate,
+    and standalone Mutagen header parsing is 0.35 s cold / 0.06 s warm, so the parse was
+    never the cost. The Nx stream layer does add ~4×, but the absolute number is far too
+    small to justify a cache with a lifetime and an invalidation story. Only the cold
+    `MissingMasterEmitter` pass (2.1 s, once per app start) approaches the gate, and it is
+    dominated by first-touch I/O a cache would also pay. Do not re-open without a workload
+    materially larger than a 682-plugin loadout.
 24. **Per-source UI at scale** — eager TreeDataGrid root activation, search filter
     materialization on the UI thread, `FilterLoadoutItems` observing every mod page.
     (The missing-`RefCount` triple-subscription in the rollup providers was fixed in #94.)
