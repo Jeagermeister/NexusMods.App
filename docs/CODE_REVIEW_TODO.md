@@ -60,13 +60,20 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    and does not cross loadouts, so it is not part of C-1; it belongs with item 10's
    progress/cancellation work on that path.
 
-5. **`PluginsFile.Ingest` (B-1)** — still a no-op; with intrinsic sync rules that means an
-   edited or pre-existing plugins.txt is permanently unmanaged: new installs never enter
-   the file and seeded curated orders never reach disk. Minimal version: parse `*Name`
-   lines → `ApplyCuratedOrder`. Pairs with a "reset to managed" affordance for the sticky
-   intrinsic (the #90 gap). This is the last piece of the original strategic item 9 —
-   everything else (SortOrderVariety owning plugins.txt, curated seeding, priority-Kahn)
-   shipped in #92.
+5. **`PluginsFile.Ingest` (B-1)** — **the ingest half is implemented.** A hand-edited or
+   pre-existing plugins.txt is now parsed (`*Name` and bare lines; comments, blank lines and
+   non-plugin lines ignored; duplicates folded case-insensitively keeping the first casing) and
+   persisted through `ApplyCuratedOrder`, so the order is learned instead of discarded. Only the
+   order is taken — the `*` enabled-flag is not, because enablement lives on loadout items.
+
+   **Not verified end-to-end, so do not read this as finished:** the action mapping routes an
+   edited file to `AdaptLoadout` (ingest) and an unchanged one to `WriteIntrinsic` (regenerate),
+   so in principle a learned order is written back on the following Apply. Whether that actually
+   converges depends on disk-state bookkeeping for intrinsic files, which nothing covers — there
+   is no end-to-end intrinsic harness, because one needs a real Creation Engine install and
+   `AIsolatedGameTest` is CI-hostile. So the "reset to managed" affordance for the sticky
+   intrinsic (the #90 gap) **stays open**, and the write-back leg wants confirming on the real
+   FO4 loadout.
 
 6. **Collection-install patch atomicity (S5-1)** — the standard-chain and FOMOD install
    branches self-commit the group, THEN apply curator patches, THEN tag
@@ -153,6 +160,13 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     request. The shared `Md5Hasher.VerifyAsync` dedup landed long ago (PR #77).
 19. **`IModSource` axaml enumeration** — parked deliberately (templating cost exceeds the
     ~6 lines per future source it saves).
+19b. **Load-sensitive flake: `DownloadsServiceTests.Validate_Download_Jobs_Lifetime`** —
+    observed failing once during a full-solution run (2026-07-30) on
+    `SyncHelpers.WaitForCollectionCount(..., 30s)`, and passing 3/3 in 144 ms in isolation. It
+    is offline, so it runs in the Clean Environment lane, where contention is exactly what
+    provokes it — expect intermittent red. Pre-existing (untouched since the R5 rebrand) and
+    unrelated to the change that surfaced it. Fix direction: wait on an observable signal rather
+    than polling a collection for a wall-clock duration.
 20. **Nexus GraphQL client error handling** — thirteen `// TODO: handle errors` sites
     across `NexusModsLibrary`/`RunUpdateCheck`/`NexusApiClient` are one systemic theme:
     `AssertHasData()` throws raw on GraphQL errors (in two UI cases from inside a
