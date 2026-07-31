@@ -1,0 +1,80 @@
+name: CI
+
+# Apocrypha's CI runs on the self-hosted Gitea (AWS EC2, tailnet-only), executed by the
+# `framework-desktop` act_runner. GitHub is a push-and-release mirror only and runs nothing.
+#
+# This collapses three GitHub workflows into one file: pr-builds.yaml (which never ran tests),
+# clean_environment_tests.yaml, and the reusable dotnet-build-and-test.yaml. The reusable-workflow
+# indirection existed to share config with upstream NexusMods.App.Meta; the fork has no such
+# sharing to do, and one file is far easier to reason about when a lane goes red.
+#
+# Deliberate differences from the GitHub originals:
+#   - `jlumbroso/free-disk-space@main` is dropped. It exists to claw back space on GitHub's 14 GB
+#     hosted runners; the desktop has terabytes.
+#   - The pupnet AppImage build is not here. Packaging belongs to the release pipeline, not to
+#     every PR -- see release.yaml.
+
+on:
+  push:
+    branches: [ linux-fork ]
+    paths:
+      - ".gitea/workflows/ci.yaml"
+      - "src/**"
+      - "tests/**"
+      - "**.props"
+      - "**.targets"
+      - "**.sln"
+      - "**.csproj"
+  pull_request:
+    branches: [ linux-fork ]
+    paths:
+      - ".gitea/workflows/ci.yaml"
+      - "src/**"
+      - "tests/**"
+      - "**.props"
+      - "**.targets"
+      - "**.sln"
+      - "**.csproj"
+    types: [ opened, synchronize, reopened, ready_for_review ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          # The fork vendors the game-hashes DB via git-lfs. Without this the checkout yields
+          # text stubs instead of binaries, with no error -- a silent failure that breaks the
+          # build confusingly far from its cause.
+          lfs: true
+
+      - name: Setup .NET 9.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Print debug info
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Test
+        env:
+          # https://github.com/microsoft/vstest/issues/2952#issuecomment-2234253765
+          VSTEST_TESTHOST_SHUTDOWN_TIMEOUT: 60000 #ms
+        run: >-
+          dotnet test --no-restore --verbosity normal
+          --filter "RequiresNetworking!=True&FlakeyTest!=True"
+          --blame-hang-timeout 20m
