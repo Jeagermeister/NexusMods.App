@@ -73,8 +73,26 @@ jobs:
       - name: Test
         env:
           # https://github.com/microsoft/vstest/issues/2952#issuecomment-2234253765
-          VSTEST_TESTHOST_SHUTDOWN_TIMEOUT: 60000 #ms
-        run: >-
-          dotnet test --no-restore --verbosity normal
-          --filter "RequiresNetworking!=True&FlakeyTest!=True"
-          --blame-hang-timeout 20m
+          # QUOTED DELIBERATELY. Unquoted `60000 #ms` parses as an integer once YAML strips the
+          # trailing comment, and act silently DROPS a step whose env values are not strings --
+          # no error, no warning, and the job still reports success. That produced a green CI
+          # run with zero tests executed on the very first pipeline (2026-07-30).
+          VSTEST_TESTHOST_SHUTDOWN_TIMEOUT: "60000"
+        run: |
+          dotnet test --no-restore --verbosity normal \
+            --filter "RequiresNetworking!=True&FlakeyTest!=True" \
+            --blame-hang-timeout 20m \
+            --logger "trx;LogFilePrefix=results" \
+            --results-directory "$GITHUB_WORKSPACE/TestResults"
+
+      # Guard against the failure above recurring in any form. A test step that silently does
+      # not run is worse than a failing one: it reports green forever. If no .trx landed, no
+      # tests ran, and this job must not pass.
+      - name: Verify tests actually ran
+        run: |
+          count=$(find "$GITHUB_WORKSPACE/TestResults" -name '*.trx' 2>/dev/null | wc -l)
+          echo "test result files: $count"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No .trx results were produced - the test step did not execute"
+            exit 1
+          fi
