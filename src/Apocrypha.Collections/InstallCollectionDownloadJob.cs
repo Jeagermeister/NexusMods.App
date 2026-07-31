@@ -94,28 +94,59 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     {
         var (group, patchedFiles) = await Install(context);
 
-        using var tx = Connection.BeginTransaction();
-
-        // Patch files
-        foreach (var patchedFile in patchedFiles)
+        // Everything from here on runs against an already-committed group. A failure would otherwise
+        // strand it: installed, deployed, unpatched and (on the standard chain) untagged, yet still
+        // reporting installed, so the job skips it on every retry (S5-1).
+        try
         {
-            if (!group.Children.TryGetFirst(x => LoadoutFile.Hash.TryGetValue(x, out var hash) && hash == patchedFile.OriginalFileHashes.XxHash3, out var fileToPatch))
+            using var tx = Connection.BeginTransaction();
+
+            // Patch files
+            foreach (var patchedFile in patchedFiles)
             {
-                Logger.LogWarning("Unable to find original file of patched file `{Path}` by hash `{OriginalHash}` in loadout group", patchedFile.FileName, patchedFile.OriginalFileHashes);
-                continue;
+                if (!group.Children.TryGetFirst(x => LoadoutFile.Hash.TryGetValue(x, out var hash) && hash == patchedFile.OriginalFileHashes.XxHash3, out var fileToPatch))
+                {
+                    Logger.LogWarning("Unable to find original file of patched file `{Path}` by hash `{OriginalHash}` in loadout group", patchedFile.FileName, patchedFile.OriginalFileHashes);
+                    continue;
+                }
+
+                tx.Add(fileToPatch.Id, LoadoutFile.Hash, patchedFile.PatchedFileHashes.XxHash3);
+                tx.Add(fileToPatch.Id, LoadoutFile.Size, patchedFile.PatchedFileHashes.Size);
             }
 
-            tx.Add(fileToPatch.Id, LoadoutFile.Hash, patchedFile.PatchedFileHashes.XxHash3);
-            tx.Add(fileToPatch.Id, LoadoutFile.Size, patchedFile.PatchedFileHashes.Size);
+            // Add missing data from the collection to the item
+            tx.Add(group.Id, LoadoutItem.Name, CollectionMod.Source.LogicalFilename ?? CollectionMod.Name);
+            tx.Add(group.Id, NexusCollectionItemLoadoutGroup.Download, Item);
+            tx.Add(group.Id, NexusCollectionItemLoadoutGroup.IsRequired, Item.IsRequired);
+
+            var result = await tx.Commit();
+            return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
         }
+        catch (Exception exception)
+        {
+            await RetractStrandedGroup(group, exception);
+            throw;
+        }
+    }
 
-        // Add missing data from the collection to the item
-        tx.Add(group.Id, LoadoutItem.Name, CollectionMod.Source.LogicalFilename ?? CollectionMod.Name);
-        tx.Add(group.Id, NexusCollectionItemLoadoutGroup.Download, Item);
-        tx.Add(group.Id, NexusCollectionItemLoadoutGroup.IsRequired, Item.IsRequired);
-
-        var result = await tx.Commit();
-        return new LoadoutItemGroup.ReadOnly(result.Db, group.Id);
+    /// <summary>
+    /// Undoes an already-committed install whose follow-up work failed, so the download falls back to
+    /// "in library" — a state a retry can actually heal. Never throws: the caller is already unwinding
+    /// a failure and the original exception is the one worth surfacing.
+    /// </summary>
+    private async ValueTask RetractStrandedGroup(LoadoutItemGroup.ReadOnly group, Exception cause)
+    {
+        try
+        {
+            await CollectionDownloader.RetractStrandedItemGroup(Connection, group.Id);
+            Logger.LogWarning(cause, "Install of collection mod `{Name}` failed after its group was committed; removed the partially installed group so the download can be retried", Item.Name);
+        }
+        catch (Exception retractException)
+        {
+            // Nothing better to do -- the group stays stranded and will read as installed. Log loudly
+            // enough that the state is at least diagnosable from a bug report.
+            Logger.LogError(retractException, "Failed to remove the partially installed group for collection mod `{Name}` after install failure; it will incorrectly report as installed and must be removed by hand", Item.Name);
+        }
     }
 
     private async ValueTask<(LoadoutItemGroup.ReadOnly, PatchedFile[])> Install(IJobContext<InstallCollectionDownloadJob> context)
@@ -169,7 +200,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
             Debug.Assert(result.LoadoutItemGroup.HasValue);
             var installedGroup = result.LoadoutItemGroup!.Value;
-            return (installedGroup, await PatchInstalledGroup(installedGroup, hasPatches, context.CancellationToken));
+            return (installedGroup, await PatchInstalledGroupOrRetract(installedGroup, hasPatches, context.CancellationToken));
         }
 
         if (CollectionMod.Choices is { Type: ChoicesType.fomod })
@@ -177,7 +208,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             try
             {
                 var fomodGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
-                return (fomodGroup, await PatchInstalledGroup(fomodGroup, hasPatches, context.CancellationToken));
+                return (fomodGroup, await PatchInstalledGroupOrRetract(fomodGroup, hasPatches, context.CancellationToken));
             }
             catch (FomodNotApplicableException e)
             {
@@ -198,7 +229,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             try
             {
                 var defaultsGroup = await InstallFomodWithPredefinedChoices(context.CancellationToken);
-                return (defaultsGroup, await PatchInstalledGroup(defaultsGroup, hasPatches, context.CancellationToken));
+                return (defaultsGroup, await PatchInstalledGroupOrRetract(defaultsGroup, hasPatches, context.CancellationToken));
             }
             catch (FomodNotApplicableException e)
             {
@@ -444,6 +475,23 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         return group.Id;
     });
+
+    /// <summary>
+    /// <see cref="PatchInstalledGroup"/>, but the group it is handed is already committed, so a patch
+    /// failure would strand it (S5-1). Removes the group before letting the failure propagate.
+    /// </summary>
+    private async ValueTask<PatchedFile[]> PatchInstalledGroupOrRetract(LoadoutItemGroup.ReadOnly group, bool hasPatches, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await PatchInstalledGroup(group, hasPatches, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            await RetractStrandedGroup(group, exception);
+            throw;
+        }
+    }
 
     /// <summary>
     /// Patches a mod that has already been installed, resolving patch keys against the installed

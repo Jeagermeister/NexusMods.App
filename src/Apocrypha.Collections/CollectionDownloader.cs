@@ -564,6 +564,32 @@ public class CollectionDownloader
     }
 
     /// <summary>
+    /// Compensating action for a collection item install that failed after its loadout group was
+    /// already committed (review finding S5-1).
+    ///
+    /// <para>
+    /// The standard-chain and FOMOD install branches have to commit the group before curator patches
+    /// can be resolved, because patch keys are relative to the *installed* layout and that layout is
+    /// only queryable once the group exists. If patching or the follow-up tagging transaction then
+    /// fails, the group is left installed and deployed but unpatched — and
+    /// <see cref="GetStatus(CollectionDownload.ReadOnly, Optional{CollectionGroup.ReadOnly}, IDb)"/>
+    /// reports it as installed, so the install job skips it forever and no retry heals it.
+    /// </para>
+    ///
+    /// <para>
+    /// Removing the group returns the download to "in library", which is a state a retry *can* heal.
+    /// Deliberately recursive: the group's files must go with it, or the next attempt collides with
+    /// the half-installed remains.
+    /// </para>
+    /// </summary>
+    public static async ValueTask RetractStrandedItemGroup(IConnection connection, EntityId groupId)
+    {
+        using var tx = connection.BeginTransaction();
+        tx.Delete(groupId, recursive: true);
+        await tx.Commit();
+    }
+
+    /// <summary>
     /// Returns all items of the desired type (required/optional).
     /// </summary>
     public static CollectionDownload.ReadOnly[] GetItems(CollectionRevisionMetadata.ReadOnly revision, ItemType itemType)
