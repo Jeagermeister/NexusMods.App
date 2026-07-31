@@ -75,19 +75,44 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    intrinsic (the #90 gap) **stays open**, and the write-back leg wants confirming on the real
    FO4 loadout.
 
-6. **Collection-install patch atomicity (S5-1)** — the standard-chain and FOMOD install
-   branches self-commit the group, THEN apply curator patches, THEN tag
-   `NexusCollectionItemLoadoutGroup` in a second tx. A patch failure strands an installed,
-   deployed, unpatched, untagged group that `GetStatus` counts as installed — no retry
-   heals it. **No longer an inference: `OfflineCollectionStatusTests`
-   `AnUntaggedGroupStillReportsInstalled_S5_1` demonstrates it** — strip the tag from a real
-   installed item in the recorded datastore and `GetStatus` still reports installed, because it
-   keys only on a `LibraryLinkedLoadoutItem` parented to the collection group. That test
-   characterises today's behaviour and is **expected to fail when this is fixed**; updating it
-   is part of the fix. Fix direction: patch before commit (`InstallReplicatedMod` already
-   demonstrates the single-tx pattern) or a compensating retract. Related smaller
-   deferrals: enabled-group aborts leave uncurated partial state (A-3); download rules
-   committed in a detached second tx with no repair path (A-4); hash-mismatched curator
+6. **Collection-install patch atomicity (S5-1)** — **the create half is FIXED (compensating
+   retract); the detect half is deferred and blocked, see below.**
+
+   The standard-chain and FOMOD install branches self-commit the group, THEN apply curator
+   patches, THEN tag `NexusCollectionItemLoadoutGroup` in a second tx. A patch failure stranded
+   an installed, deployed, unpatched, untagged group that `GetStatus` counts as installed — and
+   because the job skips anything reporting installed, no retry healed it.
+
+   **Fixed by the compensating-retract route** (of the two directions this item offered).
+   Patch-before-commit was ruled out for these two branches: patch keys resolve against the
+   *installed* layout, and that layout is only queryable once the group is committed — which is
+   precisely why they install first. `InstallCollectionDownloadJob` now wraps both post-commit
+   regions (`PatchInstalledGroupOrRetract`, and the tagging transaction in `StartAsync`) so any
+   failure removes the group via `CollectionDownloader.RetractStrandedItemGroup`, returning the
+   download to "in library" — a state a retry *can* heal. The retract is recursive (files go
+   with the group, or the retry installs over half-installed remains) and never throws, so it
+   cannot mask the original failure. Covered offline by `OfflineCollectionStatusTests`
+   `RetractingAStrandedGroupRestoresARetryableState_S5_1` and
+   `RetractingAStrandedGroupRemovesItsFiles_S5_1`. Note the other two branches were already
+   atomic — `InstallReplicatedMod`, `InstallBundledMod` and `InstallFomodWithPredefinedChoices`
+   all mint the `NexusCollectionItemLoadoutGroup` tag inside the install transaction; only the
+   standard chain (`LoadoutManager.InstallItem`, which commits internally) tags in the second tx.
+
+   **Still open — tag-aware status, and it is BLOCKED, not merely deferred.** A crash or kill
+   between the install commit and the retract still leaves a stranded group, and `GetStatus`
+   cannot tell one from a healthy install: it keys only on a `LibraryLinkedLoadoutItem` parented
+   to the collection group, never on the tag. `AnUntaggedGroupStillReportsInstalled_S5_1` still
+   passes and still documents this (the earlier expectation that it would *fail* on a fix assumed
+   the status change came with it). The obvious fix — require the tag in `GetStatus` — **cannot be
+   made in isolation**: migration `_0002_NexusCollectionItem` calls `GetStatus` to decide which
+   pre-tag loadout items to tag. Requiring the tag there makes the migration find nothing
+   installed, tag nothing, and fall into its "hope for the best" branch, silently orphaning every
+   existing user's collection items on upgrade. Any fix must give the migration a tag-blind path
+   (a private overload, or a snapshot taken before the rule changes) and re-verify against a
+   pre-`_0002_` recorded datastore.
+
+   Related smaller deferrals: enabled-group aborts leave uncurated partial state (A-3); download
+   rules committed in a detached second tx with no repair path (A-4); hash-mismatched curator
    patches deploy the unpatched original with only a warning (A-5).
 
 7. **Sort-order creation race (B-3)** — `GetOrCreateSortOrderFor` is check-then-create;
