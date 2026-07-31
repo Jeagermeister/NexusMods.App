@@ -12,13 +12,25 @@ dotnet run --project src/Apocrypha.App          # run the app
 dotnet test                                     # default test suite
 ```
 
-CI (`pr-builds.yaml`) builds **Linux only**. Windows was deliberately removed from CI,
-releases and tests — it was failing on races that do not affect the shipped product, and
-Apocrypha is Linux-first. Windows comes back when we choose to support it properly; the
-reusable `build-windows-pupnet.yaml` workflow is kept (unreferenced) so re-enabling is a
-small change. macOS is intentionally unsupported.
-Networking, mod-install, and clean-environment suites run as separate CI jobs with
-`dotnet test --filter ...`; don't be surprised when they're skipped locally.
+**CI runs on self-hosted Gitea, not GitHub** (moved 2026-07-30). The pipeline is
+`.gitea/workflows/ci.yaml` — one job, build + test on every PR and push to `linux-fork`,
+executed by `act_runner` on Brian's own machines. GitHub deliberately runs **nothing**; it
+is a push-and-release mirror. `.github/workflows/` retains only release machinery
+(`release.yaml` and the pupnet builders), and migrating that to Gitea is still open work.
+
+Beware: **Gitea Actions reads `.github/workflows` as well as `.gitea/workflows`.** Any CI
+workflow left under `.github/` will run on Gitea too — that is why the GitHub CI and
+maintenance workflows were deleted rather than merely disabled.
+
+CI builds **Linux only**. Windows was deliberately removed from CI, releases and tests — it
+was failing on races that do not affect the shipped product, and Apocrypha is Linux-first.
+Windows comes back when we choose to support it properly; the reusable
+`build-windows-pupnet.yaml` workflow is kept (unreferenced) so re-enabling is a small
+change. macOS is intentionally unsupported.
+
+The test filter is `RequiresNetworking!=True&FlakeyTest!=True`, so network-bound suites are
+skipped in CI and locally alike — don't be surprised by the ~64 local failures when
+`NEXUS_API_KEY` is unset.
 
 ## Branch and PR rules
 
