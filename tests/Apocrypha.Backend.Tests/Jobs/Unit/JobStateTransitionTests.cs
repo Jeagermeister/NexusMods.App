@@ -77,7 +77,20 @@ public class JobStateTransitionTests : AJobsTest
         await Assert.ThrowsAsync<InvalidOperationException>(() => task.Job.WaitAsync());
 
         await Assert.That(task.Job.Status).IsEqualTo(JobStatus.Failed);
-        await Assert.That(stateChanges).IsEquivalentTo([JobStatus.Created, JobStatus.Running, JobStatus.Failed]);
+
+        // Note: `Created` is deliberately NOT asserted here. The subscription above attaches
+        // *after* `JobMonitor.Begin` has already started the job, and `ObservableStatus` is a
+        // `BehaviorSubject` (JobContext.cs) which replays only its current value -- never the
+        // history. So whether `Created` is observed at all is a race: win it and you see
+        // [Created, Running, Failed], lose it and you see [Running, Failed]. Asserting the
+        // exact three-element sequence made this test fail under CI load while passing
+        // locally. Same reasoning as the note in Should_Transition_From_Running_To_Completed.
+        //
+        // What this test actually names -- Running -> Failed -- is fully observable, because
+        // the wait above guarantees `Running` is reached before failure is signalled.
+        await Assert.That(stateChanges).Contains(JobStatus.Running);
+        await Assert.That(stateChanges).Contains(JobStatus.Failed);
+        await Assert.That(stateChanges[^1]).IsEqualTo(JobStatus.Failed);
     }
 
     [Test]
