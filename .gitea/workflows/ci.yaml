@@ -86,13 +86,28 @@ jobs:
             --results-directory "$GITHUB_WORKSPACE/TestResults"
 
       # Guard against the failure above recurring in any form. A test step that silently does
-      # not run is worse than a failing one: it reports green forever. If no .trx landed, no
-      # tests ran, and this job must not pass.
+      # not run is worse than a failing one: it reports green forever. If no results landed,
+      # no tests ran, and this job must not pass.
+      #
+      # The suite uses TWO test frameworks and they report differently:
+      #   - VSTest projects honour `--logger trx` and write .trx into --results-directory.
+      #   - TUnit / Microsoft.Testing.Platform projects (e.g. Apocrypha.Backend.Tests) do NOT
+      #     emit .trx at all; they write their own log beside the test assembly, under
+      #     tests/<Project>/bin/<Config>/<tfm>/TestResults/.
+      # Counting only .trx therefore left every TUnit project invisible to this guard -- they
+      # could stop running entirely and the count would be unchanged. That is precisely the
+      # silent-skip failure this step exists to catch, so both are checked separately.
       - name: Verify tests actually ran
         run: |
-          count=$(find "$GITHUB_WORKSPACE/TestResults" -name '*.trx' 2>/dev/null | wc -l)
-          echo "test result files: $count"
-          if [ "$count" -eq 0 ]; then
-            echo "::error::No .trx results were produced - the test step did not execute"
+          trx=$(find "$GITHUB_WORKSPACE/TestResults" -name '*.trx' 2>/dev/null | wc -l)
+          mtp=$(find "$GITHUB_WORKSPACE/tests" -path '*/bin/*/TestResults/*.log' 2>/dev/null | wc -l)
+          echo "VSTest .trx files:            $trx"
+          echo "Testing-Platform result logs: $mtp"
+          if [ "$trx" -eq 0 ]; then
+            echo "::error::No .trx results were produced - the VSTest projects did not execute"
+            exit 1
+          fi
+          if [ "$mtp" -eq 0 ]; then
+            echo "::error::No Microsoft.Testing.Platform results were produced - the TUnit projects did not execute"
             exit 1
           fi
