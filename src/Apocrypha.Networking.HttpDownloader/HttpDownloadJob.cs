@@ -217,6 +217,26 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
             _state.TotalBytesDownloaded = Size.FromLong(outputStream.Position);
         }
 
+        // The destination is pre-allocated to the advertised length, so a body that ended short
+        // still leaves a file of exactly the right size -- zeros where data should be. Returning
+        // success on such a copy is silent corruption (observed live: retry-path races produced
+        // both a zero-byte body accepted as complete and a full body appended after a stale
+        // prefix). The advertised length is the contract; a final position that disagrees with
+        // it is a failed transfer. Throwing HttpIOException makes the resilience pipeline treat
+        // it exactly like a dropped connection, and resetting the progress state first makes the
+        // retry start over from offset zero instead of "resuming" from a lie.
+        if (_state.ContentLength.HasValue)
+        {
+            var expectedLength = (long)_state.ContentLength.Value.Value;
+            var actualPosition = outputStream.Position;
+            if (actualPosition != expectedLength)
+            {
+                Logger.LogWarning("Download from `{PageUri}` ended at {Actual} bytes but the server advertised {Expected}; discarding progress and retrying", DownloadPageUri, actualPosition, expectedLength);
+                _state.TotalBytesDownloaded = Size.Zero;
+                throw new HttpIOException(HttpRequestError.ResponseEnded, $"Download body ended at {actualPosition} bytes but Content-Length advertised {expectedLength}");
+            }
+        }
+
         // Ensure progress is set to 100% when download completes
         if (_state.ContentLength.HasValue)
             context.SetPercent(_state.ContentLength.Value, _state.ContentLength.Value);

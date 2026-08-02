@@ -40,6 +40,24 @@ public class LocalHttpServer : IDisposable
     // on this assembly-wide singleton.
     private readonly ConcurrentDictionary<string, int> _getCounts = new();
 
+    // Per-id request journal for the truncating endpoints: when a resume test fails, WHAT the
+    // server actually saw and served is the evidence that distinguishes a client bug from a
+    // server hiccup from a connection-pool artifact. Appended to the failure message.
+    private readonly ConcurrentDictionary<string, List<string>> _requestJournal = new();
+
+    /// <summary>Journal of every request the truncating endpoints handled for this <paramref name="id"/>.</summary>
+    public IReadOnlyList<string> GetRequestJournal(string id)
+    {
+        return _requestJournal.TryGetValue(id, out var entries) ? entries.ToArray() : [];
+    }
+
+    private void Journal(string? id, string entry)
+    {
+        if (id is null) return;
+        var list = _requestJournal.GetOrAdd(id, static _ => []);
+        lock (list) list.Add($"{DateTime.UtcNow:HH:mm:ss.fff} {entry}");
+    }
+
     private readonly ILogger<LocalHttpServer> _logger;
     private readonly HttpListener _listener;
     private readonly string _prefix;
@@ -231,7 +249,9 @@ public class LocalHttpServer : IDisposable
     private async Task ServeTruncatedOnce(HttpListenerResponse resp, HttpListenerRequest request, bool acceptRanges)
     {
         var data = LargeData;
-        var stateKey = $"{request.Url!.AbsolutePath}|{request.QueryString.Get("id") ?? "none"}";
+        var id = request.QueryString.Get("id");
+        var stateKey = $"{request.Url!.AbsolutePath}|{id ?? "none"}";
+        var range = request.Headers.Get("Range");
 
         resp.ProtocolVersion = HttpVersion.Version11;
         resp.Headers.Add(HttpResponseHeader.ContentType, "application/octet-stream");
@@ -243,6 +263,7 @@ public class LocalHttpServer : IDisposable
 
         if (request.HttpMethod == "HEAD")
         {
+            Journal(id, $"HEAD range='{range}' -> 200, Content-Length {data.Length}, no body");
             await using var _ = resp.OutputStream;
             return;
         }
@@ -250,13 +271,17 @@ public class LocalHttpServer : IDisposable
         var attempt = _getCounts.AddOrUpdate(stateKey, 1, static (_, count) => count + 1);
         if (attempt == 1)
         {
+            Journal(id, $"GET #{attempt} range='{range}' -> 200, Content-Length {data.Length}, writing {TruncateAt} bytes then ABORT");
             await resp.OutputStream.WriteAsync(data.AsMemory(0, TruncateAt));
             resp.Abort();
+            Journal(id, $"GET #{attempt} aborted");
             return;
         }
 
+        Journal(id, $"GET #{attempt} range='{range}' -> 200, Content-Length {data.Length}, writing full body (range deliberately ignored)");
         await using var ros = resp.OutputStream;
         await ros.WriteAsync(data);
+        Journal(id, $"GET #{attempt} full body written");
     }
 
     private async Task ServeResource(HttpListenerResponse resp, HttpListenerRequest request)
