@@ -70,12 +70,13 @@ public class HttpDownloadJobWorkerTests
     [Fact]
     public async Task ResumesAfterATruncatedConnectionOnAServerWithoutRanges()
     {
-        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadTruncatedOnce}?id={Guid.NewGuid():N}");
+        var id = $"{Guid.NewGuid():N}";
+        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadTruncatedOnce}?id={id}");
 
         await using var outputPath = _temporaryFileManager.CreateFile();
         _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
 
-        await AssertContentMatchesServer(outputPath.Path);
+        await AssertContentMatchesServer(outputPath.Path, id);
     }
 
     /// <summary>
@@ -87,12 +88,13 @@ public class HttpDownloadJobWorkerTests
     [Fact]
     public async Task ResetsWhenAServerAnswersARangeRequestWithTheFullBody()
     {
-        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadRangeIgnored}?id={Guid.NewGuid():N}");
+        var id = $"{Guid.NewGuid():N}";
+        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadRangeIgnored}?id={id}");
 
         await using var outputPath = _temporaryFileManager.CreateFile();
         _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
 
-        await AssertContentMatchesServer(outputPath.Path);
+        await AssertContentMatchesServer(outputPath.Path, id);
     }
 
     /// <summary>
@@ -107,7 +109,7 @@ public class HttpDownloadJobWorkerTests
     /// clue whether the body was short, misaligned, or written at the wrong offset). The first
     /// differing offset and the zero-tail length distinguish those cases.
     /// </remarks>
-    private async Task AssertContentMatchesServer(AbsolutePath path)
+    private async Task AssertContentMatchesServer(AbsolutePath path, string? journalId = null)
     {
         var expected = _server.LargeData;
         var actual = await path.ReadAllBytesAsync();
@@ -127,8 +129,12 @@ public class HttpDownloadJobWorkerTests
         var zeroTail = 0;
         for (var i = actual.Length - 1; i >= 0 && actual[i] == 0; i--) zeroTail++;
 
+        // The server-side request journal turns "wrong bytes" into a full request trace: which
+        // GETs arrived, with what Range headers, and what the server actually wrote for each.
+        var journal = journalId is null ? "<none>" : string.Join(" | ", _server.GetRequestJournal(journalId));
+
         hash.Should().Be(_server.LargeDataHash,
-            "the downloaded bytes should match the served bytes (length {0} vs expected {1}, first difference at {2}, {3} zero bytes at the end)",
-            actual.Length, expected.Length, firstDifference, zeroTail);
+            "the downloaded bytes should match the served bytes (length {0} vs expected {1}, first difference at {2}, {3} zero bytes at the end; server journal: {4})",
+            actual.Length, expected.Length, firstDifference, zeroTail, journal);
     }
 }
