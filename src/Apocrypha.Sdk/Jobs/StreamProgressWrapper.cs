@@ -30,11 +30,19 @@ public sealed class StreamProgressWrapper<TState> : Stream
         _period = period == default(TimeSpan) ? TimeSpan.FromSeconds(1) : period;
         timeProvider ??= TimeProvider.System;
 
-        _timer = timeProvider.CreateTimer(NotifyLoop, state: this, dueTime: TimeSpan.Zero, period: _period);
-        
+        // The counters MUST be initialized before the timer exists: with dueTime zero the first
+        // NotifyLoop can fire on a pool thread before the constructor's next line runs, and it
+        // then reports the default value -- zero -- to the callback. HttpDownloadJob's callback
+        // persists that as TotalBytesDownloaded, wiping real resume progress, so its
+        // 200-with-partial-progress reset never engages and the full body lands after the stale
+        // prefix: silent corruption with a plausible file size. Load-dependent -- caught by
+        // ResumesAfterATruncatedConnectionOnAServerWithoutRanges failing in CI while green
+        // locally, and the likely mechanism behind ledger item 19c's original one-time failure.
         var pos = Size.FromLong(_innerStream.Position);
         _currentBytesWritten = pos;
         _lastBytesWritten = pos;
+
+        _timer = timeProvider.CreateTimer(NotifyLoop, state: this, dueTime: TimeSpan.Zero, period: _period);
     }
 
     private readonly TimeSpan _period;
