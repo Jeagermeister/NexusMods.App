@@ -212,13 +212,15 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     request. The shared `Md5Hasher.VerifyAsync` dedup landed long ago (PR #77).
 19. **`IModSource` axaml enumeration** — parked deliberately (templating cost exceeds the
     ~6 lines per future source it saves).
-19b. **Load-sensitive flake: `DownloadsServiceTests.Validate_Download_Jobs_Lifetime`** —
-    observed failing once during a full-solution run (2026-07-30) on
-    `SyncHelpers.WaitForCollectionCount(..., 30s)`, and passing 3/3 in 144 ms in isolation. It
-    is offline, so it runs in the Clean Environment lane, where contention is exactly what
-    provokes it — expect intermittent red. Pre-existing (untouched since the R5 rebrand) and
-    unrelated to the change that surfaced it. Fix direction: wait on an observable signal rather
-    than polling a collection for a wall-clock duration.
+19b. ~~**Load-sensitive flake: `DownloadsServiceTests.Validate_Download_Jobs_Lifetime`**~~ —
+    **FIXED**, and the root cause was worse than the polling this item blamed: the shared test
+    subscription appended to its `List` on both Add and Update, so a status/progress Update
+    coalesced into the same change batch as the Add jumped the count 0→2 and a poll for
+    `Count == 1` burned its whole 30 s timeout — load makes the coalescing routine, isolation
+    let the poll win the race. `DownloadCollectionTracker` keys by `DownloadId` (an Update is a
+    replacement) and completes waits from inside the subscription per this item's fix
+    direction; the timeout is now only a failure backstop. `CancelledJobs_…` shared the
+    plumbing and got the same treatment. Verified 12/12 green under 28 busy-loop CPU threads.
 19c. **Suspected `HttpDownloadJob` retry-path corruption — decision needed** — the hermetic
     `DownloadsFromAServerThatDoesNotSupportRanges` test (added in #103) failed **once** in a
     full-solution run with correct file size but wrong content, and did not reproduce in ~56
