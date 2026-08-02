@@ -290,7 +290,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 Size = file.AsLibraryFile().Size,
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
                 {
-                    TargetPath = (fileId, parentPath.LocationId, parentPath.Path.Join(fixedPath)),
+                    // TargetPath.Item1 is the LOADOUT id -- it was `fileId` here (inherited from
+                    // upstream), which made every replicated-install file invisible to any query
+                    // filtering on TargetPath.Item1 (plugin/REDmod sort-order SQL). The
+                    // synchronizer filters on the Loadout attribute, so the files still deployed:
+                    // split-brain. _0010_FixCollectionTargetPaths repairs existing datastores.
+                    TargetPath = (TargetLoadout.Value, parentPath.LocationId, parentPath.Path.Join(fixedPath)),
                     LoadoutItem = new LoadoutItem.New(tx, fileId)
                     {
                         Name = file.Path,
@@ -462,7 +467,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 Size = libraryItem.Size,
                 LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, fileId)
                 {
-                    TargetPath = (fileId, targetPath.LocationId, targetPath.Path),
+                    // Same fix as InstallReplicatedMod above: loadout id, not the file's own id.
+                    TargetPath = (TargetLoadout.Value, targetPath.LocationId, targetPath.Path),
                     LoadoutItem = new LoadoutItem.New(tx, fileId)
                     {
                         Name = pair.Path,

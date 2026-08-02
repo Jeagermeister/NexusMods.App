@@ -66,14 +66,32 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    persisted through `ApplyCuratedOrder`, so the order is learned instead of discarded. Only the
    order is taken — the `*` enabled-flag is not, because enablement lives on loadout items.
 
-   **Not verified end-to-end, so do not read this as finished:** the action mapping routes an
-   edited file to `AdaptLoadout` (ingest) and an unchanged one to `WriteIntrinsic` (regenerate),
-   so in principle a learned order is written back on the following Apply. Whether that actually
-   converges depends on disk-state bookkeeping for intrinsic files, which nothing covers — there
-   is no end-to-end intrinsic harness, because one needs a real Creation Engine install and
-   `AIsolatedGameTest` is CI-hostile. So the "reset to managed" affordance for the sticky
-   intrinsic (the #90 gap) **stays open**, and the write-back leg wants confirming on the real
-   FO4 loadout.
+   **The write-back leg is now VERIFIED end-to-end on the real FO4 loadout (2026-08-02,
+   :99 rig):** a hand-edited order was learned (`ApplyCuratedOrder` fired), repeat Applies
+   neither thrash nor revert the file, and a deleted plugins.txt was regenerated from the
+   learned order. Two operational findings from that session: (a) an edit to a
+   Preferences-location intrinsic is only detected at **boot** — nothing file-watches that
+   directory, so the Apply affordance does not appear until restart (small UX item);
+   (b) the regeneration initially demoted 10 enabled plugins to the tail, which turned out to
+   be the `TargetPath.Item1` corruption — see its own entry below — not an ingest defect;
+   post-repair, a re-ingest of the correct file heals the learned order. The "reset to
+   managed" affordance for the sticky intrinsic (the #90 gap) **stays open**.
+
+5b. ~~**Collection installs wrote self-referencing `TargetPath` tuples**~~ — **FIXED +
+   repair migration** (found 2026-08-02 during item 5's write-back verification; inherited
+   from upstream commit `71e397e50`). The replicated- and bundled-mod branches of
+   `InstallCollectionDownloadJob` wrote the file's **own entity id** into
+   `TargetPath.Item1`, which must be the loadout id. The synchronizer filters on the
+   `LoadoutItem.Loadout` attribute, so the files deployed and appeared in plugins.txt —
+   but every `TargetPath.Item1`-filtered query (the Creation Engine and REDmod sort-order
+   SQL) was blind to them: their plugins could not hold a curated position and silently
+   fell to the load-order tail on every regeneration. Live census on the real datastore:
+   **1,238 corrupted rows in the FO4 loadout (15 plugins, incl. PRP/PreVis patches), 4 in
+   Stardew Valley**. Fixed at both write sites; `_0010_FixCollectionTargetPaths` repairs
+   existing datastores (source of truth = the `Loadout` attribute; idempotent; rows whose
+   path bytes no longer deserialize are skipped — they predate the bug and cannot be
+   repaired blind). The legacy-DB snapshots' `NewId` bump to 10 was the only snapshot
+   change — none of the recorded databases contained corrupted rows.
 
 6. ~~**Collection-install patch atomicity (S5-1)**~~ — **FIXED, both halves.** The create half
    below landed first (compensating retract); the detect half is now closed too — see the end of
@@ -167,6 +185,15 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    class through the delete path). Record the resolved path + canonicalize delete targets;
    also `ActionWriteIntrinsics` bypasses the canonicalizer entirely (B-11), and ingest onto
    an existing `DeletedFile` creates a hybrid entity (C-4).
+
+   **Live evidence (2026-08-02):** the real FO4 loadout logs **570 "Duplicate file"
+   warnings per `BuildSyncTree`** — case-variant path pairs (`Hair/KSHairdos` vs
+   `hair/kshairdos`, `Textures` vs `textures`) where `GamePath` equality folds case but the
+   winning-files query does not, so the "winner" between the pair is picked arbitrarily.
+   Worse: the guard at `ALoadoutSynchronizer` line ~260 is a `Debug.Assert`, so a **Debug
+   build cannot boot that datastore at all** (process-terminating assert on startup's
+   should-sync check); only Release limps past by logging. When this item is picked up, the
+   assert should become a real guard, and the query should fold case like `GamePath` does.
 
 10. **Switch-path progress + cancellation (C-6)** — `ActivateLoadout`/`BuildProcessRun`
     drop the job and token: the 132GB A→B switch shows no progress and cannot be
