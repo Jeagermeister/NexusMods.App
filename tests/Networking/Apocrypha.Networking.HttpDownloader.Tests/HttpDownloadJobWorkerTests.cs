@@ -60,6 +60,42 @@ public class HttpDownloadJobWorkerTests
     }
 
     /// <summary>
+    /// Deterministic coverage for the reset branch (ledger item 19c, non-range shape): the first
+    /// connection dies after 3 MB of real progress, the server does not support ranges, so the
+    /// retry's plain GET answers 200 while <c>TotalBytesDownloaded</c> is already past zero. The
+    /// job must restart from offset 0 — keeping the stale prefix is silent corruption with a
+    /// correct file size, which is exactly what the one observed failure of the test above looked
+    /// like.
+    /// </summary>
+    [Fact]
+    public async Task ResumesAfterATruncatedConnectionOnAServerWithoutRanges()
+    {
+        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadTruncatedOnce}?id={Guid.NewGuid():N}");
+
+        await using var outputPath = _temporaryFileManager.CreateFile();
+        _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
+
+        await AssertContentMatchesServer(outputPath.Path);
+    }
+
+    /// <summary>
+    /// Deterministic coverage for the reset branch's range shape — the exact path ledger item 19c
+    /// could not reach: after real partial progress the retry sends a valid Range request, and the
+    /// server answers 200 with the entire body instead of 206. The job must detect the full-body
+    /// response and reset to offset 0 rather than appending the whole file after the stale prefix.
+    /// </summary>
+    [Fact]
+    public async Task ResetsWhenAServerAnswersARangeRequestWithTheFullBody()
+    {
+        var uri = new Uri(_server.Uri, $"{LocalHttpServer.PayloadRangeIgnored}?id={Guid.NewGuid():N}");
+
+        await using var outputPath = _temporaryFileManager.CreateFile();
+        _ = await HttpDownloadJob.Create(_serviceProvider, uri, uri, outputPath.Path);
+
+        await AssertContentMatchesServer(outputPath.Path);
+    }
+
+    /// <summary>
     /// Compares the downloaded file against what the server holds, and on a mismatch says *where* it
     /// diverged.
     /// </summary>
