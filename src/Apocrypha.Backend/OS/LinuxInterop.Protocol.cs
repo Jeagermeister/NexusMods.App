@@ -48,6 +48,16 @@ internal partial class LinuxInterop
 
             try
             {
+                await InstallIconThemeFiles(cancellationToken);
+            }
+            catch (Exception e)
+            {
+                // Icons are cosmetic: a failure here must not break protocol handling.
+                _logger.LogWarning(e, "Exception while installing icon theme files; the desktop may show a generic icon");
+            }
+
+            try
+            {
                 await UpdateMIMECacheDatabase(applicationsDirectory, cancellationToken: cancellationToken);
             }
             catch (Exception e)
@@ -68,6 +78,41 @@ internal partial class LinuxInterop
                 _logger.LogError(e, "Exception while setting the default handler for `{Scheme}`, see the process logs for more details", scheme);
             }
         }
+    }
+
+    private static readonly int[] IconSizes = [16, 24, 32, 48, 64, 128, 256, 512];
+
+    /// <summary>
+    /// Installs the app icons into the user's hicolor theme so the desktop file's themed
+    /// <c>Icon=</c> name actually resolves.
+    /// </summary>
+    /// <remarks>
+    /// The desktop file has always said <c>Icon=io.github.jeagermeister.apocrypha</c>, but a
+    /// themed name only resolves if a matching file exists in an icon theme directory. The
+    /// AppImage bundles the icons <em>inside</em> itself where no desktop environment looks
+    /// unless the AppImage is "integrated" — which nothing does by default — so docks and
+    /// window switchers fell back to the generic gear. Writing the icons into
+    /// <c>$XDG_DATA_HOME/icons/hicolor</c> alongside the desktop file closes the loop for
+    /// AppImage and zip installs alike; the sizes merge with the system hicolor theme, so no
+    /// <c>index.theme</c> is needed. Files are rewritten on every registration pass, which
+    /// keeps them current when the branding changes between versions.
+    /// </remarks>
+    private async Task InstallIconThemeFiles(CancellationToken cancellationToken)
+    {
+        var hicolorDirectory = _fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine("icons/hicolor");
+
+        foreach (var size in IconSizes)
+        {
+            var directory = hicolorDirectory.Combine($"{size}x{size}/apps");
+            if (!directory.DirectoryExists()) directory.CreateDirectory();
+
+            var target = directory.Combine($"{ApplicationId}.png");
+            await using var source = await new EmbeddedResourceStreamFactory<LinuxInterop>($"Apocrypha.Backend.apocrypha.{size}.png").GetStreamAsync();
+            await using var output = target.Create();
+            await source.CopyToAsync(output, cancellationToken);
+        }
+
+        _logger.LogInformation("Installed {Count} hicolor theme icons under `{Path}`", IconSizes.Length, hicolorDirectory);
     }
 
     /// <summary>
