@@ -95,7 +95,7 @@ public class SkyrimSE : ICreationEngineGame, IGameData<SkyrimSE>
         {
             { LocationId.Game, gameLocatorResult.Path },
             { LocationId.AppData, fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory) / "Skyrim Special Edition" },
-            { LocationId.Preferences, fileSystem.GetKnownPath(KnownPath.MyGamesDirectory) / ("Skyrim Special Edition" + postfix)},
+            { LocationId.Preferences, KnownPaths.MyGamesOrFallback(fileSystem) / ("Skyrim Special Edition" + postfix)},
         }.ToImmutableDictionary();
     }
 
