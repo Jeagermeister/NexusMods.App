@@ -276,10 +276,23 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     fail with `first difference at 3145728` (= the truncation point) and an 11 MB file — the
     precise stale-prefix corruption signature this item feared, proving the tests detect it.
     With the branch intact both pass deterministically, so the reset logic is correct for these
-    shapes. The original load-provoked one-time failure remains unexplained (it may have been a
-    shape these tests still don't model, e.g. a mid-body pause/resume), so the #103 test keeps
-    its evidence-carrying assertion and stays un-quarantined; any future red now has two
-    deterministic siblings to triangulate against.
+    shapes. **The mechanism is now CONFIRMED (2026-08-02, same day):** the new deterministic test
+    failed once in CI with the exact stale-prefix signature, and the race is in
+    `StreamProgressWrapper`'s constructor — the progress timer starts with `dueTime: Zero`
+    *before* the byte counters are initialized from the stream position, so a pool-thread tick
+    winning the race reports `Size.Zero`, the download job persists that as
+    `TotalBytesDownloaded`, and the 200-with-partial-progress reset never engages. The constructor-order fix
+    (counters before timer) closed that window — and CI promptly produced a SECOND shape:
+    correct-size file, first 3 MB real, the rest zeros — the retry's body never written yet the
+    job reported success. Reproduced locally at 12/40 with 2-core pinning. Rather than chase
+    every scheduler-dependent mechanism, the job now enforces the contract it always had in
+    hand: after the copy, a final position that disagrees with the advertised Content-Length
+    resets progress and throws HttpIOException, which the resilience pipeline retries — silent
+    corruption became a self-healing retry, for every mechanism at once. 0/40 failures under
+    the exact conditions that reproduced both shapes; the truncating endpoints also keep a
+    per-id request journal that prints in any future failure message. The #103 test keeps its
+    evidence-carrying assertion; the deterministic siblings did exactly the triangulation this
+    entry hoped for, twice.
 
 20. **Nexus GraphQL client error handling** — thirteen `// TODO: handle errors` sites
     across `NexusModsLibrary`/`RunUpdateCheck`/`NexusApiClient` are one systemic theme:
