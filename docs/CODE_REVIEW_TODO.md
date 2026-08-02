@@ -172,11 +172,16 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     drop the job and token: the 132GB A→B switch shows no progress and cannot be
     cancelled. Thread them through `ILoadoutManager`.
 
-11. **RedMod full case-fold (S4-1 residual)** — #94 folded persistence matching and the
-    SQL join, which stops the order-reset. Reactive keys still carry display casing
-    (modlist.txt and MoveItems contracts require it), so cross-source key joins in the
-    C# reconcile remain case-sensitive. The complete fix mirrors the Creation Engine's
-    `PluginSortItemData` pattern: folded key + display-name field.
+11. ~~**RedMod full case-fold (S4-1 residual)**~~ — **DONE.** The CE `PluginSortItemData`
+    pattern applied to REDmod: `RedModReactiveSortItem.Key` folds via `MakeKey`, new
+    `RedModSortItemData`/`RedModSortItemLoadoutData` carry folded key + display-cased folder,
+    persistence and `GetRedModOrder` write `RedModFolderName` (display) — never `Key.Key` —
+    and the changeset cache key folds so a re-cased folder is one row updating, not two rows
+    churning. `Reconcile` dedupes with `TryAdd` (folded keys make case-variant duplicates
+    collide, and `ToDictionary` would throw). Covered by `RedModCaseFoldTests` incl. the
+    end-to-end re-cased-persisted-row scenario, falsified against an unfolded `MakeKey`.
+    Lesson recorded there: `RelativePath` equality dedupes a case-variant attribute *update*
+    into a silent no-op — re-casing a persisted row requires delete + recreate.
 
 12. **ProcessLogs retention (M-4)** — `~/.local/state/Apocrypha/Logs/ProcessLogs/` grows
     unbounded (9k+ files observed). Startup sweep in `ProcessRunner` honoring a retention
