@@ -75,8 +75,9 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    intrinsic (the #90 gap) **stays open**, and the write-back leg wants confirming on the real
    FO4 loadout.
 
-6. **Collection-install patch atomicity (S5-1)** — **the create half is FIXED (compensating
-   retract); the detect half is deferred and blocked, see below.**
+6. ~~**Collection-install patch atomicity (S5-1)**~~ — **FIXED, both halves.** The create half
+   below landed first (compensating retract); the detect half is now closed too — see the end of
+   this item.
 
    The standard-chain and FOMOD install branches self-commit the group, THEN apply curator
    patches, THEN tag `NexusCollectionItemLoadoutGroup` in a second tx. A patch failure stranded
@@ -98,22 +99,43 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    all mint the `NexusCollectionItemLoadoutGroup` tag inside the install transaction; only the
    standard chain (`LoadoutManager.InstallItem`, which commits internally) tags in the second tx.
 
-   **Still open — tag-aware status, and it is BLOCKED, not merely deferred.** A crash or kill
-   between the install commit and the retract still leaves a stranded group, and `GetStatus`
-   cannot tell one from a healthy install: it keys only on a `LibraryLinkedLoadoutItem` parented
-   to the collection group, never on the tag. `AnUntaggedGroupStillReportsInstalled_S5_1` still
-   passes and still documents this (the earlier expectation that it would *fail* on a fix assumed
-   the status change came with it). The obvious fix — require the tag in `GetStatus` — **cannot be
-   made in isolation**: migration `_0002_NexusCollectionItem` calls `GetStatus` to decide which
-   pre-tag loadout items to tag. Requiring the tag there makes the migration find nothing
-   installed, tag nothing, and fall into its "hope for the best" branch, silently orphaning every
-   existing user's collection items on upgrade. Any fix must give the migration a tag-blind path
-   (a private overload, or a snapshot taken before the rule changes) and re-verify against a
-   pre-`_0002_` recorded datastore.
+   **The detect half is now FIXED too.** `GetStatus` requires the collection-item tag before it
+   will call a group installed, so a group stranded by a crash between the install commit and the
+   retract reports in-library — a state the retry does not skip. The migration got the tag-blind
+   path this needed: `GetStatusIgnoringCollectionItemTag` (`internal`, `InternalsVisibleTo`
+   `Apocrypha.DataModel.SchemaVersions`), called only from `_0002_NexusCollectionItem`.
 
-   Related smaller deferrals: enabled-group aborts leave uncurated partial state (A-3); download
-   rules committed in a detached second tx with no repair path (A-4); hash-mismatched curator
-   patches deploy the unpatched original with only a warning (A-5).
+   Two things that were not obvious going in, and that any future change here has to respect:
+
+   - **The tag check is "either attribute", not `Download`.** `_0002_`'s fallback branch backfills
+     `IsRequired` alone for pre-tag items it cannot match to a download, so a genuine legacy install
+     can carry `IsRequired` with no `Download`. Requiring the full tag would report every one of
+     those users' installed mods as merely in-library. A crash-stranded group carries *neither*
+     attribute, which separates the two cases exactly (`CollectionDownloader.HasCollectionItemTag`).
+   - **No recorded datastore can cover the migration.** Every committed legacy snapshot has zero
+     `NexusCollectionLoadoutGroup` entities (probed 2026-08-01 across all seven; the `Collections`
+     count in their verified stats is `CollectionGroup`, i.e. the user's own collection, not a Nexus
+     one), so "re-verify against a pre-`_0002_` recorded datastore" is not achievable as written.
+     `TheMigrationStillTagsEveryItemAfterTheStatusChange_S5_1` synthesises the pre-tag state from the
+     `AArchivedDatabaseTest` recording instead — strip the tags off a real installed collection, drive
+     `_0002_` directly, expect every item re-tagged — and it was confirmed to fail (orphaning items
+     into the fallback branch) when the migration is pointed back at tag-aware status.
+
+   Detection alone would only have converted "permanently stranded" into "a second group installed
+   beside the remains", so `InstallCollectionJob` now sweeps first: `RetractStrandedItemGroups`
+   removes groups under the collection group that are library-linked to one of its downloads and
+   carry no tag at all. Legacy half-tagged items are outside that set by construction.
+
+   **Deliberately not changed: `GetStatusObservable`.** The UI projection still keys on the parent
+   link alone, so it can briefly disagree with `GetStatus`. Adding the tag check there means the
+   observable must also *observe* the tag datom — it is written in a later transaction than the group
+   — or the UI would stall at "in library" through every normal standard-chain install. The harm
+   S5-1 describes is the install job skipping a stranded item, which is the static path; the
+   observable is worth revisiting only alongside a tag-datom subscription.
+
+   Related smaller deferrals, still open and not part of S5-1: enabled-group aborts leave uncurated
+   partial state (A-3); download rules committed in a detached second tx with no repair path (A-4);
+   hash-mismatched curator patches deploy the unpatched original with only a warning (A-5).
 
 7. **Sort-order creation race (B-3)** — `GetOrCreateSortOrderFor` is check-then-create;
    the seeder can race `SortOrderManager`'s CollectionGroup subscription into duplicate

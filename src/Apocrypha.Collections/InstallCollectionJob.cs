@@ -86,6 +86,17 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         Logger.LogInformation("Starting installation of `{CollectionName}/{RevisionNumber}`", RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
 
         var g = Group.Convert(static x => x.AsCollectionGroup());
+
+        // Clear anything a previous attempt left half-installed before deciding what to skip (S5-1).
+        // A crash between an item's group commit and its tagging transaction leaves a deployed but
+        // unclaimed group; status now reports it as in-library so this run does retry it, but without
+        // removing the remains the retry would simply install a second group beside them.
+        if (g.HasValue)
+        {
+            var swept = await CollectionDownloader.RetractStrandedItemGroups(Connection, Items, g.Value);
+            if (swept.Length > 0) Logger.LogWarning("Removed `{Count}` partially installed items left behind by an interrupted install of `{CollectionName}/{RevisionNumber}`; they will be reinstalled", swept.Length, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+        }
+
         var items = Items
             .Where(item => !CollectionDownloader.GetStatus(item, g, Connection.Db).IsInstalled(out _))
             .ToArray();
