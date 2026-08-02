@@ -276,10 +276,15 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     fail with `first difference at 3145728` (= the truncation point) and an 11 MB file — the
     precise stale-prefix corruption signature this item feared, proving the tests detect it.
     With the branch intact both pass deterministically, so the reset logic is correct for these
-    shapes. The original load-provoked one-time failure remains unexplained (it may have been a
-    shape these tests still don't model, e.g. a mid-body pause/resume), so the #103 test keeps
-    its evidence-carrying assertion and stays un-quarantined; any future red now has two
-    deterministic siblings to triangulate against.
+    shapes. **The mechanism is now CONFIRMED (2026-08-02, same day):** the new deterministic test
+    failed once in CI with the exact stale-prefix signature, and the race is in
+    `StreamProgressWrapper`'s constructor — the progress timer starts with `dueTime: Zero`
+    *before* the byte counters are initialized from the stream position, so a pool-thread tick
+    winning the race reports `Size.Zero`, the download job persists that as
+    `TotalBytesDownloaded`, and the 200-with-partial-progress reset never engages. Fixed by
+    initializing the counters before creating the timer; verified 15/15 full-suite runs green
+    under 24-thread CPU load. The #103 test keeps its evidence-carrying assertion, and the
+    deterministic siblings did exactly the triangulation this entry hoped for.
 
 20. **Nexus GraphQL client error handling** — thirteen `// TODO: handle errors` sites
     across `NexusModsLibrary`/`RunUpdateCheck`/`NexusApiClient` are one systemic theme:
