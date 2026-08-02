@@ -1,0 +1,79 @@
+name: Nightly Networking Tests
+
+# The lane for the ~40 RequiresNetworking tests that the hermetic CI filter skips everywhere
+# (docs/CODE_REVIEW_TODO.md item 1). They download real mods from Nexus, so they need a real
+# NEXUS_API_KEY — provided as a Gitea repository secret, which is exactly what a self-hosted
+# runner makes safe. This lane is scheduled and manually dispatchable, never PR-blocking:
+# external-service reds mean "Nexus changed something / was down", not "your change broke it".
+#
+# Deliberate exclusions:
+#   - CollectionInstallTests: not an account-level problem (the account is premium) but a
+#     CI-hostility one — its ACyberpunkIsolatedGameTest harness starts hosted services whose
+#     protocol-handler registration writes REAL desktop handler files, and this runner executes
+#     on the maintainer's actual machines. The XDG isolation lesson in CLAUDE.md exists because
+#     that clobbering happened once.
+#   - FlakeyTest stays excluded like everywhere else.
+#
+# If the runner is offline at the scheduled time (the machines are not 24/7), Gitea holds the
+# task until a runner reconnects; the concurrency group lets a newer nightly supersede a stale
+# queued one.
+
+on:
+  schedule:
+    # 22:30 UTC = evening on the runner boxes, which are usually on then. A queued run
+    # survives the box being off and executes on next runner contact.
+    - cron: "30 22 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-networking
+  cancel-in-progress: true
+
+jobs:
+  networking-tests:
+    name: Networking Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          lfs: true
+
+      - name: Setup .NET 9.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Test (networking)
+        env:
+          NEXUS_API_KEY: ${{ secrets.NEXUS_API_KEY }}
+          # Quoted deliberately — see ci.yaml: act drops steps with non-string env values.
+          VSTEST_TESTHOST_SHUTDOWN_TIMEOUT: "60000"
+        run: |
+          if [ -z "$NEXUS_API_KEY" ]; then
+            echo "::error::NEXUS_API_KEY secret is not configured - add it under repository settings > Actions > Secrets"
+            exit 1
+          fi
+          dotnet test --no-restore --verbosity normal \
+            --filter "RequiresNetworking=True&FlakeyTest!=True&FullyQualifiedName!~CollectionInstallTests" \
+            --blame-hang-timeout 30m \
+            --logger "trx;LogFilePrefix=results" \
+            --results-directory "$GITHUB_WORKSPACE/TestResults"
+
+      # Same silent-skip guard as ci.yaml, trx-only: the TUnit projects contain no
+      # RequiresNetworking tests, so demanding Testing-Platform logs here would false-fail.
+      - name: Verify tests actually ran
+        run: |
+          trx=$(find "$GITHUB_WORKSPACE/TestResults" -name '*.trx' 2>/dev/null | wc -l)
+          echo "VSTest .trx files: $trx"
+          if [ "$trx" -eq 0 ]; then
+            echo "::error::No .trx results were produced - the networking tests did not execute"
+            exit 1
+          fi
