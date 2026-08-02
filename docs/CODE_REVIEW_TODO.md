@@ -39,10 +39,15 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    queued until a runner is online if the boxes are off) and on manual dispatch, never
    PR-blocking, with `NEXUS_API_KEY` as a Gitea repository secret. `CollectionInstallTests`
    stays excluded — not for account level (the account is premium) but because its
-   `ACyberpunkIsolatedGameTest` harness registers real protocol handlers, and the runner
-   executes on the maintainer's actual machines (the CLAUDE.md XDG-isolation lesson). That
-   exclusion is this item's remaining tail, along with the offline `InstallCollectionJob` gap
-   above.
+   `ACyberpunkIsolatedGameTest` harness registers real protocol handlers. **Validation run 112
+   (2026-08-02) widened that exclusion**: the Fallout4 and SkyrimSE `CollectionTests` classes
+   ride the same `AIsolatedGameTest` family and fail in the job container on missing
+   `xdg-settings`/`update-desktop-database` (harmless there, but noise; on a bare runner they
+   would write real handler files). Run 112 also flushed out four Stardew Valley diagnostic
+   snapshots that had never run since the fork stripped `mtm_source` tracking parameters from
+   Nexus links — re-accepted, the received text is the fork's own telemetry removal, not live
+   drift. Remaining tail: the three excluded isolated-game classes and the offline
+   `InstallCollectionJob` gap above.
 
 2. **At-rest secrets → OS keyring** (`JWTToken.cs`) — Nexus OAuth refresh token, API key,
    mod.io key, and Steam auth data are plaintext in the datastore/configs. Needs a design
