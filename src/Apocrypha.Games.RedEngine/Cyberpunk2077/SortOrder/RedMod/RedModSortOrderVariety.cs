@@ -14,10 +14,10 @@ using OneOf;
 namespace Apocrypha.Games.RedEngine.Cyberpunk2077.SortOrder;
 
 public class RedModSortOrderVariety : ASortOrderVariety<
-    SortItemKey<string>, 
-    RedModReactiveSortItem, 
-    SortItemLoadoutData<SortItemKey<string>>, 
-    SortItemData<SortItemKey<string>> >
+    SortItemKey<string>,
+    RedModReactiveSortItem,
+    RedModSortItemLoadoutData,
+    RedModSortItemData>
 {
     private static readonly SortOrderVarietyId StaticVarietyId = SortOrderVarietyId.From(new Guid("9120C6F5-E0DD-4AD2-A99E-836F56796950"));
     
@@ -89,28 +89,29 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         var result = RedModExtensions.ObserveRedModSortOrder(Connection, sortOrderId, loadoutId)
             .Transform(row =>
                 {
+                    var folderName = RelativePath.FromUnsanitizedInput(row.FolderName);
                     var model = new RedModReactiveSortItem(
                         row.SortIndex,
-                        RelativePath.FromUnsanitizedInput(row.FolderName),
+                        folderName,
                         modName: row.ModName ?? row.FolderName,
                         isActive: row.IsEnabled ?? false
                     );
 
                     if (row.ModGroupId == null) return model;
-                    
+
                     model.ModGroupId = LoadoutItemGroupId.From(row.ModGroupId.Value);
-                    var loadoutData = new SortItemLoadoutData<SortItemKey<string>>(
-                        model.Key,
+                    var loadoutData = new RedModSortItemLoadoutData(
+                        folderName,
                         model.IsActive,
                         model.ModName,
                         model.ModGroupId
                     );
                     model.LoadoutData = loadoutData;
-                    
+
                     return model;
                 }
             );
-        
+
         return result;
     }
 
@@ -133,11 +134,12 @@ public class RedModSortOrderVariety : ASortOrderVariety<
         // TODO: Consider showing items that are missing loadout data instead.
         var reconciled = Reconcile(sortingData, loadoutData);
 
+        // Display casing comes from the loadout, never from the folded key.
         return reconciled.Select(tuple =>
             {
                 return new RedModReactiveSortItem(
                     tuple.SortedEntry.SortIndex,
-                    RelativePath.FromUnsanitizedInput(tuple.SortedEntry.Key.Key),
+                    tuple.ItemLoadoutData.RedModFolderName,
                     tuple.ItemLoadoutData.ModName,
                     tuple.ItemLoadoutData.IsEnabled
                 )
@@ -152,78 +154,72 @@ public class RedModSortOrderVariety : ASortOrderVariety<
     /// <summary>
     /// Method to get the order to pass to REDMod tool.
     /// </summary>
+    /// <remarks>
+    /// Returns folder names in display casing (<see cref="RedModReactiveSortItem.RedModFolderName"/>):
+    /// modlist.txt is a display-casing contract, and redmod rejects entries whose casing does not
+    /// match the deployed folder on case-sensitive setups ("Non-existant mod selected").
+    /// </remarks>
     public IReadOnlyList<string> GetRedModOrder(LoadoutId loadoutId, Optional<CollectionGroupId> collectionGroupId, IDb? db = null)
     {
         var parentEntity = collectionGroupId.HasValue
             ? OneOf<LoadoutId, CollectionGroupId>.FromT1(collectionGroupId.Value)
             : OneOf<LoadoutId, CollectionGroupId>.FromT0(loadoutId);
-        
+
         var sortOrderId = GetSortOrderIdFor(parentEntity, db);
         if (sortOrderId.HasValue)
         {
             // Return the reconciled order as list of redmod folder names, excluding disabled items
             return GetSortOrderItems(sortOrderId.Value, db)
-                .Where(item => item.LoadoutData?.IsEnabled == true) 
-                .Select(item => item.Key.Key)
+                .Where(item => item.LoadoutData?.IsEnabled == true)
+                .Select(item => item.RedModFolderName.ToString())
                 .ToList();
         }
-        
+
         // There is no SortOrder for this loadout/collection in this Db revision,
         // so we just return the RedMods in the loadout, sorted by ModGroupId and FolderName
         var loadoutData = RetrieveLoadoutData(loadoutId, collectionGroupId, db);
-            
+
         var reconciled = Reconcile([], loadoutData);
 
-        var result = reconciled.Select(tuple =>
-            {
-                return new RedModReactiveSortItem(
-                    tuple.SortedEntry.SortIndex,
-                    RelativePath.FromUnsanitizedInput(tuple.SortedEntry.Key.Key),
-                    tuple.ItemLoadoutData.ModName,
-                    tuple.ItemLoadoutData.IsEnabled
-                )
-                {
-                    ModGroupId = tuple.ItemLoadoutData.ModGroupId,
-                    LoadoutData = tuple.ItemLoadoutData,
-                };
-            }
-        ).ToList();
-            
         // Return the list of redmod folder names, excluding disabled items
-        return result
-            .Where(item => item.LoadoutData?.IsEnabled == true)
-            .Select(item => item.Key.Key)
+        return reconciled
+            .Where(tuple => tuple.ItemLoadoutData.IsEnabled)
+            .Select(tuple => tuple.ItemLoadoutData.RedModFolderName.ToString())
             .ToList();
     }
 
     protected override void PersistSortOrderCore(
         SortOrderId sortOrderId,
-        IReadOnlyList<SortItemData<SortItemKey<string>>> newOrder,
+        IReadOnlyList<RedModSortItemData> newOrder,
         ITransaction tx,
         IDb startingDb,
         CancellationToken token = default)
     {
         var persistentSortOrderEntries = startingDb.RetrieveRedModSortableEntries(sortOrderId);
-        
+
         token.ThrowIfCancellationRequested();
-        
-        // Remove outdated persistent items. Matching folds case via MakeKey -- a reinstalled
-        // archive can legitimately re-case the folder, and a case-variant miss here deletes
-        // and re-inserts the row, silently resetting the user's position for that mod.
+
+        var newIndexByKey = new Dictionary<SortItemKey<string>, int>(newOrder.Count);
+        for (var i = 0; i < newOrder.Count; i++)
+        {
+            newIndexByKey.TryAdd(newOrder[i].Key, i);
+        }
+
+        // Remove outdated persistent items, update the index of the ones that remain. Matching
+        // folds case via MakeKey -- a reinstalled archive can legitimately re-case the folder,
+        // and a case-variant miss here deletes and re-inserts the row, silently resetting the
+        // user's position for that mod. Case-variant duplicate rows fold onto one key, so the
+        // first row wins and the shadowed duplicate is deleted.
+        var persistedKeys = new HashSet<SortItemKey<string>>(persistentSortOrderEntries.Length);
         foreach (var dbItem in persistentSortOrderEntries)
         {
-            var newItem = newOrder.FirstOrOptional(
-                newItem => newItem.Key.Equals(RedModReactiveSortItem.MakeKey(dbItem.RedModFolderName))
-            );
-
-            if (!newItem.HasValue)
+            var key = RedModReactiveSortItem.MakeKey(dbItem.RedModFolderName);
+            if (!newIndexByKey.TryGetValue(key, out var liveIdx) || !persistedKeys.Add(key))
             {
                 tx.Delete(dbItem, recursive: false);
                 continue;
             }
 
-            var liveIdx = newOrder.IndexOf(newItem.Value);
-            
             // Update existing items
             if (dbItem.AsSortOrderItem().SortIndex != liveIdx)
             {
@@ -231,11 +227,12 @@ public class RedModSortOrderVariety : ASortOrderVariety<
             }
         }
 
-        // Add new items
+        // Add new items, persisting display casing -- RedModFolderName is what modlist.txt is
+        // built from and must never carry the folded key.
         for (var i = 0; i < newOrder.Count; i++)
         {
             var newItem = newOrder[i];
-            if (persistentSortOrderEntries.Any(si => RedModReactiveSortItem.MakeKey(si.RedModFolderName).Equals(newItem.Key)))
+            if (persistedKeys.Contains(newItem.Key))
                 continue;
 
             var newDbItem = new SortOrderItem.New(tx)
@@ -247,66 +244,73 @@ public class RedModSortOrderVariety : ASortOrderVariety<
             _ = new RedModSortOrderItem.New(tx, newDbItem)
             {
                 SortOrderItem = newDbItem,
-                RedModFolderName = newItem.Key.Key,
+                RedModFolderName = newItem.RedModFolderName,
             };
         }
 
         token.ThrowIfCancellationRequested();
     }
-    
+
     /// <inheritdoc />
-    protected override IReadOnlyList<SortItemData<SortItemKey<string>>> RetrieveSortOrder(SortOrderId sortOrderEntityId, IDb dbToUse)
+    protected override IReadOnlyList<RedModSortItemData> RetrieveSortOrder(SortOrderId sortOrderEntityId, IDb dbToUse)
     {
         return RedModExtensions.RetrieveRedModSortOrderItems(dbToUse, sortOrderEntityId);
     }
-    
+
     /// <inheritdoc />
-    protected override IReadOnlyList<SortItemLoadoutData<SortItemKey<string>>> RetrieveLoadoutData(LoadoutId loadoutId, DynamicData.Kernel.Optional<CollectionGroupId> collectionGroupId, IDb? db)
+    protected override IReadOnlyList<RedModSortItemLoadoutData> RetrieveLoadoutData(LoadoutId loadoutId, DynamicData.Kernel.Optional<CollectionGroupId> collectionGroupId, IDb? db)
     {
         var dbToUse = db ?? Connection.Db;
-        
+
         // TODO: Move query somewhere else
         // TODO: Update ranking logic to use better criteria than most recently created ModGroupId
         var result = RedModExtensions.RetrieveWinningRedModsInLoadout(dbToUse, loadoutId)
-        .Select(row => new SortItemLoadoutData<SortItemKey<string>>(
-            new SortItemKey<string>(row.FolderName),
+        .Select(row => new RedModSortItemLoadoutData(
+            RelativePath.FromUnsanitizedInput(row.FolderName),
             row.IsEnabled,
             row.ModName,
             row.ModGroupId == 0 ? DynamicData.Kernel.Optional<LoadoutItemGroupId>.None : LoadoutItemGroupId.From(row.Item4)
         ))
         .ToList();
-        
+
         return result;
     }
 
     /// <inheritdoc />
-    protected override IReadOnlyList<(SortItemData<SortItemKey<string>> SortedEntry, SortItemLoadoutData<SortItemKey<string>> ItemLoadoutData)> Reconcile(
-        IReadOnlyList<SortItemData<SortItemKey<string>>> sourceSortedEntries, 
-        IReadOnlyList<SortItemLoadoutData<SortItemKey<string>>> loadoutDataItems)
+    protected override IReadOnlyList<(RedModSortItemData SortedEntry, RedModSortItemLoadoutData ItemLoadoutData)> Reconcile(
+        IReadOnlyList<RedModSortItemData> sourceSortedEntries,
+        IReadOnlyList<RedModSortItemLoadoutData> loadoutDataItems)
     {
-        var loadoutItemsDict = loadoutDataItems.ToDictionary(item => item.Key);
-    
-        // Start with a copy of source items
-        var results = new List<(SortItemData<SortItemKey<string>> SortedEntry, SortItemLoadoutData<SortItemKey<string>> ItemLoadoutData)>(sourceSortedEntries.Count);
-        var processedKeys = new HashSet<SortItemKey<string>>(sourceSortedEntries.Count);
+        // TryAdd, not ToDictionary: with folded keys two case-variant folders in the loadout
+        // collapse onto one key, and ToDictionary would throw on the duplicate.
+        var loadoutItemsDict = new Dictionary<SortItemKey<string>, RedModSortItemLoadoutData>(loadoutDataItems.Count);
+        foreach (var item in loadoutDataItems)
+        {
+            loadoutItemsDict.TryAdd(item.Key, item);
+        }
 
+        // Start with a copy of source items
+        var results = new List<(RedModSortItemData SortedEntry, RedModSortItemLoadoutData ItemLoadoutData)>(sourceSortedEntries.Count);
+        var processedKeys = new HashSet<SortItemKey<string>>(sourceSortedEntries.Count);
 
         foreach (var sortedEntry in sourceSortedEntries)
         {
             // No matching loadout data, skip this entry
             if (!loadoutItemsDict.TryGetValue(sortedEntry.Key, out var loadoutItemData))
                 continue;
-            
-            processedKeys.Add(sortedEntry.Key);
+
+            // Folded case-variant duplicates keep the first entry only
+            if (!processedKeys.Add(sortedEntry.Key))
+                continue;
 
             // Create sort item data from sorted entry and loadout data
             results.Add((sortedEntry, loadoutItemData));
         }
-    
+
         // Add any remaining loadout items that were not in the source sorted entries
         var itemsToAdd = loadoutItemsDict.Values
             .Where(item => !processedKeys.Contains(item.Key))
-            .Order(Comparer<SortItemLoadoutData<SortItemKey<string>>>.Create((a, b) =>
+            .Order(Comparer<RedModSortItemLoadoutData>.Create((a, b) =>
             {
                 // Sort by ModGroupId descending (newer items in first position), then by Key ascending
                 return (a, b) switch
@@ -319,22 +323,22 @@ public class RedModSortOrderVariety : ASortOrderVariety<
                     (a: { ModGroupId: { HasValue: false } }, b: { ModGroupId: { HasValue: false } }) => string.Compare(a.Key.Key, b.Key.Key, StringComparison.OrdinalIgnoreCase),
                 };
 
-            })) 
+            }))
             .Select(loadoutItemData => (
-                new SortItemData<SortItemKey<string>>(loadoutItemData.Key, 0), // SortIndex will be updated later
+                new RedModSortItemData(loadoutItemData.RedModFolderName, 0), // SortIndex will be updated later
                 loadoutItemData
             ));
 
         // Insert new items at the start, sorted by newest creation order (ModGroupId)
         // For cyberpunk RedMods, lower index wins, so we add new items at the start
         results.InsertRange(0, itemsToAdd);
-    
+
         // Update sort indices
         for (var i = 0; i < results.Count; i++)
         {
             results[i].SortedEntry.SortIndex = i;
         }
-    
+
         return results;
     }
 }
