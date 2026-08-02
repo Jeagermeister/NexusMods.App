@@ -1,7 +1,7 @@
 ﻿{
   Name: Issue-2608.rocksdb.zip,
   OldId: 1,
-  NewId: 9,
+  NewId: 10,
   Loadouts: 1,
   LoadoutItemGroups: 1,
   Collections: 1,

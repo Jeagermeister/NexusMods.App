@@ -21,7 +21,8 @@ public static class Services
             .AddMigration<_0006_DirectDownload>()
             .AddMigration<_0007_AddSortOrderParentEntity>()
             .AddMigration<_0008_AddCollectionId>()
-            .AddMigration<_0009_AddLoadoutItemGroupPriority>();
+            .AddMigration<_0009_AddLoadoutItemGroupPriority>()
+            .AddMigration<_0010_FixCollectionTargetPaths>();
     }
 
     /// <summary>
