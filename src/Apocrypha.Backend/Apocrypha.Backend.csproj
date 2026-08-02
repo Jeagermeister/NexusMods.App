@@ -20,6 +20,7 @@
     
     <ItemGroup>
         <EmbeddedResource Include="../Apocrypha.App/io.github.jeagermeister.apocrypha.desktop" />
+        <EmbeddedResource Include="../Apocrypha.App/apocrypha.*.png" />
     </ItemGroup>
 
     <ItemGroup>
