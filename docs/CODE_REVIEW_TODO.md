@@ -150,11 +150,16 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    now names the consequence) rather than something the UI can show. Threading a warnings
    channel out of that job is its own PR, and it is the same theme as A-5 (see item 6).
 
-8. **MyGames fallback for xdg-less Linux (B-4)** — FO4/SSE silently fail to register when
-   `KnownPath.MyGamesDirectory` cannot resolve (no `~/Documents`). Module-local
-   `MyGamesOrFallback` helper, created lazily at first write; do NOT push the fallback into
-   the shared FileSystem (Proton-prefix redirection must keep its semantics). Small
-   standalone PR.
+8. ~~**MyGames fallback for xdg-less Linux (B-4)**~~ — **FIXED.** `KnownPaths.MyGamesOrFallback`
+   guards the FO4/SSE `GetLocations` Preferences line. The mechanism differed from the finding:
+   `GetKnownPath` does not throw — .NET resolves `MyDocuments` to `""` when `~/Documents` does
+   not *exist*, NexusMods.Paths hands back relative junk (`'My Games'`, `HasKnownPath` still
+   true), and the first `/` combine throws inside `GameRegistry`'s per-game catch. The guard is
+   `PathHelpers.IsRooted` on the resolved value; fallback `$HOME/Documents/My Games` (identical
+   to a healthy resolution, so no drift if `~/Documents` appears later); nothing created eagerly;
+   deliberately module-local so Proton-prefix overlay FileSystems keep their redirection (rooted
+   → returned unchanged, covered by test). The adjacent AppData line has the same theoretical
+   shape but a box without `~/.local/share` cannot run the app at all — left alone on purpose.
 
 9. **Deploy/delete casing split (C-3)** — `DiskStateEntry` records the loadout-declared
    path while extraction writes through `CaseCanonicalizer`; deletion resolves literally,
