@@ -357,7 +357,7 @@ public class CollectionDownloader
             .Prepend(new CollectionDownloadStatus.Bundled());
     }
 
-    private static CollectionDownloadStatus GetStatus(CollectionDownloadNexusMods.ReadOnly download, Optional<CollectionGroup.ReadOnly> collectionGroup, IDb db)
+    private static CollectionDownloadStatus GetStatus(CollectionDownloadNexusMods.ReadOnly download, Optional<CollectionGroup.ReadOnly> collectionGroup, IDb db, bool requireCollectionItemTag)
     {
         var datoms = db.Datoms(NexusModsLibraryItem.FileMetadata, download.FileMetadata);
         if (datoms.Count == 0) return new CollectionDownloadStatus.NotDownloaded();
@@ -370,7 +370,7 @@ public class CollectionDownloader
         }
 
         if (!libraryItem.IsValid()) return new CollectionDownloadStatus.NotDownloaded();
-        return GetStatus(libraryItem.AsLibraryItem(), collectionGroup, db);
+        return GetStatus(libraryItem.AsLibraryItem(), collectionGroup, db, requireCollectionItemTag);
     }
 
     private IObservable<CollectionDownloadStatus> GetStatusObservable(
@@ -392,7 +392,7 @@ public class CollectionDownloader
             });
     }
 
-    private static CollectionDownloadStatus GetStatus(CollectionDownloadExternal.ReadOnly download, Optional<CollectionGroup.ReadOnly> collectionGroup, IDb db)
+    private static CollectionDownloadStatus GetStatus(CollectionDownloadExternal.ReadOnly download, Optional<CollectionGroup.ReadOnly> collectionGroup, IDb db, bool requireCollectionItemTag)
     {
         var datoms = db.Datoms(LibraryFile.Md5, download.Md5);
         if (datoms.Count == 0) return new CollectionDownloadStatus.NotDownloaded();
@@ -400,7 +400,7 @@ public class CollectionDownloader
         foreach (var datom in datoms)
         {
             var libraryFile = DirectDownloadLibraryFile.Load(db, datom.E).AsLocalFile().AsLibraryFile();
-            if (libraryFile.IsValid()) return GetStatus(libraryFile.AsLibraryItem(), collectionGroup, db);
+            if (libraryFile.IsValid()) return GetStatus(libraryFile.AsLibraryItem(), collectionGroup, db, requireCollectionItemTag);
         }
 
         return new CollectionDownloadStatus.NotDownloaded();
@@ -430,7 +430,8 @@ public class CollectionDownloader
     private static CollectionDownloadStatus GetStatus(
         LibraryItem.ReadOnly libraryItem,
         Optional<CollectionGroup.ReadOnly> collectionGroup,
-        IDb db)
+        IDb db,
+        bool requireCollectionItemTag)
     {
         if (!collectionGroup.HasValue) return new CollectionDownloadStatus.InLibrary(libraryItem);
 
@@ -445,10 +446,39 @@ public class CollectionDownloader
         {
             var loadoutItem = LoadoutItem.Load(db, entityId);
             if (!loadoutItem.IsValid()) continue;
+            if (requireCollectionItemTag && !HasCollectionItemTag(loadoutItem)) continue;
             return new CollectionDownloadStatus.Installed(loadoutItem);
         }
 
         return new CollectionDownloadStatus.InLibrary(libraryItem);
+    }
+
+    /// <summary>
+    /// Whether a loadout item under a collection group was ever claimed by the collection installer
+    /// (review finding S5-1, detection half).
+    ///
+    /// <para>
+    /// The standard installer chain commits the group first and only tags it as a
+    /// <see cref="NexusCollectionItemLoadoutGroup"/> in a follow-up transaction, so a crash in between
+    /// leaves a group that is installed and deployed but was never claimed. Treating that as installed
+    /// is what made the state permanent: the install job skips anything reporting installed, so no
+    /// retry could heal it.
+    /// </para>
+    ///
+    /// <para>
+    /// Presence of <em>either</em> tag attribute counts, deliberately. Migration
+    /// <c>_0002_NexusCollectionItem</c> backfills <see cref="NexusCollectionItemLoadoutGroup.IsRequired"/>
+    /// alone for pre-tag items it cannot match to a download ("set a default value and hope for the
+    /// best"), so a genuine legacy install can carry <c>IsRequired</c> without
+    /// <see cref="NexusCollectionItemLoadoutGroup.Download"/>. Requiring <c>Download</c> would report
+    /// every one of those users' installed mods as merely in-library. A group stranded by the crash
+    /// window above carries neither attribute, so "either" separates the two cases exactly.
+    /// </para>
+    /// </summary>
+    private static bool HasCollectionItemTag(LoadoutItem.ReadOnly loadoutItem)
+    {
+        return NexusCollectionItemLoadoutGroup.Download.IsIn(loadoutItem) ||
+               NexusCollectionItemLoadoutGroup.IsRequired.IsIn(loadoutItem);
     }
 
     private IObservable<CollectionDownloadStatus> GetStatusObservable(
@@ -528,19 +558,52 @@ public class CollectionDownloader
         Optional<CollectionGroup.ReadOnly> collectionGroup,
         IDb db)
     {
+        return GetStatus(download, collectionGroup, db, requireCollectionItemTag: true);
+    }
+
+    /// <summary>
+    /// Gets the status of a download, counting an untagged loadout item under the collection group as
+    /// installed.
+    ///
+    /// <para>
+    /// Exists for migration <c>_0002_NexusCollectionItem</c> only, which calls status to decide which
+    /// pre-tag loadout items to tag. Asking the tag-aware question there would find nothing installed,
+    /// tag nothing, and silently orphan every existing user's collection items on upgrade — the exact
+    /// reason the detection half of S5-1 could not be fixed in isolation. Nothing else should use this:
+    /// see <see cref="HasCollectionItemTag"/> for why an untagged group is a failed install, not a
+    /// healthy one.
+    /// </para>
+    /// </summary>
+    internal static CollectionDownloadStatus GetStatusIgnoringCollectionItemTag(
+        CollectionDownload.ReadOnly download,
+        Optional<CollectionGroup.ReadOnly> collectionGroup,
+        IDb db)
+    {
+        return GetStatus(download, collectionGroup, db, requireCollectionItemTag: false);
+    }
+
+    private static CollectionDownloadStatus GetStatus(
+        CollectionDownload.ReadOnly download,
+        Optional<CollectionGroup.ReadOnly> collectionGroup,
+        IDb db,
+        bool requireCollectionItemTag)
+    {
         if (download.TryGetAsCollectionDownloadBundled(out var bundled))
         {
+            // No tag check: a bundled group mints its BundleDownload reference and its
+            // NexusCollectionItemLoadoutGroup tag in the same transaction as the install, so it can
+            // never be found in the untagged state the check exists to catch.
             return GetStatus(bundled, collectionGroup, db);
         }
 
         if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
         {
-            return GetStatus(nexusModsDownload, collectionGroup, db);
+            return GetStatus(nexusModsDownload, collectionGroup, db, requireCollectionItemTag);
         }
 
         if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
         {
-            return GetStatus(externalDownload, collectionGroup, db);
+            return GetStatus(externalDownload, collectionGroup, db, requireCollectionItemTag);
         }
 
         throw new NotSupportedException();
@@ -587,6 +650,54 @@ public class CollectionDownloader
         using var tx = connection.BeginTransaction();
         tx.Delete(groupId, recursive: true);
         await tx.Commit();
+    }
+
+    /// <summary>
+    /// Sweeps up groups stranded by a crash rather than by a caught exception (review finding S5-1,
+    /// detection half), returning the ids that were removed.
+    ///
+    /// <para>
+    /// <see cref="RetractStrandedItemGroup"/> only runs when the install job catches the failure. Kill
+    /// the process between the group's commit and its tagging transaction and the compensating retract
+    /// never happens, leaving an installed, deployed, unclaimed group behind. Status now reports that
+    /// group as in-library so a retry no longer skips it — but a retry would install a second group
+    /// alongside the remains unless they are cleared first, which is what this does.
+    /// </para>
+    ///
+    /// <para>
+    /// Deliberately narrow: only groups parented to <paramref name="collectionGroup"/>, linked to a
+    /// library item one of <paramref name="downloads"/> resolves to, and carrying no
+    /// <see cref="NexusCollectionItemLoadoutGroup"/> attribute at all are touched. That is the exact
+    /// shape of the crash window; a legacy item half-tagged by migration <c>_0002_NexusCollectionItem</c>
+    /// keeps its <c>IsRequired</c> and is therefore never swept (see <see cref="HasCollectionItemTag"/>).
+    /// </para>
+    /// </summary>
+    public static async ValueTask<EntityId[]> RetractStrandedItemGroups(
+        IConnection connection,
+        IEnumerable<CollectionDownload.ReadOnly> downloads,
+        CollectionGroup.ReadOnly collectionGroup)
+    {
+        var db = connection.Db;
+        Optional<CollectionGroup.ReadOnly> group = collectionGroup;
+
+        var stranded = new HashSet<EntityId>();
+        foreach (var download in downloads)
+        {
+            if (!GetStatusIgnoringCollectionItemTag(download, group, db).IsInstalled(out var loadoutItem)) continue;
+            if (HasCollectionItemTag(loadoutItem)) continue;
+            stranded.Add(loadoutItem.Id);
+        }
+
+        if (stranded.Count == 0) return [];
+
+        using var tx = connection.BeginTransaction();
+        foreach (var id in stranded)
+        {
+            tx.Delete(id, recursive: true);
+        }
+
+        await tx.Commit();
+        return stranded.ToArray();
     }
 
     /// <summary>

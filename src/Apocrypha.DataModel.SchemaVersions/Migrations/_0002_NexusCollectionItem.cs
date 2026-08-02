@@ -26,8 +26,13 @@ internal class _0002_NexusCollectionItem : ITransactionalMigration
                     .Where(static loadoutItem => !NexusCollectionItemLoadoutGroup.IsRequired.IsIn(loadoutItem))
                     .ToDictionary(static item => item.Id, static item => item);
 
+                // Tag-blind on purpose: this migration exists to *add* the tag, so every item it has to
+                // find is untagged by definition. The ordinary tag-aware status would report all of them
+                // as merely in-library, tag nothing, and drop every item into the "hope for the best"
+                // branch below — silently orphaning the collection items of every user upgrading past
+                // this version. See CollectionDownloader.GetStatusIgnoringCollectionItemTag.
                 var downloadStatusArray = collectionGroup.Revision.Downloads
-                    .Select(download => new KeyValuePair<CollectionDownload.ReadOnly, CollectionDownloadStatus>(download, CollectionDownloader.GetStatus(download, collectionGroup.AsCollectionGroup(), db)))
+                    .Select(download => new KeyValuePair<CollectionDownload.ReadOnly, CollectionDownloadStatus>(download, CollectionDownloader.GetStatusIgnoringCollectionItemTag(download, collectionGroup.AsCollectionGroup(), db)))
                     .ToArray();
 
                 return new Data(collectionGroup, items, downloadStatusArray);

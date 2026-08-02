@@ -23,4 +23,10 @@
       <Compile Remove="Migrations\UpsertFingerprint.cs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <!-- Lets the collection-status tests drive _0002_NexusCollectionItem directly: no committed
+           legacy snapshot contains a Nexus collection, so the migration cannot be covered by one. -->
+      <InternalsVisibleTo Include="Apocrypha.DataModel.Tests" />
+    </ItemGroup>
+
 </Project>
