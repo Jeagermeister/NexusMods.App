@@ -226,23 +226,20 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     replacement) and completes waits from inside the subscription per this item's fix
     direction; the timeout is now only a failure backstop. `CancelledJobs_…` shared the
     plumbing and got the same treatment. Verified 12/12 green under 28 busy-loop CPU threads.
-19c. **Suspected `HttpDownloadJob` retry-path corruption — decision needed** — the hermetic
-    `DownloadsFromAServerThatDoesNotSupportRanges` test (added in #103) failed **once** in a
-    full-solution run with correct file size but wrong content, and did not reproduce in ~56
-    attempts including 50 downloads under deliberate CPU load, nor in any CI run since. Ruled out:
-    a missing flush (`StreamProgressWrapper` disposes its inner stream), and a server-side error
-    (nothing logged). That leaves the resilience-retry path as the leading suspect — specifically
-    the reset branch in `HttpDownloadJob.StartAsyncImpl` that handles a 200 response arriving for
-    a range request, which is the one path #103 deliberately did not cover because reaching it
-    needs a timing-dependent pause/resume cycle.
-
-    Why this is not just a flaky test: "correct size, wrong content" is the signature of a
-    **truncated download**, because the destination is pre-allocated to the advertised
-    Content-Length. If the retry path can leave a partially-written file that reports success, that
-    is silent mod corruption. The test is therefore deliberately **not** marked `FlakeyTest`; its
-    assertion now reports the first differing offset and any zero-tail length, so the next
-    occurrence carries its own evidence. **Decision: quarantine it, or invest in a deterministic
-    resume test (inject the retry rather than provoking it with load).**
+19c. ~~**Suspected `HttpDownloadJob` retry-path corruption**~~ — **the deterministic resume
+    tests are BUILT** (the decision this item asked for went to "invest", 2026-08-02). Two new
+    stateful `LocalHttpServer` endpoints abort the first GET per `?id=` after 3 MB of a
+    full-length 200 — a real retryable network failure with real partial progress — and then
+    serve the full body: one without ranges (plain-GET reset shape) and one that advertises
+    ranges but answers the retry's valid Range request with 200 (the exact suspect branch this
+    item could never reach). Both tests were **falsified against a neutered reset branch**: they
+    fail with `first difference at 3145728` (= the truncation point) and an 11 MB file — the
+    precise stale-prefix corruption signature this item feared, proving the tests detect it.
+    With the branch intact both pass deterministically, so the reset logic is correct for these
+    shapes. The original load-provoked one-time failure remains unexplained (it may have been a
+    shape these tests still don't model, e.g. a mid-body pause/resume), so the #103 test keeps
+    its evidence-carrying assertion and stays un-quarantined; any future red now has two
+    deterministic siblings to triangulate against.
 
 20. **Nexus GraphQL client error handling** — thirteen `// TODO: handle errors` sites
     across `NexusModsLibrary`/`RunUpdateCheck`/`NexusApiClient` are one systemic theme:

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -16,6 +17,28 @@ public class LocalHttpServer : IDisposable
 
     /// <summary>Serves <see cref="LargeData"/> as a server that cannot resume.</summary>
     public const string PayloadWithoutRanges = "/payload-no-ranges";
+
+    /// <summary>
+    /// No ranges, and the FIRST GET per <c>?id=</c> aborts the connection after
+    /// <see cref="TruncateAt"/> bytes of a full-length 200. The retry's plain GET then gets the
+    /// whole body — deterministically forcing the 200-with-partial-progress reset in
+    /// <c>HttpDownloadJob</c>.
+    /// </summary>
+    public const string PayloadTruncatedOnce = "/payload-truncated-once";
+
+    /// <summary>
+    /// Advertises ranges, aborts the first GET per <c>?id=</c> like
+    /// <see cref="PayloadTruncatedOnce"/>, then IGNORES the retry's Range header and answers 200
+    /// with the full body — the misbehaving-server shape behind the ledger's 19c suspicion.
+    /// </summary>
+    public const string PayloadRangeIgnored = "/payload-range-ignored";
+
+    /// <summary>Bytes served before the deliberate abort on the truncating endpoints.</summary>
+    public const int TruncateAt = 3 * MB;
+
+    // Keyed by the request's `id` query value so concurrent tests cannot see each other's state
+    // on this assembly-wide singleton.
+    private readonly ConcurrentDictionary<string, int> _getCounts = new();
 
     private readonly ILogger<LocalHttpServer> _logger;
     private readonly HttpListener _listener;
@@ -105,7 +128,9 @@ public class LocalHttpServer : IDisposable
             return;
         }
 
-        switch (context.Request.Url?.PathAndQuery)
+        // AbsolutePath, not PathAndQuery: the truncating endpoints carry an `?id=` for state
+        // isolation, and no other endpoint uses a query string.
+        switch (context.Request.Url?.AbsolutePath)
         {
             case "/hello":
             {
@@ -127,6 +152,12 @@ public class LocalHttpServer : IDisposable
                 break;
             case PayloadWithoutRanges:
                 await ServeLargeData(resp, context.Request, acceptRanges: false);
+                break;
+            case PayloadTruncatedOnce:
+                await ServeTruncatedOnce(resp, context.Request, acceptRanges: false);
+                break;
+            case PayloadRangeIgnored:
+                await ServeTruncatedOnce(resp, context.Request, acceptRanges: true);
                 break;
             case "/reliable":
                 await HandleUnreliable(resp, context.Request, false);
@@ -186,6 +217,46 @@ public class LocalHttpServer : IDisposable
         }
 
         await SendContent(resp, new MemoryStream(data), rangeValue);
+    }
+
+    /// <summary>
+    /// The deterministic 19c endpoints. HEAD advertises the full length (and ranges when
+    /// <paramref name="acceptRanges"/>); the first GET per <c>?id=</c> answers 200 with the full
+    /// Content-Length, writes <see cref="TruncateAt"/> bytes and aborts the connection, which the
+    /// client sees as an HttpIOException mid-copy — a retryable network failure with real partial
+    /// progress on disk. Every later GET answers 200 with the entire body, Range header or not:
+    /// with ranges advertised that retry GET carries a valid Range header, so a 200 there is
+    /// exactly the "server ignored a valid range request" reset branch.
+    /// </summary>
+    private async Task ServeTruncatedOnce(HttpListenerResponse resp, HttpListenerRequest request, bool acceptRanges)
+    {
+        var data = LargeData;
+        var stateKey = $"{request.Url!.AbsolutePath}|{request.QueryString.Get("id") ?? "none"}";
+
+        resp.ProtocolVersion = HttpVersion.Version11;
+        resp.Headers.Add(HttpResponseHeader.ContentType, "application/octet-stream");
+        if (acceptRanges) resp.Headers.Add(HttpResponseHeader.AcceptRanges, "bytes");
+
+        resp.StatusCode = (int)HttpStatusCode.OK;
+        resp.StatusDescription = "OK";
+        resp.ContentLength64 = data.Length;
+
+        if (request.HttpMethod == "HEAD")
+        {
+            await using var _ = resp.OutputStream;
+            return;
+        }
+
+        var attempt = _getCounts.AddOrUpdate(stateKey, 1, static (_, count) => count + 1);
+        if (attempt == 1)
+        {
+            await resp.OutputStream.WriteAsync(data.AsMemory(0, TruncateAt));
+            resp.Abort();
+            return;
+        }
+
+        await using var ros = resp.OutputStream;
+        await ros.WriteAsync(data);
     }
 
     private async Task ServeResource(HttpListenerResponse resp, HttpListenerRequest request)
