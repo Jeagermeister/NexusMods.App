@@ -16,4 +16,10 @@
       <EmbeddedResource Include="default-collection-image.webp" />
     </ItemGroup>
 
+    <ItemGroup>
+      <!-- Migration _0002_NexusCollectionItem needs the tag-blind status overload (S5-1). -->
+      <InternalsVisibleTo Include="Apocrypha.DataModel.SchemaVersions" />
+      <InternalsVisibleTo Include="Apocrypha.DataModel.Tests" />
+    </ItemGroup>
+
 </Project>
