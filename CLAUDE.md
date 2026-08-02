@@ -30,7 +30,10 @@ change. macOS is intentionally unsupported.
 
 The test filter is `RequiresNetworking!=True&FlakeyTest!=True`, so network-bound suites are
 skipped in CI and locally alike — don't be surprised by the ~64 local failures when
-`NEXUS_API_KEY` is unset.
+`NEXUS_API_KEY` is unset. The network-bound remainder runs in
+`.gitea/workflows/nightly-networking.yaml` (scheduled + manual dispatch, never PR-blocking,
+`NEXUS_API_KEY` from a Gitea repo secret, `CollectionInstallTests` excluded as CI-hostile) —
+a red there means "Nexus-side change or outage" until proven otherwise, not a broken PR.
 
 ## Branch and PR rules
 

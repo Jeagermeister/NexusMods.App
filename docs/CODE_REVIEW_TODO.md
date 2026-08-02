@@ -32,9 +32,17 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
    not contain (that test mutates the recording to build one — see item 6).
 
    Still uncovered offline: the install *job* itself (`InstallCollectionJob`), which needs the
-   archive-parsing and download entities a recording alone does not supply. The standing
-   alternatives for the network-bound remainder: quarantine behind an explicit category, or a
-   self-hosted lane with a `NEXUS_API_KEY`.
+   archive-parsing and download entities a recording alone does not supply.
+
+   **DECIDED + BUILT (2026-08-02): the self-hosted lane.** `.gitea/workflows/
+   nightly-networking.yaml` runs `RequiresNetworking=True&FlakeyTest!=True` nightly (22:30 UTC,
+   queued until a runner is online if the boxes are off) and on manual dispatch, never
+   PR-blocking, with `NEXUS_API_KEY` as a Gitea repository secret. `CollectionInstallTests`
+   stays excluded — not for account level (the account is premium) but because its
+   `ACyberpunkIsolatedGameTest` harness registers real protocol handlers, and the runner
+   executes on the maintainer's actual machines (the CLAUDE.md XDG-isolation lesson). That
+   exclusion is this item's remaining tail, along with the offline `InstallCollectionJob` gap
+   above.
 
 2. **At-rest secrets → OS keyring** (`JWTToken.cs`) — Nexus OAuth refresh token, API key,
    mod.io key, and Steam auth data are plaintext in the datastore/configs. Needs a design
