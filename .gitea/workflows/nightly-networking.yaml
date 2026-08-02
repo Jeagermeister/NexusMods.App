@@ -7,11 +7,12 @@ name: Nightly Networking Tests
 # external-service reds mean "Nexus changed something / was down", not "your change broke it".
 #
 # Deliberate exclusions:
-#   - CollectionInstallTests: not an account-level problem (the account is premium) but a
-#     CI-hostility one — its ACyberpunkIsolatedGameTest harness starts hosted services whose
-#     protocol-handler registration writes REAL desktop handler files, and this runner executes
-#     on the maintainer's actual machines. The XDG isolation lesson in CLAUDE.md exists because
-#     that clobbering happened once.
+#   - CollectionInstallTests (Cyberpunk) AND the Fallout4/SkyrimSE CollectionTests classes:
+#     all three ride AIsolatedGameTest-family harnesses that start hosted services whose
+#     protocol-handler registration shells out to xdg-settings/update-desktop-database. In the
+#     act_runner job container those binaries do not exist, so the tests fail on environment
+#     rather than on anything real (proven by validation run 112); on a bare runner they would
+#     write REAL desktop handler files — the XDG isolation lesson in CLAUDE.md.
 #   - FlakeyTest stays excluded like everywhere else.
 #
 # If the runner is offline at the scheduled time (the machines are not 24/7), Gitea holds the
@@ -62,7 +63,7 @@ jobs:
             exit 1
           fi
           dotnet test --no-restore --verbosity normal \
-            --filter "RequiresNetworking=True&FlakeyTest!=True&FullyQualifiedName!~CollectionInstallTests" \
+            --filter "RequiresNetworking=True&FlakeyTest!=True&FullyQualifiedName!~CollectionInstallTests&FullyQualifiedName!~Tests.Fallout4.CollectionTests&FullyQualifiedName!~Tests.SkyrimSE.CollectionTests" \
             --blame-hang-timeout 30m \
             --logger "trx;LogFilePrefix=results" \
             --results-directory "$GITHUB_WORKSPACE/TestResults"
