@@ -100,7 +100,7 @@ public class Fallout4 : ICreationEngineGame, IGameData<Fallout4>
         {
             { LocationId.Game, gameLocatorResult.Path },
             { LocationId.AppData, fileSystem.GetKnownPath(KnownPath.LocalApplicationDataDirectory) / "Fallout4" },
-            { LocationId.Preferences, fileSystem.GetKnownPath(KnownPath.MyGamesDirectory) / "Fallout4" },
+            { LocationId.Preferences, KnownPaths.MyGamesOrFallback(fileSystem) / "Fallout4" },
         }.ToImmutableDictionary();
     }
 
