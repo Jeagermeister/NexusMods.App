@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Apocrypha.Abstractions.ModIo;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Networking.ModIo.CLI;
 using Apocrypha.Sdk.Settings;
 
@@ -12,7 +13,7 @@ public static class Services
 {
     /// <summary>
     /// Adds mod.io as a mod source: the API client, the library facade, the MnemonicDB
-    /// models, and the CLI verbs.
+    /// models, the CLI verbs, and the <see cref="IModSource"/> adapter.
     /// </summary>
     public static IServiceCollection AddModIo(this IServiceCollection services)
     {
@@ -21,6 +22,7 @@ public static class Services
             .AddSettings<ModIoSettings>()
             .AddSingleton<IModIoApiClient, ModIoApiClient>()
             .AddSingleton<IModIoLibrary, ModIoLibrary>()
+            .AddSingleton<IModSource, ModIoModSource>()
             .AddModIoVerbs();
     }
 }

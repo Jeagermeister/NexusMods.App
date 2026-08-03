@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Networking.Thunderstore.CLI;
 using Apocrypha.Sdk.Settings;
@@ -12,7 +13,7 @@ public static class Services
 {
     /// <summary>
     /// Adds Thunderstore as a mod source: the API client, the library facade, the dependency
-    /// resolver, the MnemonicDB models, and the CLI verbs.
+    /// resolver, the MnemonicDB models, the CLI verbs, and the <see cref="IModSource"/> adapter.
     /// </summary>
     public static IServiceCollection AddThunderstore(this IServiceCollection services)
     {
@@ -22,6 +23,7 @@ public static class Services
             .AddSingleton<IThunderstoreApiClient, ThunderstoreApiClient>()
             .AddSingleton<IThunderstoreLibrary, ThunderstoreLibrary>()
             .AddSingleton<ThunderstoreDependencyResolver>()
+            .AddSingleton<IModSource, ThunderstoreModSource>()
             .AddHostedService<ThunderstoreCommunityBackfill>()
             .AddThunderstoreVerbs();
     }
