@@ -247,10 +247,12 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
 16. **Wire `LinuxCompatabilityDataProvider` for Heroic installs** — partially landed in
     PR #78; the remaining piece is the locator wiring that lights up `user.reg`/winhttp
     (and REDmod deploy) for GOG/Heroic games.
-17. **Relocate the `IModSource` adapters out of App.UI** — #94 made CLI enumeration work
-    (registrations moved to `AddApp`, classes public) and the 2026-07-28 review confirmed
-    the adapters have zero UI coupling, so the eventual move is mechanical; the
-    `Apocrypha.Library` → `App.UI` layering inversion remains the reason to do it.
+17. ~~**Relocate the `IModSource` adapters out of App.UI**~~ — **FIXED**: each adapter now
+    lives in its source's networking project (`Networking.NexusWebApi`/`.Thunderstore`/`.ModIo`)
+    and is registered by that project's own `AddX()` extension, so a new source registers its
+    adapter in its own layer and `AddApp` needs no per-source lines. Note the
+    `Apocrypha.Library` → `App.UI` *project reference* still exists for an unrelated reason
+    (`DownloadsService.cs` uses `App.UI.Resources`) — severing that is its own item.
 18. **Nexus/Thunderstore download integrity** — unchanged: no upstream hash surface exists
     (verified against GraphQL schema, REST types, and Vortex source, 2026-07-16). Options
     still (a) drop, (b) post-download hash for dedup purposes, (c) upstream feature

@@ -7,6 +7,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Apocrypha.Abstractions.ModIo\Apocrypha.Abstractions.ModIo.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.ModSources\Apocrypha.Abstractions.ModSources.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Library\Apocrypha.Abstractions.Library.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
         <ProjectReference Include="..\Apocrypha.Networking.HttpDownloader\Apocrypha.Networking.HttpDownloader.csproj" />

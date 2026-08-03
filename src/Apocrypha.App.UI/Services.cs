@@ -47,8 +47,6 @@ using Apocrypha.App.UI.Pages.Diff.ApplyDiff;
 using Apocrypha.App.UI.Pages.Downloads;
 using Apocrypha.App.UI.Pages.LibraryPage;
 using Apocrypha.App.UI.Pages.LibraryPage.Collections;
-using Apocrypha.App.UI.Pages.LibraryPage.ModSources;
-using Apocrypha.Abstractions.ModSources;
 using Apocrypha.App.UI.Pages.LoadoutGroupFilesPage;
 using Apocrypha.App.UI.Pages.LoadoutPage;
 using Apocrypha.App.UI.Pages.LoadoutPage.Dialogs;
@@ -317,9 +315,10 @@ public static class Services
             .AddSingleton<ILoadoutDataProvider, ThunderstoreDataProvider>()
             .AddSingleton<ILibraryDataProvider, ModIoDataProvider>()
             .AddSingleton<ILoadoutDataProvider, ModIoDataProvider>()
-            // IModSource registrations moved to Apocrypha.App's AddApp so CLI/headless can
-            // enumerate mod sources too (CODE_REVIEW.md §5 still applies: one registration
-            // there, no per-consumer edits).
+            // IModSource adapters live in each source's networking project and are registered
+            // by its AddX() extension (AddNexusWebApi/AddThunderstore/AddModIo), so CLI/headless
+            // can enumerate mod sources too (CODE_REVIEW.md §5 still applies: one registration
+            // per source, no per-consumer edits).
             .AddSingleton<ILoadoutDataProvider, BundledDataProvider>()
             .AddSingleton<ILoadOrderDataProvider, LoadOrderDataProvider>()
             .AddSingleton<IDownloadsDataProvider, DownloadsDataProvider>()

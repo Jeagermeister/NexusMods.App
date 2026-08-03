@@ -4,7 +4,7 @@ using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Abstractions.Thunderstore;
 using Apocrypha.Sdk.Games;
 
-namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
+namespace Apocrypha.Networking.Thunderstore;
 
 /// <summary>
 /// <see cref="IModSource"/> adapter for Thunderstore: a game supports it when it declares an

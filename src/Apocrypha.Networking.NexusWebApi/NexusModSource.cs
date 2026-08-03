@@ -4,18 +4,13 @@ using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Sdk.Games;
 
-namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
+namespace Apocrypha.Networking.NexusWebApi;
 
 /// <summary>
 /// <see cref="IModSource"/> adapter for Nexus Mods: a game supports it when it has a
 /// <see cref="IGameData.NexusModsGameId"/>, and browsing goes to the game's Nexus page (resolved
 /// through the domain/id mapping cache).
 /// </summary>
-/// <remarks>
-/// Lives in App.UI for now, alongside the other adapters, because the browse URL needs the Nexus
-/// domain mapping cache. Relocating the adapters into their source layers is a follow-up that
-/// also resolves the App.UI → Networking.NexusWebApi layering inversion (CODE_REVIEW.md §5).
-/// </remarks>
 [UsedImplicitly]
 public sealed class NexusModSource : IModSource
 {

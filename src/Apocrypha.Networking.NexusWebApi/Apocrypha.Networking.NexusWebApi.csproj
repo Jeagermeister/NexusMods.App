@@ -15,6 +15,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Collections\Apocrypha.Abstractions.Collections.csproj" />
+        <ProjectReference Include="..\Apocrypha.Abstractions.ModSources\Apocrypha.Abstractions.ModSources.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.NexusModsLibrary\Apocrypha.Abstractions.NexusModsLibrary.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.NexusWebApi\Apocrypha.Abstractions.NexusWebApi.csproj" />
         <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
