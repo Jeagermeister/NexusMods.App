@@ -101,6 +101,18 @@ public class Program
                 }
             });
 
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    services.GetRequiredService<IProcessRunner>().CleanupOldLogs();
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Failed to clean up expired process logs");
+                }
+            });
+
             // This will startup the MnemonicDb connection
             var migration = services.GetRequiredService<MigrationService>();
             if (modelExists)

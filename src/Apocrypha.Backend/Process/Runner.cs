@@ -14,10 +14,12 @@ internal class ProcessRunner : IProcessRunner
 {
     private readonly ILogger _logger;
     private readonly IFileSystem _fileSystem;
+    private readonly IServiceProvider _serviceProvider;
     private readonly AbsolutePath _processLogsFolder;
 
     public ProcessRunner(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _logger = serviceProvider.GetRequiredService<ILogger<ProcessRunner>>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
 
@@ -25,6 +27,36 @@ internal class ProcessRunner : IProcessRunner
         _logger.LogInformation("Using process log folder at {Path}", _processLogsFolder);
 
         _processLogsFolder.CreateDirectory();
+    }
+
+    public int CleanupOldLogs()
+    {
+        // Settings are resolved lazily so constructing the runner doesn't require an ISettingsManager.
+        var retentionSpan = _serviceProvider.GetRequiredService<ISettingsManager>().Get<LoggingSettings>().ProcessLogRetentionSpan;
+        return CleanupOldLogs(_processLogsFolder, cutoffUtc: DateTime.UtcNow - retentionSpan, _logger);
+    }
+
+    internal static int CleanupOldLogs(AbsolutePath processLogsFolder, DateTime cutoffUtc, ILogger logger)
+    {
+        if (!processLogsFolder.DirectoryExists()) return 0;
+
+        var deletedCount = 0;
+        foreach (var file in processLogsFolder.EnumerateFiles("*.log", recursive: false))
+        {
+            try
+            {
+                if (file.FileInfo.LastWriteTimeUtc >= cutoffUtc) continue;
+                file.Delete();
+                deletedCount++;
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning(e, "Failed to delete expired process log at {Path}", file);
+            }
+        }
+
+        if (deletedCount > 0) logger.LogInformation("Deleted {Count} process log(s) last written before {CutoffUtc}", deletedCount, cutoffUtc);
+        return deletedCount;
     }
 
     private string GetFileName(Command command)

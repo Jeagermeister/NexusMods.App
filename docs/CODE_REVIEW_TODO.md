@@ -223,9 +223,11 @@ needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) ref
     Lesson recorded there: `RelativePath` equality dedupes a case-variant attribute *update*
     into a silent no-op — re-casing a persisted row requires delete + recreate.
 
-12. **ProcessLogs retention (M-4)** — `~/.local/state/Apocrypha/Logs/ProcessLogs/` grows
-    unbounded (9k+ files observed). Startup sweep in `ProcessRunner` honoring a retention
-    setting; fold in the `Runner.cs` "rework" TODO (settings-driven config) while there.
+12. ~~**ProcessLogs retention (M-4)**~~ — **FIXED.** `ProcessRunner.CleanupOldLogs` sweeps
+    `ProcessLogs/*.log` older than `LoggingSettings.ProcessLogRetentionSpan` (the previously
+    dead setting, now `init`-able, default 7 days); fired as a background task on main-process
+    startup. Note: no literal "rework" TODO existed in `Runner.cs` — the settings-driven intent
+    is what was implemented.
 
 13. **19 upstream-legacy unguarded `LoadoutItem.Parent` sites (C-9)** — clustered in
     game diagnostic emitters (BG3, CP77, Bannerlord, SDV). Husk-triggered only; guard
