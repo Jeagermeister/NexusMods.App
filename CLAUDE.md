@@ -35,6 +35,26 @@ skipped in CI and locally alike — don't be surprised by the ~64 local failures
 `NEXUS_API_KEY` from a Gitea repo secret, `CollectionInstallTests` excluded as CI-hostile) —
 a red there means "Nexus-side change or outage" until proven otherwise, not a broken PR.
 
+### CI verification gotchas
+
+- A merge is not verified until the **post-merge push run** on `linux-fork` is green:
+  `tea actions runs view <id>` and read `Conclusion`. Both `tea actions runs list` and the
+  UI say "completed" for passes AND failures — run 125 (#14's merge push) failed silently
+  this way and nobody noticed until the next session.
+- CI checkout failures of the form `Failed to connect to gitea-ec2.… port 443` are the
+  Tailscale **exit-node/Docker trap** on the runner host, not a broken PR: an active exit
+  node kills egress from job containers on bridge networks. Durable fix is
+  `container.network: host` in `/etc/gitea-runner/config.yaml`; interim is exit node off,
+  rerun. Check `tailscale status | grep 'exit node;'` before diagnosing anything else.
+- To exercise CI without a PR: `curl -X POST .../actions/workflows/ci.yaml/dispatches
+  -d '{"ref":"<branch>"}'` with an API token (`tea api` cannot send request bodies).
+
+### Tests are mixed-framework
+
+Newer suites (e.g. `Apocrypha.Backend.Tests`) are **TUnit** (`[Test]`, `[Arguments]`,
+`await Assert.That(...)`); older ones are xunit + FluentAssertions. Check the csproj's
+`PackageReference`s before writing tests in an unfamiliar project.
+
 ## Branch and PR rules
 
 - `linux-fork` is the default branch and is **protected**: PR-only, no direct commits,
