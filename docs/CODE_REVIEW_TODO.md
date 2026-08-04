@@ -7,6 +7,12 @@ doc remains the single ledger of what is **deliberately deferred**, why, and wha
 needs to proceed. Roughly in priority order. Finding ids (`B-1`, `C-1`, …) refer to the
 2026-07-28 review's findings ledger (maintainer's notes).*
 
+*Entry hygiene: when adding an item, quote the actual code — verified `file:line` references
+and the literal text of any TODO/comment cited, checked at write time. Item 12 referenced a
+"rework TODO" in `Runner.cs` that never existed; the phantom propagated into two downstream
+docs before anyone re-read the file. Items here get pasted into session-opening prompts, so
+an unverified claim costs a detour every time the item is picked up.*
+
 ## Needs a decision or environment we didn't have
 
 1. **CI dead lanes** — **the pilot is done; the remainder is not convertible and needs a
