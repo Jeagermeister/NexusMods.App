@@ -126,7 +126,7 @@ internal sealed class WindowManager : ReactiveObject, IWindowManager
             // Block on the commit: this runs on the sync window-close path, and firing the
             // Task and returning lets `using` dispose the tx while the commit is in flight —
             // the window layout then silently fails to persist on shutdown.
-            tx.Commit().GetAwaiter().GetResult();
+            CommitBlocking(tx);
         }
         catch (Exception e)
         {
@@ -180,9 +180,24 @@ internal sealed class WindowManager : ReactiveObject, IWindowManager
 
         // Block on the commit (see SaveWindowState): this is the broken-state recovery path,
         // and an un-awaited commit can leave the broken rows in place for the next launch.
-        tx.Commit().GetAwaiter().GetResult();
+        CommitBlocking(tx);
     }
-    
+
+    /// <summary>
+    /// Commits <paramref name="tx"/> and waits for it, from a caller that cannot be async.
+    /// </summary>
+    /// <remarks>
+    /// Both callers run on the UI thread, where <see cref="Avalonia.Threading.Dispatcher"/>
+    /// installs a <see cref="SynchronizationContext"/>. Awaiting inside MnemonicDB's commit
+    /// captures that context, so a plain <c>tx.Commit().GetAwaiter().GetResult()</c> posts the
+    /// continuation back to the very thread that is blocked waiting for it — a hard deadlock
+    /// that wedges the whole UI (the app has to be killed; the window never even closes).
+    /// <c>Task.Run</c> moves the await chain onto the thread pool, where there is no context to
+    /// capture, so the continuation can run while this thread waits.
+    /// </remarks>
+    private static void CommitBlocking(IMainTransaction tx) => Task.Run(() => tx.Commit()).GetAwaiter().GetResult();
+
+
     public async Task<StandardDialogResult> ShowDialog(IDialog dialog, DialogWindowType windowType)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime { MainWindow: not null } desktop)
