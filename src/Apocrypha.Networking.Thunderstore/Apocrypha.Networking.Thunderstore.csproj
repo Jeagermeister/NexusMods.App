@@ -6,6 +6,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Apocrypha.Abstractions.ModSources\Apocrypha.Abstractions.ModSources.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Thunderstore\Apocrypha.Abstractions.Thunderstore.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Library\Apocrypha.Abstractions.Library.csproj" />
         <ProjectReference Include="..\Apocrypha.Abstractions.Cli\Apocrypha.Abstractions.Cli.csproj" />

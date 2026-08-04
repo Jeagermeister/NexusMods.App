@@ -5,7 +5,7 @@ using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Sdk.Games;
 using Apocrypha.Sdk.Settings;
 
-namespace Apocrypha.App.UI.Pages.LibraryPage.ModSources;
+namespace Apocrypha.Networking.ModIo;
 
 /// <summary>
 /// <see cref="IModSource"/> adapter for mod.io: a game supports it when it declares an

@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Apocrypha.Abstractions.ModSources;
 using Apocrypha.Abstractions.NexusModsLibrary;
 using Apocrypha.Abstractions.NexusWebApi;
 using Apocrypha.Abstractions.NexusWebApi.Types;
@@ -76,6 +77,7 @@ public static class Services
             .AddAllSingleton<INexusApiClient, NexusApiClient>()
             .AddSingleton<IModUpdateFilterService, ModUpdateFilterService>()
             .AddAllSingleton<IModUpdateService, ModUpdateService>()
+            .AddSingleton<IModSource, NexusModSource>()
             .AddHostedService<NexusModRequirementsBackfill>()
             .AddNexusApiVerbs();
 
