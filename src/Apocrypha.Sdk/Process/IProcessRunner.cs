@@ -28,4 +28,10 @@ public interface IProcessRunner
     /// </summary>
     /// <returns>A task that completes when the spawned process exists.</returns>
     Task RunAsync(System.Diagnostics.Process process, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes process log files older than the configured <see cref="Apocrypha.CrossPlatform.LoggingSettings.ProcessLogRetentionSpan"/>.
+    /// </summary>
+    /// <returns>The number of deleted log files.</returns>
+    int CleanupOldLogs();
 }

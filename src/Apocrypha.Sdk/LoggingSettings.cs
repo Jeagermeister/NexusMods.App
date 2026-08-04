@@ -51,9 +51,10 @@ public record LoggingSettings : ISettings
     public bool LogToConsole { get; [UsedImplicitly] set; } = ApplicationConstants.IsDebug;
 
     /// <summary>
-    /// Gets the retention span for process logs.
+    /// Gets the retention span for process logs. Files in the ProcessLogs folder older
+    /// than this are deleted on startup.
     /// </summary>
-    public TimeSpan ProcessLogRetentionSpan { get; } = TimeSpan.FromDays(7);
+    public TimeSpan ProcessLogRetentionSpan { get; init; } = TimeSpan.FromDays(7);
 
     /// <summary>
     /// When enabled, shows an exception modal to the user on every observed exception.
