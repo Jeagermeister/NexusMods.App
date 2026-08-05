@@ -33,7 +33,11 @@ public partial class MissingProtontricksForRedModEmitter : ILoadoutDiagnosticEmi
             yield break;
 
         // If there is no REDmod EXE, we don't need Protontricks.
-        if (redModPath.FileExists)
+        // Protontricks is what launches redMod.exe inside the prefix (see RedModDeployTool), so the
+        // requirement exists precisely when the EXE is present. The condition used to test
+        // `FileExists` directly, which inverted both branches: it stayed silent for the install that
+        // needs Protontricks, and told users who have no REDmod tool at all to go install it.
+        if (!redModPath.FileExists)
             yield break;
 
         var installInfo = await _protontricksDependency.QueryInstallationInformation(cancellationToken);
