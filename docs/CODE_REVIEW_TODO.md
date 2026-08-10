@@ -341,3 +341,99 @@ an unverified claim costs a detour every time the item is picked up.*
     storm. Read the log after that sync; the six raw `HttpClient` sites (image pipelines,
     markdown, TopBar, Steam session) remain uninstrumented blind spots if the storm turns
     out to be CDN-shaped (D-3).
+
+## Performance (triaged from the 2026-08-10 optimization handoff)
+
+*An external AI pass produced an optimization handoff document, checked against the code on
+2026-08-10. Most of it did not survive; the source document is deliberately not committed,
+so everything worth keeping — including the rejections and why — is reproduced here. The
+rejection list at the end exists so the same suggestions are not re-triaged next time. Note
+item 9 is also a measured performance item (570 duplicate-file warnings per `BuildSyncTree`)
+and predates this triage.*
+
+27. **No performance baseline exists** — every "Baseline" cell in any perf plan is `TBD`
+    because nothing measures the operations that matter. `benchmarks/Apocrypha.Benchmarks`
+    holds five micro-benchmarks — `Benchmarks/DelegateAllocationCost.cs`,
+    `EnumerateFiles.cs`, `HighPerformanceLogging.cs`, `SignatureChecking.cs`,
+    `Sorting.cs` — none of which touch a loadout, an archive, or the synchronizer.
+    `Benchmarks/Loadouts/Harness/DummyFileStore.cs` is a harness with no benchmark using it.
+    The gap worth closing first is the two operations users actually wait on: **loadout
+    switch** (`ActivateLoadout`/`BuildProcessRun`) and **install/extract**
+    (`NxFileStore.ExtractFiles`, `src/Apocrypha.DataModel/NxFileStore.cs:245`). Both are
+    already exercised by real data — the FO4 rig used in items 5/9 is a 132GB loadout with
+    682 plugins — so a timing harness over that datastore is cheaper than synthetic
+    benchmarks and more representative. Until this exists, treat any "N% faster" claim about
+    this codebase as unfounded, including the ones the handoff asserted.
+
+28. **Startup is a serial chain of blocking `.Wait()` calls — measure before touching it.**
+    `src/Apocrypha.App/Program.cs` blocks the main thread four times in sequence before the
+    UI is built: `CleanupUnresponsiveProcesses(services).Wait(timeout:
+    TimeSpan.FromSeconds(10))` (line 76, and it contains its own 6-second connect probe when
+    a stale sync file is present — the exact condition CLAUDE.md warns about),
+    `host.StartAsync().Wait(timeout: TimeSpan.FromMinutes(5))` (line 79), `migration
+    .MigrateAll().Wait()` / `migration.InitialSetup().Wait()` (lines 121 and 126), and
+    `cliServer?.StartCliServerAsync().Wait(timeout: TimeSpan.FromSeconds(5))` (line 133).
+    Nobody has measured which of these dominates, and the stale-sync-file path suggests the
+    worst case is not the migration.
+
+    **The handoff proposed moving migrations off the startup path and launching the UI
+    without awaiting them. Do not do that.** The comment at line 116 is `// This will startup
+    the MnemonicDb connection` — migration is what opens the store, so the UI would have
+    nothing to query. Worse, migrations rewrite live rows: `_0010_FixCollectionTargetPaths`
+    (item 5b) repaired 1,238 corrupted rows on the real FO4 datastore. A UI reading through a
+    half-applied repair is a correctness bug, not a startup optimisation. If any of this
+    moves, migrations stay a gate.
+
+29. **Subscription-disposal audit in `App.UI`, narrowed to ~16 files.** Real, but far smaller
+    than a naive grep suggests. The handoff's search pattern —
+    `grep -rn "\.Subscribe(" src/Apocrypha.App.UI/ | grep -v "DisposeWith"` — reports 241 of
+    241 sites as leaks, because `DisposeWith`/`AddTo` almost always sits on the *following*
+    line and because this codebase disposes through **R3's `.AddTo(`** (233 sites), not
+    ReactiveUI's `DisposeWith`. Filtering to files that contain a `.Subscribe(` and no
+    disposal call *anywhere in the file* leaves 16, of which several are legitimate by
+    construction (`DynamicDataExtensions.cs`, `Extensions/ObservableExtensions.cs`,
+    `Helpers/DisposableObservableWrapper.cs` hand the disposable back to a caller). The real
+    candidates are the long-lived ones: `WorkspaceSystem/WorkspaceController/
+    WorkspaceController.cs`, `Pages/LoadoutPage/LoadoutTreeDataGridAdapter.cs`,
+    `Pages/Downloads/DownloadsTreeDataGridAdapter.cs`, `Controls/Trees/DiffTreeViewModel.cs`,
+    `Helpers/TreeDataGrid/New/FolderGenerator/TreeFolderGenerator.cs`. Confirm with a heap
+    dump after a session of loadout switching before changing anything; this overlaps item 24.
+
+**Rejected on inspection (2026-08-10) — do not re-open without new evidence:**
+
+- *"Add `[ConfigureAwait(false)]` at method level (.NET 8+)"* — **no such attribute exists**
+  in .NET. The .NET 8 addition was the `ConfigureAwaitOptions` enum overload of
+  `Task.ConfigureAwait`. A blanket call-site sweep across `DataModel`/`Backend`/`Networking`
+  is a very large diff with real thread-affinity risk and no measured problem behind it; the
+  25 existing `ConfigureAwait(false)` sites are deliberate and localised to hashing, HTTP and
+  extraction loops.
+- *"Enable UI virtualization with `VirtualizationMode="Simple"`"* — not an Avalonia 11
+  property (that is WPF / Avalonia 0.10). On Avalonia 11.3.5, `ListBox` already virtualizes
+  via the default `VirtualizingStackPanel`, and 30 of the 37 list-bearing `.axaml` files use
+  **TreeDataGrid**, which brings its own virtualization. Only two files contain a plain
+  `<ListBox`, one of them the `ObservableInfo` debug page.
+- *"Batch `NxFileStore.ExtractFiles` by archive"* — **already implemented, and better than the
+  proposal.** `NxFileStore.cs:245-332` groups by archive via `Parallel.ForEach`, pre-creates
+  destination directories, and hands the whole group to one `NxUnpacker.ExtractFiles` call.
+  The suggested replacement would open the archive once and `Task.WhenAll` per file over that
+  shared stream — a regression.
+- *"Adopt `Span<T>`/`ArrayPool` for archive reading"* — the chunk layer is already this shape:
+  `IChunkedStreamSource.ReadChunk(Span<byte> buffer, ulong chunkIndex)`
+  (`src/Apocrypha.Sdk/IO/IChunkedStreamSource.cs:39`), with `ChunkedStream` renting through
+  `MemoryPool`. The handoff's "AFTER" code is a paraphrase of the existing reality.
+- *"Remove trivial `async` wrappers"* — the named exemplar is already correct:
+  `NxFileStore.cs:169` reads `public ValueTask<bool> HaveFile(Hash hash) =>
+  ValueTask.FromResult(_archivesByEntry.ContainsKey(hash));`. The other named target,
+  `StreamSourceDispatcher.OpenAsync`, is a 31-line file whose method awaits inside a loop and
+  cannot be elided.
+- *"Reduce LINQ allocations"* in `Benchmarks/Sorting.cs` and
+  `Benchmarks/DelegateAllocationCost.cs` — those are benchmark bodies, not product hot paths.
+- *"Cache MnemonicDB queries in a `ConcurrentDictionary`"* — proposed against an invented
+  query API (`db.LoadoutItem.Filter(...)`), over an immutable event-sourced store that
+  already indexes in memory, and with an invalidation story that collides with item 22.
+- Assorted factual drift in the same document, recorded so it is not cited as fact: **101
+  projects, not 119**; `Sorter.cs` lives at `src/Apocrypha.DataModel/Sorting/Sorter.cs`;
+  there is no `src/Apocrypha.Jobs` project (jobs live under `src/Apocrypha.Backend/Jobs`);
+  `dotnet tool install --global BenchmarkDotNet.ConsoleApp` is not a real package; and
+  `dotnet-trace --providers NexusMods.MnemonicDB` assumes an EventSource the package is not
+  known to expose.
