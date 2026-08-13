@@ -205,14 +205,34 @@ an unverified claim costs a detour every time the item is picked up.*
    also `ActionWriteIntrinsics` bypasses the canonicalizer entirely (B-11), and ingest onto
    an existing `DeletedFile` creates a hybrid entity (C-4).
 
-   **Live evidence (2026-08-02):** the real FO4 loadout logs **570 "Duplicate file"
-   warnings per `BuildSyncTree`** — case-variant path pairs (`Hair/KSHairdos` vs
-   `hair/kshairdos`, `Textures` vs `textures`) where `GamePath` equality folds case but the
-   winning-files query does not, so the "winner" between the pair is picked arbitrarily.
-   Worse: the guard at `ALoadoutSynchronizer` line ~260 is a `Debug.Assert`, so a **Debug
-   build cannot boot that datastore at all** (process-terminating assert on startup's
-   should-sync check); only Release limps past by logging. When this item is picked up, the
-   assert should become a real guard, and the query should fold case like `GamePath` does.
+   **The query-fold half is FIXED (2026-08-12).** The live evidence was: the real FO4 loadout
+   logged **570 "Duplicate file" warnings per `BuildSyncTree`** — case-variant path pairs
+   (`Hair/KSHairdos` vs `hair/kshairdos`, `Textures` vs `textures`) where `GamePath` equality
+   folds case but the winning-files query did not, so the "winner" between the pair was picked
+   arbitrarily. Both grouping sites in `Synchronizer.sql` now fold case
+   (`synchronizer.WinningLeafLoadoutItem` and `synchronizer.WinningFiles`), and both were
+   converted from parallel `arg_max`es to a `ROW_NUMBER` rank — six independent `arg_max`es over
+   one tied ordering can take `Id` from one row and `Hash` from another and emit a leaf item that
+   never existed, and folding case makes those ties reachable. Ordering carries an explicit
+   tiebreak (`Id` / `Path.Path`) so a same-priority, same-layer pair resolves identically on every
+   run instead of following scan order. `CaseVariantPathConflictTests` covers it, falsified
+   against the unfolded query: without the fold the **lower-priority** file takes the path.
+
+   The `Debug.Assert` at `ALoadoutSynchronizer` line ~260 is now a real guard. It mattered more
+   than it looked: a datastore in this state **could not boot a Debug build at all**
+   (process-terminating assert on startup's should-sync check), so the only build a developer
+   would debug it in was the one that could not open it. Only Release limped past by logging.
+
+   **Still open in this item** (none of it touched by the above):
+   - the original C-3 leg — `DiskStateEntry` records the loadout-declared path while extraction
+     writes through `CaseCanonicalizer` and deletion resolves literally, so a remapped file is
+     orphaned on switch-away. Record the resolved path + canonicalize delete targets.
+   - **B-11**: `ActionWriteIntrinsics` bypasses the canonicalizer entirely.
+   - **C-4**: ingest onto an existing `DeletedFile` creates a hybrid entity.
+   - `synchronizer.ConflictingPaths` (the File Conflicts UI) still groups case-sensitively, so a
+     case-variant conflict that the sync now resolves is not reported as a conflict. Deliberately
+     left out of the fold PR to keep a UI-visible behaviour change separate; it is a small edit
+     to the same file once someone decides the UI should show those pairs.
 
 10. **Switch-path progress + cancellation (C-6)** — `ActivateLoadout`/`BuildProcessRun`
     drop the job and token: the 132GB A→B switch shows no progress and cannot be

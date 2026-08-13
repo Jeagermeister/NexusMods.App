@@ -256,11 +256,22 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var gamePath = new GamePath(tuple.Location, tuple.Path);
             if (gamePath == default(GamePath)) throw new Exception($"Item of type `{itemType}` with ID `{tuple.Id}` has no valid game path!");
 
-            var isDuplicate = !seenFromQuery.Add(gamePath);
-            Debug.Assert(!isDuplicate, "query should not return duplicate items");
-            if (isDuplicate)
+            // A duplicate here means the query returned two rows for one case-insensitive path.
+            // WinningFiles folds case precisely so that cannot happen, so this is a real defect
+            // signal rather than an expected condition — but it must NOT be a Debug.Assert: a
+            // datastore that tripped it (the pre-fold Fallout 4 case, 570 pairs) could not boot a
+            // Debug build at all, because the startup should-sync check runs this method and the
+            // assert terminates the process. Only Release limped past by logging, so the one build
+            // a developer would debug it in was the one that could not open it. Keep the first row
+            // — layer/priority already picked it — and log loudly enough to diagnose.
+            if (!seenFromQuery.Add(gamePath))
             {
-                Logger.LogWarning("Duplicate file for `{Path}`: {Item}", gamePath, tuple);
+                Logger.LogWarning(
+                    "Duplicate file for `{Path}`: {Item}. The winning-files query returned two rows for one " +
+                    "case-insensitive path; keeping the first and ignoring this one",
+                    gamePath, tuple
+                );
+
                 continue;
             }
 
