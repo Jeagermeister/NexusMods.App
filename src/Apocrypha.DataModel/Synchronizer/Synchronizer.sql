@@ -34,21 +34,45 @@ FROM
   LEFT JOIN MDB_DELETEDFILE (Db => db) deleted_file ON loadout_item.Id = deleted_file.Id
   LEFT JOIN MDB_LOADOUTFILE (Db => db) loadout_file on loadout_item.Id = loadout_file.Id;
 
--- All winning leaf loadout items with a target path
+-- All winning leaf loadout items with a target path.
+--
+-- The partition folds case because `RelativePath` does: `Textures/a.dds` and `textures/a.dds`
+-- are ONE target path to the rest of the app, so they must compete here rather than both
+-- surviving into `WinningFiles` (see the note there). The winning row's own casing is carried
+-- forward untouched as the display casing — never lowercase a persisted name.
+--
+-- Ranked rather than aggregated: six independent `arg_max`es over the same priority can, on a
+-- tie, take `Id` from one row and `Hash` from another and emit a leaf item that never existed.
+-- `ROW_NUMBER` picks one whole row, and the `Id` tiebreak makes that choice deterministic
+-- instead of following scan order.
 CREATE OR REPLACE MACRO synchronizer.WinningLeafLoadoutItem (db) AS TABLE
 SELECT
-  loadout_item.Loadout,
-  arg_max(loadout_item.Id, coalesce(group_priority.Priority, 0)) AS Id,
-  arg_max(loadout_item.Parent, coalesce(group_priority.Priority, 0)) AS Parent,
-  arg_max(loadout_item.TargetPath, coalesce(group_priority.Priority, 0)) AS TargetPath,
-  arg_max(loadout_item.Hash, coalesce(group_priority.Priority, 0)) AS Hash,
-  arg_max(loadout_item.Size, coalesce(group_priority.Priority, 0)) AS Size,
-  arg_max(loadout_item.IsDeleted, coalesce(group_priority.Priority, 0)) AS IsDeleted
-FROM
-  synchronizer.LeafLoadoutItems (db) loadout_item
-  LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY(DB => db) group_priority ON loadout_item.Parent = group_priority.Target
-WHERE loadout_item.IsEnabled
-GROUP BY loadout_item.Loadout, loadout_item.TargetPath.Item2, loadout_item.TargetPath.Item3;
+  Loadout,
+  Id,
+  Parent,
+  TargetPath,
+  Hash,
+  Size,
+  IsDeleted
+FROM (
+  SELECT
+    loadout_item.Loadout,
+    loadout_item.Id,
+    loadout_item.Parent,
+    loadout_item.TargetPath,
+    loadout_item.Hash,
+    loadout_item.Size,
+    loadout_item.IsDeleted,
+    ROW_NUMBER() OVER (
+      PARTITION BY loadout_item.Loadout, loadout_item.TargetPath.Item2, lower(loadout_item.TargetPath.Item3)
+      ORDER BY coalesce(group_priority.Priority, 0) DESC, loadout_item.Id DESC
+    ) AS ranking
+  FROM
+    synchronizer.LeafLoadoutItems (db) loadout_item
+    LEFT JOIN MDB_LOADOUTITEMGROUPPRIORITY(DB => db) group_priority ON loadout_item.Parent = group_priority.Target
+  WHERE loadout_item.IsEnabled
+) ranked
+WHERE ranking = 1;
 
 -- All the files in the overrides group
 CREATE OR REPLACE MACRO synchronizer.OverrideFiles (db) AS TABLE
@@ -109,16 +133,35 @@ WITH all_files AS
     3 Layer
   FROM intrinsic_files(Db=>db) intrinsic_file
 )
--- Group by loadout, path and take the winning file
+-- Rank by loadout and path, then take the winning file.
+--
+-- The partition folds case deliberately. `GamePath`/`RelativePath` compare case-insensitively,
+-- so `BuildSyncTree` keys its dictionary case-insensitively — but a case-sensitive GROUP BY here
+-- emitted `Textures/a.dds` and `textures/a.dds` as two winners, which the C# side then saw as a
+-- duplicate for one key. It logged 570 such warnings per tree on a real Fallout 4 loadout, kept
+-- whichever row the scan happened to reach first, and dropped the other silently. Folding makes
+-- the layer/priority rules decide the winner, which is what they are for.
+--
+-- Ranked rather than aggregated for the same reason as `WinningLeafLoadoutItem`: separate
+-- `arg_max`es over a tied `Layer` can splice fields from different rows together. The `Path.Path`
+-- tiebreak keeps same-layer case variants resolving identically on every run.
 SELECT
-  arg_max(Id, Layer) Id,
-  arg_max(Hash, Layer) Hash,
-  arg_max(Size, Layer) Size,
-  arg_max(ItemType, Layer) ItemType,
+  Id,
+  Hash,
+  Size,
+  ItemType,
   Loadout,
   Path
-FROM all_files
-GROUP BY Loadout, Path;
+FROM (
+  SELECT
+    all_files.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY Loadout, Path.Location, lower(Path.Path)
+      ORDER BY Layer DESC, Path.Path DESC
+    ) AS ranking
+  FROM all_files
+) ranked
+WHERE ranking = 1;
 
 -- Highest loadout item group priority
 CREATE OR REPLACE MACRO synchronizer.MaxPriority (db) AS TABLE
