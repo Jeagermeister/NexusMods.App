@@ -63,6 +63,41 @@ Newer suites (e.g. `Apocrypha.Backend.Tests`) are **TUnit** (`[Test]`, `[Argumen
 - Branch naming: `feat/...`, `fix/...`, `docs/...`.
 - Zero-warnings policy: the build is warning-clean; keep it that way.
 
+## Outside contributions
+
+**Never merge an outside PR on GitHub.** Replay it onto Gitea, merge it there, and let the push
+mirror carry the result back.
+
+Contributors can only reach GitHub — Gitea is Tailscale-only and never publicly exposed — but
+GitHub is a **push-mirror target**, force-pushed from Gitea on every commit. That works only
+while GitHub exclusively *receives*. Merging on GitHub gives `linux-fork` two writers: the
+histories diverge, GitHub's branch protection refuses the mirror's force-push, and the mirror
+**silently stops updating** while Gitea moves on. Since releases are cut from GitHub's
+`linux-fork`, a release cut during that window ships the wrong tree.
+
+Replay = cherry-pick their commit onto Gitea's head (this preserves the `Author:` line and their
+contribution credit), prove it faithful with `git diff github/linux-fork HEAD -- <files>`, then
+PR it on Gitea. **Verify it yourself**: GitHub runs no CI, so an outside commit has never been
+built or tested by our pipeline — run the suite and independently falsify their tests rather
+than trusting the commit message. Leave their commit message verbatim, trailers included.
+
+Check mirror health when opening a PR and after every merge:
+
+```sh
+git log --oneline origin/linux-fork..github/linux-fork   # non-empty = GitHub has unmirrored commits
+tea api /repos/Jeagermeister/Apocrypha/push_mirrors      # read last_error
+```
+
+A non-empty `last_error` (`GH006 … Cannot force-push to this branch`) means the mirror is stuck.
+An *empty* one is not proof of health — `last_update: 1970-…` means it never synced.
+
+Keep GitHub's branch protection **on**: it is what turns silent data loss into a loud,
+recoverable error. Note `allow_force_pushes: false` is not bypassed by admin status, and a Gitea
+**web-UI merge** fires the mirror server-side, so no local `pre-push` hook can guard this. A
+merged PR's commits survive at `refs/pull/<N>/head` on GitHub permanently.
+
+Full procedure, including how to un-stick a diverged mirror: `apocrypha-contributions` skill.
+
 ## Hard constraints
 
 - **Schema stability**: MnemonicDB attribute ids and `JsonName` discriminators are
