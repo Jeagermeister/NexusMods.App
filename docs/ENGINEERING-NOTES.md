@@ -1,4 +1,7 @@
-# CLAUDE.md
+# Engineering notes
+
+Working context for anyone touching this repository: what the stack is, how CI is
+wired, and the constraints that are not obvious from the code.
 
 Apocrypha — a Linux-first mod manager, hard-forked from NexusMods.App. C# / .NET
 (`net9.0`), Avalonia UI, MnemonicDB (RocksDB-backed) datastore. All namespaces and
@@ -96,7 +99,8 @@ recoverable error. Note `allow_force_pushes: false` is not bypassed by admin sta
 **web-UI merge** fires the mirror server-side, so no local `pre-push` hook can guard this. A
 merged PR's commits survive at `refs/pull/<N>/head` on GitHub permanently.
 
-Full procedure, including how to un-stick a diverged mirror: `apocrypha-contributions` skill.
+Full procedure, including how to un-stick a diverged mirror: the `apocrypha-contributions`
+runbook, kept outside this repository.
 
 ## Hard constraints
 

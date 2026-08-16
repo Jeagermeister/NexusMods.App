@@ -403,8 +403,8 @@ validation/auto-sort assist over a user-editable order.
 
 Ordered by (impact × reachability) ÷ effort. The first tier is small, high-confidence fixes.
 
-> **✅ Status (2026-07-14): Tiers 0–5 are implemented and locally verified** on branch
-> `claude/repo-improvements-analysis-ufkkla` — see [`CODE_REVIEW_FIXES.md`](./CODE_REVIEW_FIXES.md)
+> **✅ Status (2026-07-14): Tiers 0–5 are implemented and locally verified** —
+> see [`CODE_REVIEW_FIXES.md`](./CODE_REVIEW_FIXES.md)
 > for the Tier 0/1 write-up; later tiers are documented in their commit messages. Highlights:
 > Tier 2 — #8 the fork-owned hash-DB feed is **live** (github.com/Jeagermeister/game-hashes,
 > `EnableRemoteUpdates=true`, verified e2e), #9 IModSource seam + Downloads game-association,

@@ -389,7 +389,7 @@ and predates this triage.*
     `src/Apocrypha.App/Program.cs` blocks the main thread four times in sequence before the
     UI is built: `CleanupUnresponsiveProcesses(services).Wait(timeout:
     TimeSpan.FromSeconds(10))` (line 76, and it contains its own 6-second connect probe when
-    a stale sync file is present — the exact condition CLAUDE.md warns about),
+    a stale sync file is present — the exact condition `ENGINEERING-NOTES.md` warns about),
     `host.StartAsync().Wait(timeout: TimeSpan.FromMinutes(5))` (line 79), `migration
     .MigrateAll().Wait()` / `migration.InitialSetup().Wait()` (lines 121 and 126), and
     `cliServer?.StartCliServerAsync().Wait(timeout: TimeSpan.FromSeconds(5))` (line 133).
