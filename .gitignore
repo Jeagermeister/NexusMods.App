@@ -48,3 +48,9 @@ src/Apocrypha.App/Deploy/
 
 # Avalonia build-task scratch dirs (created on every build)
 .avalonia-build-tasks/
+
+# Local editor/assistant entry points. The notes themselves are tracked at
+# docs/ENGINEERING-NOTES.md; these are just convenience symlinks to it.
+/CLAUDE.md
+/AGENTS.md
+/.claude/
